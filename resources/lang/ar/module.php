@@ -1,0 +1,27 @@
+<?php
+
+return [
+    'users' => 'المستخدمون',
+    'roles' => 'الصلاحيات',
+    'permissions' => 'الصلاحيات',
+    'settings' => 'الاعدادات',
+    'bookings' => 'الحجوزات',
+    'services' => 'الخدمات',
+    'packages' => 'الباقات',
+    'products' => 'المنتجات',
+    'employees' => 'الموظفين',
+    'customers' => 'العملاء',
+    'wallets' => 'المحافظ المالية',
+    'points' => 'النقاط',
+    'cancel_reasons' => 'أسباب الغاء الحجز',
+    'package_subscriptions' => 'الاشتراكات',
+    'promotions' => 'العروض',
+    'promotion_coupons' => 'كوبونات العروض',
+    'payments' => 'المدفوعات',
+    'invoices' => 'الفواتير',
+    'customer_groups' => 'مجموعات العملاء',
+    'zones' => 'المناطق',
+    'carousel_items' => 'عناصر السلايدر',
+    'notifications' => 'الاشعارات',
+    'app_pages' => 'صفحات التطبيق',
+];

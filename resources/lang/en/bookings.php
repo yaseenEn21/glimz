@@ -1,0 +1,219 @@
+<?php
+
+return [
+    'title' => 'Bookings',
+    'booking' => 'Booking',
+    'view' => 'View',
+    'back_to_list' => 'Back to list',
+    'edit' => 'Edit',
+    'save_changes' => 'Save changes',
+
+    'create' => [
+        'title' => 'Create Booking',
+    ],
+
+    'delete' => 'Delete',
+    'delete_confirm_title' => 'Confirm deletion',
+    'delete_confirm_text' => 'Are you sure you want to delete this booking? The same cancellation actions will be applied (cancel unpaid invoices, refund paid amounts to the wallet, and restore a package wash if it was deducted).',
+    'cannot_delete_completed' => 'A completed booking cannot be deleted.',
+    'deleted_successfully' => 'Booking deleted successfully.',
+    'cancelled_successfully' => 'Booking cancelled successfully.',
+
+    'cancel_reasons' => [
+        'title' => 'Booking Cancel Reasons',
+        'create' => 'Add Reason',
+        'edit' => 'Edit Reason',
+        'back' => 'Back',
+        'save' => 'Save',
+        'cancel' => 'Cancel',
+        'delete' => 'Delete',
+        'actions' => 'Actions',
+        'done' => 'Done',
+        'active' => 'Active',
+        'inactive' => 'Inactive',
+
+        'fields' => [
+            'code' => 'Code',
+            'name_ar' => 'Name (AR)',
+            'name_en' => 'Name (EN)',
+            'is_active' => 'Status',
+            'sort' => 'Sort',
+        ],
+
+        'delete_confirm_title' => 'Delete confirmation',
+        'delete_confirm_text' => 'Are you sure you want to delete this reason?',
+
+        'created_successfully' => 'Reason created successfully',
+        'updated_successfully' => 'Reason updated successfully',
+        'deleted_successfully' => 'Reason deleted successfully',
+
+        'not_found' => 'Reason not found',
+        'code_taken' => 'This code is already taken',
+    ],
+
+    'calendar' => [
+        'title' => 'Bookings Calendar',
+        'pick_date' => 'Pick date',
+        'today' => 'Today',
+        'day' => 'Day',
+        'week' => 'Week',
+        'employees' => 'Employees',
+        'all_employees' => 'All employees',
+        'done' => 'Done',
+        'confirm_move_title' => 'Confirm update',
+        'confirm_move_text' => 'Do you want to save this time/employee change?',
+        'confirm' => 'Confirm',
+        'cancel' => 'Cancel',
+        'moved_successfully' => 'Booking moved successfully',
+        'cannot_move_status' => 'Cannot move a completed or cancelled booking',
+    ],
+
+    'tabs' => [
+        'overview' => 'Overview',
+        'products' => 'Products',
+        'invoices' => 'Invoices',
+        'logs' => 'Status Logs',
+        'meta' => 'Meta',
+    ],
+
+    'package' => [
+        'hint' => 'Optional: only active subscriptions that cover the selected service and have remaining washes are shown.',
+        'invalid_subscription' => 'Invalid package subscription or it does not cover this service.',
+    ],
+
+    'columns' => [
+        'customer' => 'Customer',
+        'service' => 'Service',
+        'schedule' => 'Schedule',
+        'employee' => 'Employee',
+        'total' => 'Total',
+        'status' => 'Status',
+        'actions' => 'Actions',
+        'status_control' => 'Status',
+    ],
+
+    'status_updated' => 'Booking status updated successfully.',
+    'status_update_failed' => 'Failed to update booking status.',
+    'status_locked' => 'Status cannot be changed after completion or cancellation.',
+    'status_no_change' => 'No status change.',
+
+    'service' => 'Service',
+
+    'filters' => [
+        'search_placeholder' => 'Search: booking id / customer name / mobile / service...',
+        'status_placeholder' => 'Status',
+        'time_period_placeholder' => 'Time period',
+        'service_placeholder' => 'Service',
+        'employee_placeholder' => 'Employee ID (optional)',
+        'zone_placeholder' => 'Zone ID (optional)',
+        'reset' => 'Reset',
+    ],
+
+    'status' => [
+        'pending' => 'Pending',
+        'confirmed' => 'Confirmed',
+        'moving' => 'Moving',
+        'arrived' => 'Arrived',
+        'completed' => 'Completed',
+        'cancelled' => 'Cancelled',
+    ],
+
+    'time_period' => [
+        'morning' => 'Morning',
+        'evening' => 'Evening',
+        'all' => 'All day',
+    ],
+
+    'customer' => 'Customer',
+    'user_id' => 'User ID',
+    'car' => 'Car',
+    'address' => [
+        'title' => 'Address',
+        'add' => 'Add Address',
+        'modal_title' => 'Add an Address for the Customer',
+        'hint' => 'Slots depend on the address coordinates (Lat/Lng).',
+        'type' => 'Type',
+        'types' => [
+            'home' => 'Home',
+            'work' => 'Work',
+            'other' => 'Other',
+        ],
+        'city' => 'City',
+        'area' => 'Area',
+        'country' => 'Country',
+        'address_line' => 'Address details',
+        'address_line_ph' => 'Street, building number, details...',
+        'landmark' => 'Nearby landmark',
+        'link' => 'Map link (optional)',
+        'default' => 'Set as default?',
+        'map_hint' => 'Click on the map to set the location or drag the marker.',
+        'link_ph' => 'Paste the location link from Google Maps here',
+        'link_hint' => 'Paste the location link and the coordinates will be extracted automatically on save.',
+        'link_invalid_or_failed' => 'Invalid location link or failed to extract coordinates from it.',
+    ],
+
+    'assignment' => 'Assignment & Context',
+    'employee' => 'Employee',
+    'zone' => 'Zone',
+    'time_period_label' => 'Time period',
+    'package_subscription' => 'Package subscription',
+    'package_cover_hint' => 'This booking is linked to a package subscription and may be partially/fully covered by package rules.',
+
+    'duration' => 'Duration',
+    'minutes' => 'min',
+
+    'pricing' => 'Pricing',
+    'pricing_source' => 'Pricing source',
+    'pricing_source_values' => [
+        'base' => 'Base price',
+        'zone' => 'Zone price',
+        'group' => 'Customer group price',
+        'package' => 'Covered by package',
+    ],
+    'service_unit_price' => 'Service unit price (before cover)',
+    'service_charge_amount' => 'Charge amount to customer',
+    'pricing_meta' => 'Pricing meta',
+
+    'subtotal' => 'Subtotal',
+    'discount' => 'Discount',
+    'tax' => 'Tax',
+    'total' => 'Total',
+    'total_snapshot' => 'Booking total',
+
+    'lifecycle' => 'Lifecycle',
+    'created_at' => 'Created at',
+    'confirmed_at' => 'Confirmed at',
+    'cancelled_at' => 'Cancelled at',
+    'cancel_reason' => 'Cancel reason',
+
+    'products_subtotal' => 'Products subtotal',
+    'products' => [
+        'product' => 'Product',
+        'product_id' => 'Product ID',
+        'qty' => 'Qty',
+        'unit_price' => 'Unit price',
+        'line_total' => 'Line total',
+        'empty' => 'No products in this booking.',
+    ],
+
+    'invoices' => [
+        'number' => 'Invoice #',
+        'status' => 'Status',
+        'type' => 'Type',
+        'total' => 'Total',
+        'paid_at' => 'Paid at',
+        'empty' => 'No invoices linked to this booking.',
+    ],
+    'latest_unpaid_invoice_hint' => 'There is an unpaid invoice linked to this booking:',
+
+    'logs' => [
+        'from' => 'From',
+        'to' => 'To',
+        'by' => 'By',
+        'empty' => 'No status logs for this booking.',
+    ],
+
+    'meta' => 'Meta',
+    'meta_empty' => 'No meta data.',
+    'raw' => 'Raw Payload',
+];

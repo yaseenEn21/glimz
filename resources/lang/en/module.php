@@ -1,0 +1,27 @@
+<?php
+
+return [
+    'users' => 'Users',
+    'roles' => 'Roles',
+    'permissions' => 'Permissions',
+    'settings' => 'Settings',
+    'bookings' => 'Bookings',
+    'services' => 'Services',
+    'packages' => 'Packages',
+    'products' => 'Products',
+    'employees' => 'Employees',
+    'customers' => 'Customers',
+    'wallets' => 'Wallets',
+    'points' => 'Points',
+    'cancel_reasons' => 'Booking Cancellation Reasons',
+    'package_subscriptions' => 'Subscriptions',
+    'promotions' => 'Promotions',
+    'promotion_coupons' => 'Promotion Coupons',
+    'payments' => 'Payments',
+    'invoices' => 'Invoices',
+    'customer_groups' => 'Customer Groups',
+    'zones' => 'Zones',
+    'carousel_items' => 'Carousel Items',
+    'notifications' => 'Notifications',
+    'app_pages' => 'App Pages',
+];

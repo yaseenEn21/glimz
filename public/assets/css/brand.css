@@ -1,0 +1,180 @@
+/* =========================
+   Brand Palette (from your app)
+========================= */
+:root{
+    --brand-navy: #2C3885;
+    --brand-navy-2: #1F2A6B;
+    --brand-lime: #E6EE41;
+    --brand-surface: #F6F7FB;
+    --brand-white: #FFFFFF;
+}
+
+.btn-primary {
+    background-color: #2C3885 !important;
+    border-color: #2C3885 !important
+}
+
+.btn-primary:hover {
+    background-color: #1F2A6B !important;
+    border-color: #1F2A6B !important
+}
+
+
+/* =========================
+   Header (Floating Card Style)
+========================= */
+#kt_app_header{
+    background: transparent !important;
+    box-shadow: none !important;
+    border: 0 !important;
+}
+
+#kt_app_header_container{
+    /* margin: 12px 12px 0;
+    border-radius: 14px; */
+    background: linear-gradient(180deg, var(--brand-navy) 0%, var(--brand-navy-2) 100%) !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,.12);
+    padding-inline: 12px;
+}
+
+/* Header content colors */
+#kt_app_header_container .btn,
+#kt_app_header_container .menu-link,
+#kt_app_header_container .app-navbar-item,
+#kt_app_header_container .text-gray-600,
+#kt_app_header_container .text-muted{
+    /* color: rgba(255,255,255,.92) !important; */
+}
+
+#kt_app_header_container .btn.btn-icon{
+    background: rgba(255,255,255,.10) !important;
+    border: 1px solid rgba(255,255,255,.14) !important;
+}
+#kt_app_header_container .btn.btn-icon:hover{
+    background: rgba(255,255,255,.16) !important;
+}
+
+/* Make icons visible in header */
+#kt_app_header_container i,
+#kt_app_header_container svg{
+    color: rgba(255,255,255,.92) !important;
+}
+
+/* =========================
+   Sidebar (Brand Dark)
+========================= */
+#kt_app_sidebar{
+    background: linear-gradient(180deg, var(--brand-navy) 0%, var(--brand-navy-2) 100%) !important;
+    border: 0 !important;
+}
+
+/* optional: slightly wider sidebar */
+#kt_app_sidebar[data-kt-drawer-width]{
+    /* keep drawer width from attr; you can set it to 260px in blade */
+}
+
+/* Sidebar Logo area */
+#kt_app_sidebar .app-sidebar-logo{
+    border-bottom: 1px solid rgba(255,255,255,.10) !important;
+}
+
+/* Headings inside sidebar */
+#kt_app_sidebar .menu-heading{
+    color: rgba(255,255,255,.55) !important;
+    letter-spacing: .5px;
+}
+
+/* Menu links base */
+#kt_app_sidebar .menu-link{
+    border-radius: 12px !important;
+    margin: 2px 10px;
+    padding-block: 10px;
+    color: rgba(255,255,255,.80) !important;
+}
+
+#kt_app_sidebar .menu-link .menu-icon i,
+#kt_app_sidebar .menu-link .menu-icon svg{
+    color: rgba(255,255,255,.88) !important;
+}
+
+#kt_app_sidebar .menu-link:hover{
+    background: rgba(255,255,255,.10) !important;
+    color: #fff !important;
+}
+
+/* Active / Here item (lime highlight like your app) */
+#kt_app_sidebar .menu-link.active,
+#kt_app_sidebar .menu-item.here > .menu-link,
+#kt_app_sidebar .menu-item.show > .menu-link{
+    background: var(--brand-lime) !important;
+    /* color: #0F1638 !important; */
+    /* box-shadow: 0 10px 24px rgba(230,238,65,.28); */
+}
+
+#kt_app_sidebar .menu-link.active .menu-icon i,
+#kt_app_sidebar .menu-item.here > .menu-link .menu-icon i{
+}
+
+/* Submenu items */
+#kt_app_sidebar .menu-sub .menu-link{
+    margin: 2px 16px;
+    padding-block: 9px;
+    border-radius: 10px !important;
+    background: transparent !important;
+}
+
+#kt_app_sidebar .menu-sub .menu-link.active{
+    background: rgba(230,238,65,.18) !important;
+    color: #fff !important;
+    border: 1px solid rgba(230,238,65,.35);
+}
+
+/* Bullets color */
+#kt_app_sidebar .bullet.bullet-dot{
+    background-color: rgba(255,255,255,.45) !important;
+}
+#kt_app_sidebar .menu-sub .menu-link.active .bullet.bullet-dot{
+    background-color: var(--brand-lime) !important;
+}
+
+/* =========================
+   RTL rounding helper (nice touch)
+========================= */
+html[dir="rtl"] #kt_app_sidebar{
+    border-top-left-radius: 0;
+    /* border-top-right-radius: 18px; */
+}
+
+/* ===== Better contrast for active vs opened ===== */
+
+/* القاعدة: خلّي النص أوضح شوي */
+#kt_app_sidebar .menu-link{
+    color: rgba(255,255,255,.90) !important;
+    font-weight: 600;
+}
+
+/* 1) العنصر النشط (الصفحة الحالية) */
+#kt_app_sidebar .menu-link.active{
+    background: var(--brand-lime) !important;
+    color: #0F1638 !important;
+}
+
+#kt_app_sidebar .menu-link.active .menu-title,
+#kt_app_sidebar .menu-link.active .menu-icon i,
+#kt_app_sidebar .menu-link.active .menu-icon svg,
+#kt_app_sidebar .menu-link.active .menu-arrow{
+    color: #0F1638 !important;
+}
+
+/* 2) القسم المفتوح (Accordion) — مش لازم يصير كله ليموني */
+#kt_app_sidebar .menu-item.here > .menu-link,
+#kt_app_sidebar .menu-item.show > .menu-link{
+    background: rgba(255,255,255,.10) !important;
+    border: 1px solid rgba(230,238,65,.25) !important;
+}
+
+/* سهم الأكورديون يكون ليموني */
+#kt_app_sidebar .menu-item.here > .menu-link .menu-arrow,
+#kt_app_sidebar .menu-item.show > .menu-link .menu-arrow{
+    color: var(--brand-lime) !important;
+}
