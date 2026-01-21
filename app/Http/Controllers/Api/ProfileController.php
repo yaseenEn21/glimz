@@ -20,7 +20,7 @@ class ProfileController extends Controller
         $profileImageUrl = $user->getFirstMediaUrl('profile_image');
 
         if (!$profileImageUrl) {
-            $profileImageUrl = asset('assets/media/avatars/user.png');
+            $profileImageUrl = asset('assets/media/avatars/user.jpg');
         }
         return api_success(new CustomerResource($user), 'profile data loaded successfully');
     }
@@ -114,7 +114,7 @@ class ProfileController extends Controller
 
         // إرجاع رابط الصورة الافتراضية
         $defaultUrl = [
-            'profile_image_url' => asset('assets/media/avatars/user.png')
+            'profile_image_url' => asset('assets/media/avatars/user.jpg')
         ];
 
         return api_success($defaultUrl, 'تم حذف صورة البروفايل بنجاح.');
