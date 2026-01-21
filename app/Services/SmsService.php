@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
-class SMsService
+class SmsService
 {
     protected string $token;
     protected string $baseUrl;

@@ -45,7 +45,7 @@ return [
         'event' => env('PUSHER_NOTIFICATION_EVENT', 'product.created'),
     ],
 
-    'smsservice' => [
+    'SmsService' => [
         'user_name' => env('SMS_USER_NAME', ''),
         'user_pass' => env('SMS_USER_PASS', ''),
         'api_token' => env('SMS_API_TOKEN', ''),

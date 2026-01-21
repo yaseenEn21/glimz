@@ -8,11 +8,11 @@ use Carbon\Carbon;
 
 class OtpService
 {
-    protected SMsService $smsService;
+    protected SmsService $SmsService;
 
-    public function __construct(SMsService $smsService)
+    public function __construct(SmsService $SmsService)
     {
-        $this->smsService = $smsService;
+        $this->SmsService = $SmsService;
     }
 
     public function sendLoginOtp(User $user): OtpCode
@@ -39,7 +39,7 @@ class OtpService
 
         // Turn off SMS
 
-        // $this->smsService->send(
+        // $this->SmsService->send(
         //     to: $user->mobile,
         //     message: $message,
         //     sender: 'GLIMZ'
