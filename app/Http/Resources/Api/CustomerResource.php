@@ -16,7 +16,7 @@ class CustomerResource extends JsonResource
             'mobile' => $this->mobile,
             'birth_date' => $this->birth_date?->format('d-m-Y'),
             'gender' => $this->gender,
-            'profile_image_url' => $this->getFirstMediaUrl('profile_image') ?: defaultImage('user.png'),
+            'profile_image_url' => $this->getFirstMediaUrl('profile_image') ?: defaultImage('user.jpg'),
             'is_active' => $this->is_active,
             'user_type' => $this->user_type,
             'created_at' => $this->created_at,
