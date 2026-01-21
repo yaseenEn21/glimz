@@ -20,9 +20,13 @@ class PackageSubscriptionResource extends JsonResource
             'discounted_price_snapshot' => $this->discounted_price_snapshot !== null ? (string) $this->discounted_price_snapshot : null,
             'final_price_snapshot' => (string) $this->final_price_snapshot,
 
-            'remaining_washes' => (int) $this->remaining_washes,
             'total_washes_snapshot' => (int) $this->total_washes_snapshot,
-
+            'used_washes' => (int) $this->total_washes_snapshot - (int) $this->remaining_washes,
+            'remaining_washes' => (int) $this->remaining_washes,
+            'usage_percentage' => $this->total_washes_snapshot > 0
+                ? round((($this->total_washes_snapshot - $this->remaining_washes) / $this->total_washes_snapshot) * 100, 2)
+                : 0,
+                
             'package' => $this->whenLoaded('package', fn() => new PackageResource($this->package)),
         ];
     }

@@ -1,180 +1,1515 @@
+/* =============================================================================
+   🎨 NEW BRAND THEME - Complete UI Overhaul
+   Primary Color: #5900CC
+   Font: Tajawal | Style: Light & Modern
+   ============================================================================= */
+
 /* =========================
-   Brand Palette (from your app)
+   📦 CSS Variables (Brand Palette)
 ========================= */
-:root{
-    --brand-navy: #2C3885;
-    --brand-navy-2: #1F2A6B;
-    --brand-lime: #E6EE41;
-    --brand-surface: #F6F7FB;
-    --brand-white: #FFFFFF;
+:root {
+    /* Brand Purple Scale - Based on #5900CC */
+    --brand-950: #1A0042;
+    --brand-900: #2D0073;
+    --brand-800: #4000A3;
+    --brand-700: #5900CC;
+    --brand-600: #6B14D6;
+    --brand-500: #7D2EE0;
+    --brand-400: #9B5CE8;
+    --brand-300: #B98AF0;
+    --brand-200: #D4B8F7;
+    --brand-100: #EFE6FC;
+    --brand-50: #F8F4FE;
+
+    /* Accent Gold/Yellow Scale */
+    --accent-950: #713F12;
+    --accent-900: #854D0E;
+    --accent-800: #A16207;
+    --accent-700: #CA8A04;
+    --accent-600: #D4A017;
+    --accent-500: #EAB308;
+    --accent-400: #FACC15;
+    --accent-300: #FDE047;
+    --accent-200: #FEF08A;
+    --accent-100: #FEF9C3;
+    --accent-50: #FEFCE8;
+
+    /* Gray Scale */
+    --gray-950: #0F0F1A;
+    --gray-900: #1A1A2E;
+    --gray-800: #2D2D44;
+    --gray-700: #3D3D5C;
+    --gray-600: #5C5C7A;
+    --gray-500: #7C7C9A;
+    --gray-400: #9C9CB8;
+    --gray-300: #BDBDD4;
+    --gray-200: #DEDEE8;
+    --gray-100: #EFEFF4;
+    --gray-50: #F7F7FA;
+
+    /* Base Colors */
+    --base-white: #FFFFFF;
+    --base-black: #0A0A12;
+
+    /* Semantic Colors */
+    --primary: var(--brand-700);
+    --primary-hover: var(--brand-800);
+    --primary-active: var(--brand-900);
+    --primary-light: var(--brand-100);
+    --primary-lighter: var(--brand-50);
+    --secondary: var(--accent-500);
+    --secondary-hover: var(--accent-600);
+    --surface: var(--gray-50);
+    --surface-card: var(--base-white);
+    --text-primary: var(--gray-900);
+    --text-secondary: var(--gray-600);
+    --text-muted: var(--gray-500);
+    --border-color: var(--gray-200);
+    --border-light: var(--gray-100);
+
+    /* Shadows - Light Mode */
+    --shadow-xs: 0 1px 2px rgba(89, 0, 204, 0.03);
+    --shadow-sm: 0 1px 3px rgba(89, 0, 204, 0.05), 0 1px 2px rgba(0, 0, 0, 0.03);
+    --shadow-md: 0 4px 12px rgba(89, 0, 204, 0.08), 0 2px 4px rgba(0, 0, 0, 0.03);
+    --shadow-lg: 0 8px 24px rgba(89, 0, 204, 0.12), 0 4px 8px rgba(0, 0, 0, 0.04);
+    --shadow-xl: 0 16px 48px rgba(89, 0, 204, 0.16), 0 8px 16px rgba(0, 0, 0, 0.05);
+    --shadow-primary: 0 4px 14px rgba(89, 0, 204, 0.35);
+    --shadow-primary-lg: 0 8px 24px rgba(89, 0, 204, 0.4);
+
+    /* Border Radius */
+    --radius-xs: 4px;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 20px;
+    --radius-2xl: 28px;
+    --radius-full: 9999px;
+
+    /* Transitions */
+    --transition-fast: 150ms ease;
+    --transition-normal: 250ms ease;
+    --transition-slow: 350ms ease;
+    --transition-bounce: 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* =========================
+   🔤 Typography - Tajawal Font
+========================= */
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;600;700;800&display=swap');
+
+body,
+.app-default {
+    font-family: 'Tajawal', sans-serif !important;
+    color: var(--text-primary);
+    background-color: var(--surface) !important;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.fw-bold,
+.fw-bolder {
+    font-family: 'Tajawal', sans-serif !important;
+    font-weight: 700 !important;
+}
+
+/* =========================
+   🎯 Buttons - Rounded Modern Style
+========================= */
+.btn {
+    font-family: 'Tajawal', sans-serif !important;
+    font-weight: 500 !important;
+    border-radius: var(--radius-full) !important;
+    padding: 10px 24px !important;
+    transition: all var(--transition-normal) !important;
+    border: 2px solid transparent !important;
+    overflow: hidden !important;
+}
+
+.btn.action-button {
+    padding: 4px 12px !important;
+}
+
+.btn.action-button i {
+    padding: 0 !important;
+}
+
+.form-control.input-with-icon {
+    padding: 10px 35px !important;
+}
+
+/* Primary Button */
 .btn-primary {
-    background-color: #2C3885 !important;
-    border-color: #2C3885 !important
+    background: linear-gradient(135deg, var(--brand-600) 0%, var(--brand-800) 100%) !important;
+    border-color: transparent !important;
+    color: var(--base-white) !important;
 }
 
-.btn-primary:hover {
-    background-color: #1F2A6B !important;
-    border-color: #1F2A6B !important
+.btn-primary:hover,
+.btn-primary:focus {
+    background: linear-gradient(135deg, var(--brand-700) 0%, var(--brand-900) 100%) !important;
+    /* transform: translateY(-2px) !important; */
+    border-color: transparent !important;
+    color: var(--base-white) !important;
 }
 
+.btn-primary:active {
+    transform: translateY(0) !important;
+}
+
+.btn-primary:focus-visible {
+    outline: 3px solid var(--brand-300) !important;
+    outline-offset: 2px !important;
+}
+
+/* Secondary/Outline Button */
+.btn-outline-primary {
+    background-color: transparent !important;
+    border: 2px solid var(--brand-700) !important;
+    color: var(--brand-700) !important;
+}
+
+.btn-outline-primary:hover,
+.btn-outline-primary:focus {
+    background-color: var(--brand-700) !important;
+    border-color: var(--brand-700) !important;
+    color: var(--base-white) !important;
+    transform: translateY(-2px) !important;
+}
+
+.btn-outline-primary:active {
+    background-color: var(--brand-800) !important;
+    border-color: var(--brand-800) !important;
+    transform: translateY(0) !important;
+}
+
+/* Secondary Button */
+.btn-secondary {
+    background-color: var(--gray-100) !important;
+    border-color: var(--gray-100) !important;
+    color: var(--text-primary) !important;
+}
+
+.btn-secondary:hover {
+    background-color: var(--gray-200) !important;
+    border-color: var(--gray-200) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* Light Button */
+.btn-light {
+    background-color: var(--base-white) !important;
+    border: 2px solid var(--gray-200) !important;
+    color: var(--text-primary) !important;
+}
+
+.btn-light:hover {
+    background-color: var(--gray-50) !important;
+    border-color: var(--gray-300) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* Accent/Warning Button */
+.btn-warning,
+.btn-accent {
+    background: linear-gradient(135deg, var(--accent-400) 0%, var(--accent-600) 100%) !important;
+    border-color: transparent !important;
+    color: var(--gray-900) !important;
+    box-shadow: 0 4px 14px rgba(234, 179, 8, 0.35) !important;
+}
+
+.btn-warning:hover,
+.btn-accent:hover {
+    box-shadow: 0 6px 20px rgba(234, 179, 8, 0.45) !important;
+    transform: translateY(-2px) !important;
+}
+
+/* Success Button */
+.btn-success {
+    background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%) !important;
+    border-color: transparent !important;
+    color: var(--base-white) !important;
+    /* box-shadow: 0 4px 14px rgba(34, 197, 94, 0.35) !important; */
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%) !important;
+}
+
+/* Danger Button */
+.btn-danger {
+    background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%) !important;
+    border-color: transparent !important;
+    color: var(--base-white) !important;
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%) !important;
+}
+
+/* Icon Buttons */
+.btn.btn-icon {
+    border-radius: var(--radius-lg) !important;
+    padding: 0 !important;
+    width: 40px !important;
+    height: 40px !important;
+}
+
+.btn.btn-icon:hover {
+    /* transform: translateY(-2px) !important; */
+}
 
 /* =========================
-   Header (Floating Card Style)
+   📱 Header - Clean Light Style
 ========================= */
-#kt_app_header{
-    background: transparent !important;
+#kt_app_header {
+    background: var(--base-white) !important;
+    box-shadow: var(--shadow-sm) !important;
+    border-bottom: 1px solid var(--border-light) !important;
+}
+
+#kt_app_header_container {
+    background: var(--base-white) !important;
     box-shadow: none !important;
-    border: 0 !important;
+    padding-inline: 20px;
 }
 
-#kt_app_header_container{
-    /* margin: 12px 12px 0;
-    border-radius: 14px; */
-    background: linear-gradient(180deg, var(--brand-navy) 0%, var(--brand-navy-2) 100%) !important;
-    box-shadow: 0 10px 30px rgba(0,0,0,.12);
-    padding-inline: 12px;
-}
-
-/* Header content colors */
+/* Header Text & Icons */
 #kt_app_header_container .btn,
 #kt_app_header_container .menu-link,
 #kt_app_header_container .app-navbar-item,
 #kt_app_header_container .text-gray-600,
-#kt_app_header_container .text-muted{
-    /* color: rgba(255,255,255,.92) !important; */
+#kt_app_header_container .text-muted {
+    color: var(--text-secondary) !important;
 }
 
-#kt_app_header_container .btn.btn-icon{
-    background: rgba(255,255,255,.10) !important;
-    border: 1px solid rgba(255,255,255,.14) !important;
-}
-#kt_app_header_container .btn.btn-icon:hover{
-    background: rgba(255,255,255,.16) !important;
+#kt_app_header_container .btn.btn-icon {
+    background: var(--gray-100) !important;
+    border: 1px solid var(--border-color) !important;
+    color: var(--text-primary) !important;
+    box-shadow: none !important;
 }
 
-/* Make icons visible in header */
+#kt_app_header_container .btn.btn-icon:hover {
+    background: var(--primary-light) !important;
+    border-color: var(--brand-300) !important;
+    color: var(--brand-700) !important;
+    /* transform: translateY(-2px) !important; */
+    box-shadow: var(--shadow-md) !important;
+}
+
 #kt_app_header_container i,
-#kt_app_header_container svg{
-    color: rgba(255,255,255,.92) !important;
+#kt_app_header_container svg {
+    color: var(--text-secondary) !important;
+}
+
+#kt_app_header_container .btn.btn-icon:hover i,
+#kt_app_header_container .btn.btn-icon:hover svg {
+    color: var(--brand-700) !important;
 }
 
 /* =========================
-   Sidebar (Brand Dark)
+   📂 Sidebar - Light Modern Style
 ========================= */
-#kt_app_sidebar{
-    background: linear-gradient(180deg, var(--brand-navy) 0%, var(--brand-navy-2) 100%) !important;
-    border: 0 !important;
+#kt_app_sidebar {
+    background: var(--base-white) !important;
+    border-right: 1px solid var(--border-light) !important;
+    box-shadow: var(--shadow-sm) !important;
 }
 
-/* optional: slightly wider sidebar */
-#kt_app_sidebar[data-kt-drawer-width]{
-    /* keep drawer width from attr; you can set it to 260px in blade */
+/* RTL Support */
+html[dir="rtl"] #kt_app_sidebar {
+    border-right: none !important;
+    border-left: 1px solid var(--border-light) !important;
 }
 
-/* Sidebar Logo area */
-#kt_app_sidebar .app-sidebar-logo{
-    border-bottom: 1px solid rgba(255,255,255,.10) !important;
+/* Sidebar Logo Area */
+#kt_app_sidebar .app-sidebar-logo {
+    border-bottom: 1px solid var(--border-light) !important;
+    padding: 20px 16px !important;
 }
 
-/* Headings inside sidebar */
-#kt_app_sidebar .menu-heading{
-    color: rgba(255,255,255,.55) !important;
-    letter-spacing: .5px;
+/* Menu Headings */
+#kt_app_sidebar .menu-heading {
+    color: var(--text-muted) !important;
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.8px !important;
+    text-transform: uppercase !important;
+    padding: 12px 20px 8px !important;
 }
 
-/* Menu links base */
-#kt_app_sidebar .menu-link{
-    border-radius: 12px !important;
-    margin: 2px 10px;
-    padding-block: 10px;
-    color: rgba(255,255,255,.80) !important;
+/* Menu Links Base */
+#kt_app_sidebar .menu-link {
+    border-radius: var(--radius-lg) !important;
+    margin: 3px 12px !important;
+    padding: 10px 14px !important;
+    color: var(--text-secondary) !important;
+    font-weight: 500 !important;
+    transition: all var(--transition-fast) !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+/* ========================================
+   🎯 ICON BOX STYLING
+   ======================================== */
+
+/* Icon Box Container */
+#kt_app_sidebar .menu-link .menu-icon {
+    width: 38px !important;
+    height: 38px !important;
+    min-width: 38px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: var(--radius-md) !important;
+    background: var(--gray-100) !important;
+    margin-left: 12px !important;
+    transition: all var(--transition-bounce) !important;
+}
+
+html[dir="ltr"] #kt_app_sidebar .menu-link .menu-icon {
+    margin-left: 0 !important;
+    margin-right: 12px !important;
 }
 
 #kt_app_sidebar .menu-link .menu-icon i,
-#kt_app_sidebar .menu-link .menu-icon svg{
-    color: rgba(255,255,255,.88) !important;
+#kt_app_sidebar .menu-link .menu-icon svg {
+    color: var(--text-muted) !important;
+    font-size: 18px !important;
+    transition: all var(--transition-bounce) !important;
 }
 
-#kt_app_sidebar .menu-link:hover{
-    background: rgba(255,255,255,.10) !important;
-    color: #fff !important;
+#kt_app_sidebar .menu-link .menu-title {
+    color: var(--text-secondary) !important;
+    font-weight: 500 !important;
+    transition: all var(--transition-fast) !important;
 }
 
-/* Active / Here item (lime highlight like your app) */
-#kt_app_sidebar .menu-link.active,
-#kt_app_sidebar .menu-item.here > .menu-link,
-#kt_app_sidebar .menu-item.show > .menu-link{
-    background: var(--brand-lime) !important;
-    /* color: #0F1638 !important; */
-    /* box-shadow: 0 10px 24px rgba(230,238,65,.28); */
+#kt_app_sidebar .menu-link .menu-arrow {
+    color: var(--gray-400) !important;
+    transition: all var(--transition-fast) !important;
+}
+
+/* ========================================
+   ✨ HOVER ANIMATION - LIFT UP EFFECT
+   ======================================== */
+
+/* Menu Links Hover */
+#kt_app_sidebar .menu-link:hover {
+    background: var(--gray-50) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Icon Box Lift Animation on Hover */
+#kt_app_sidebar .menu-link:hover .menu-icon {
+    background: var(--base-white) !important;
+    box-shadow: 0 4px 12px rgba(89, 0, 204, 0.15) !important;
+    transform: translateY(-4px) !important;
+}
+
+#kt_app_sidebar .menu-link:hover .menu-icon i,
+#kt_app_sidebar .menu-link:hover .menu-icon svg {
+    color: var(--brand-700) !important;
+    transform: scale(1.1) !important;
+}
+
+#kt_app_sidebar .menu-link:hover .menu-title {
+    color: var(--text-primary) !important;
+}
+
+/* ========================================
+   🟢 ACTIVE STATE - HIGHLIGHTED
+   ======================================== */
+
+/* Active Menu Item */
+#kt_app_sidebar .menu-link.active {
+    background: var(--primary-light) !important;
+    color: var(--brand-700) !important;
+    box-shadow: none !important;
+}
+
+#kt_app_sidebar .menu-link.active .menu-icon {
+    background: linear-gradient(135deg, var(--brand-600) 0%, var(--brand-800) 100%) !important;
+    box-shadow: var(--shadow-primary) !important;
+    /* transform: translateY(-2px) !important; */
 }
 
 #kt_app_sidebar .menu-link.active .menu-icon i,
-#kt_app_sidebar .menu-item.here > .menu-link .menu-icon i{
+#kt_app_sidebar .menu-link.active .menu-icon svg {
+    color: var(--base-white) !important;
 }
 
-/* Submenu items */
-#kt_app_sidebar .menu-sub .menu-link{
-    margin: 2px 16px;
-    padding-block: 9px;
-    border-radius: 10px !important;
+#kt_app_sidebar .menu-link.active .menu-title {
+    color: var(--brand-700) !important;
+    font-weight: 600 !important;
+}
+
+#kt_app_sidebar .menu-link.active .menu-arrow {
+    color: var(--brand-700) !important;
+}
+
+/* Active Hover - Keep elevated */
+#kt_app_sidebar .menu-link.active:hover .menu-icon {
+    transform: translateY(-6px) !important;
+    box-shadow: var(--shadow-primary-lg) !important;
+}
+
+/* ========================================
+   📂 ACCORDION OPEN STATE
+   ======================================== */
+
+/* Opened Accordion (Parent with submenu open) */
+#kt_app_sidebar .menu-item.here>.menu-link,
+#kt_app_sidebar .menu-item.show>.menu-link {
+    background: var(--gray-50) !important;
+    border: none !important;
+    color: var(--text-primary) !important;
+}
+
+#kt_app_sidebar .menu-item.here>.menu-link .menu-icon,
+#kt_app_sidebar .menu-item.show>.menu-link .menu-icon {
+    background: var(--primary-light) !important;
+}
+
+#kt_app_sidebar .menu-item.here>.menu-link .menu-icon i,
+#kt_app_sidebar .menu-item.show>.menu-link .menu-icon i,
+#kt_app_sidebar .menu-item.here>.menu-link .menu-icon svg,
+#kt_app_sidebar .menu-item.show>.menu-link .menu-icon svg {
+    color: var(--brand-700) !important;
+}
+
+#kt_app_sidebar .menu-item.here>.menu-link .menu-title,
+#kt_app_sidebar .menu-item.show>.menu-link .menu-title {
+    color: var(--text-primary) !important;
+}
+
+#kt_app_sidebar .menu-item.here>.menu-link .menu-arrow,
+#kt_app_sidebar .menu-item.show>.menu-link .menu-arrow {
+    color: var(--brand-700) !important;
+}
+
+/* ========================================
+   📁 SUBMENU STYLING
+   ======================================== */
+
+/* Submenu Container */
+#kt_app_sidebar .menu-sub {
+    background: var(--gray-50) !important;
+    border-radius: var(--radius-md) !important;
+    margin: 4px 12px 8px !important;
+    padding: 8px !important;
+}
+
+/* Submenu Links */
+#kt_app_sidebar .menu-sub .menu-link {
+    margin: 2px 0 !important;
+    padding: 9px 12px !important;
+    border-radius: var(--radius-md) !important;
+    background: transparent !important;
+    font-size: 13px !important;
+}
+
+/* Submenu Icon Box - Smaller */
+#kt_app_sidebar .menu-sub .menu-link .menu-icon {
+    width: 30px !important;
+    height: 30px !important;
+    min-width: 30px !important;
     background: transparent !important;
 }
 
-#kt_app_sidebar .menu-sub .menu-link.active{
-    background: rgba(230,238,65,.18) !important;
-    color: #fff !important;
-    border: 1px solid rgba(230,238,65,.35);
+#kt_app_sidebar .menu-sub .menu-link .menu-icon i,
+#kt_app_sidebar .menu-sub .menu-link .menu-icon svg {
+    font-size: 16px !important;
 }
 
-/* Bullets color */
-#kt_app_sidebar .bullet.bullet-dot{
-    background-color: rgba(255,255,255,.45) !important;
+#kt_app_sidebar .menu-sub .menu-link:hover {
+    background: var(--base-white) !important;
 }
-#kt_app_sidebar .menu-sub .menu-link.active .bullet.bullet-dot{
-    background-color: var(--brand-lime) !important;
+
+#kt_app_sidebar .menu-sub .menu-link:hover .menu-icon {
+    background: var(--base-white) !important;
+    box-shadow: 0 2px 8px rgba(89, 0, 204, 0.1) !important;
+    /* transform: translateY(-2px) !important; */
+}
+
+#kt_app_sidebar .menu-sub .menu-link.active {
+    background: var(--base-white) !important;
+    color: var(--brand-700) !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+
+#kt_app_sidebar .menu-sub .menu-link.active .menu-icon {
+    background: var(--primary-light) !important;
+}
+
+#kt_app_sidebar .menu-sub .menu-link.active .menu-icon i,
+#kt_app_sidebar .menu-sub .menu-link.active .menu-icon svg {
+    color: var(--brand-700) !important;
+}
+
+#kt_app_sidebar .menu-sub .menu-link.active .menu-title {
+    color: var(--brand-700) !important;
+    font-weight: 600 !important;
+}
+
+/* Bullets */
+#kt_app_sidebar .bullet.bullet-dot {
+    background-color: var(--gray-400) !important;
+    transition: all var(--transition-fast) !important;
+}
+
+#kt_app_sidebar .menu-link:hover .bullet.bullet-dot {
+    background-color: var(--brand-700) !important;
+    transform: scale(1.2) !important;
+}
+
+#kt_app_sidebar .menu-sub .menu-link.active .bullet.bullet-dot {
+    background-color: var(--brand-700) !important;
 }
 
 /* =========================
-   RTL rounding helper (nice touch)
+   🃏 Cards - Clean Elevated Style
 ========================= */
-html[dir="rtl"] #kt_app_sidebar{
-    border-top-left-radius: 0;
-    /* border-top-right-radius: 18px; */
+.card {
+    background: var(--surface-card) !important;
+    border: 1px solid var(--border-light) !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--shadow-sm) !important;
+    transition: all var(--transition-normal) !important;
 }
 
-/* ===== Better contrast for active vs opened ===== */
-
-/* القاعدة: خلّي النص أوضح شوي */
-#kt_app_sidebar .menu-link{
-    color: rgba(255,255,255,.90) !important;
-    font-weight: 600;
+.card:hover {
+    box-shadow: var(--shadow-md) !important;
 }
 
-/* 1) العنصر النشط (الصفحة الحالية) */
-#kt_app_sidebar .menu-link.active{
-    background: var(--brand-lime) !important;
-    color: #0F1638 !important;
+.card-header {
+    background: transparent !important;
+    border-bottom: 1px solid var(--border-light) !important;
+    padding: 20px 24px !important;
 }
 
-#kt_app_sidebar .menu-link.active .menu-title,
-#kt_app_sidebar .menu-link.active .menu-icon i,
-#kt_app_sidebar .menu-link.active .menu-icon svg,
-#kt_app_sidebar .menu-link.active .menu-arrow{
-    color: #0F1638 !important;
+.card-body {
+    padding: 24px !important;
 }
 
-/* 2) القسم المفتوح (Accordion) — مش لازم يصير كله ليموني */
-#kt_app_sidebar .menu-item.here > .menu-link,
-#kt_app_sidebar .menu-item.show > .menu-link{
-    background: rgba(255,255,255,.10) !important;
-    border: 1px solid rgba(230,238,65,.25) !important;
+.card-footer {
+    background: var(--gray-50) !important;
+    border-top: 1px solid var(--border-light) !important;
+    padding: 16px 24px !important;
 }
 
-/* سهم الأكورديون يكون ليموني */
-#kt_app_sidebar .menu-item.here > .menu-link .menu-arrow,
-#kt_app_sidebar .menu-item.show > .menu-link .menu-arrow{
-    color: var(--brand-lime) !important;
+.card-title {
+    color: var(--text-primary) !important;
+    font-weight: 700 !important;
+    font-size: 16px !important;
+}
+
+/* =========================
+   📝 Forms - Modern Input Style
+========================= */
+.form-control,
+.form-select {
+    font-family: 'Tajawal', sans-serif !important;
+    border: 2px solid var(--border-color) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 10px 16px !important;
+    color: var(--text-primary) !important;
+    background-color: var(--base-white) !important;
+    transition: all var(--transition-fast) !important;
+}
+
+.form-control:hover,
+.form-select:hover {
+    border-color: var(--gray-300) !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--brand-300) !important;
+    /* box-shadow: 0 0 0 4px rgba(89, 0, 204, 0.12) !important; */
+    outline: none !important;
+}
+
+.form-control::placeholder {
+    color: var(--text-muted) !important;
+}
+
+.form-label {
+    font-weight: 600 !important;
+    color: var(--text-primary) !important;
+    margin-bottom: 8px !important;
+}
+
+/* Checkbox & Radio */
+.form-check-input:checked {
+    background-color: var(--brand-700) !important;
+    border-color: var(--brand-700) !important;
+}
+
+.form-check-input:focus {
+    box-shadow: 0 0 0 4px rgba(89, 0, 204, 0.12) !important;
+    border-color: var(--brand-500) !important;
+}
+
+/* =========================
+   📊 Tables - Clean Style
+========================= */
+.table {
+    font-family: 'Tajawal', sans-serif !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+}
+
+.table thead th {
+    background: linear-gradient(180deg, var(--gray-100) 0%, var(--gray-50) 100%) !important;
+    color: var(--gray-700) !important;
+    font-weight: 700 !important;
+    font-size: 13px !important;
+    text-transform: none !important;
+    letter-spacing: 0.3px !important;
+    /* border-bottom: 2px solid var(--brand-200) !important; */
+    padding: 16px 20px !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+    white-space: nowrap !important;
+    position: relative !important;
+}
+
+/* Header Cell Divider */
+.table thead th:not(:last-child)::after {
+    /* content: '';
+    position: absolute;
+    left: 0;
+    top: 25%;
+    height: 50%;
+    width: 1px;
+    background: var(--gray-300); */
+}
+
+html[dir="rtl"] .table thead th:not(:last-child)::after {
+    /* left: auto;
+    right: 0; */
+}
+
+/* First and Last Header Radius */
+.table thead th:first-child {
+    border-radius: 0 var(--radius-md) var(--radius-md) 0 !important;
+}
+
+.table thead th:last-child {
+    border-radius: var(--radius-md) 0 0 var(--radius-md) !important;
+}
+
+html[dir="ltr"] .table thead th:first-child {
+    border-radius: var(--radius-md) 0 0 var(--radius-md) !important;
+}
+
+html[dir="ltr"] .table thead th:last-child {
+    border-radius: 0 var(--radius-md) var(--radius-md) 0 !important;
+}
+
+.table tbody td {
+    color: var(--text-primary) !important;
+    padding: 16px 20px !important;
+    border-bottom: 1px solid var(--border-light) !important;
+    vertical-align: middle !important;
+    text-align: center !important;
+}
+
+.table tbody tr {
+    transition: all var(--transition-fast) !important;
+}
+
+.table tbody tr:hover {
+    background: var(--primary-lighter) !important;
+}
+
+.table tbody tr:hover td {
+    color: var(--brand-800) !important;
+}
+
+/* =========================
+   📊 DataTables Specific Styling
+========================= */
+.dataTables_wrapper {
+    font-family: 'Tajawal', sans-serif !important;
+}
+
+/* DataTable Header */
+table.dataTable thead th,
+table.dataTable thead td {
+    background: linear-gradient(180deg, var(--gray-100) 0%, var(--gray-50) 100%) !important;
+    color: var(--gray-700) !important;
+    font-weight: 700 !important;
+    font-size: 13px !important;
+    padding: 16px 20px !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+    /* border-bottom: 2px solid var(--brand-200) !important; */
+    white-space: nowrap !important;
+}
+
+/* Sorting Icons */
+table.dataTable thead th.sorting,
+table.dataTable thead th.sorting_asc,
+table.dataTable thead th.sorting_desc {
+    cursor: pointer !important;
+}
+
+table.dataTable thead th.sorting::before,
+table.dataTable thead th.sorting::after,
+table.dataTable thead th.sorting_asc::before,
+table.dataTable thead th.sorting_asc::after,
+table.dataTable thead th.sorting_desc::before,
+table.dataTable thead th.sorting_desc::after {
+    opacity: 0.4 !important;
+}
+
+table.dataTable thead th.sorting_asc::after,
+table.dataTable thead th.sorting_desc::before {
+    opacity: 1 !important;
+    color: var(--brand-700) !important;
+}
+
+/* DataTable Body */
+table.dataTable tbody td {
+    padding: 16px 20px !important;
+    text-align: center !important;
+    vertical-align: middle !important;
+    border-bottom: 1px solid var(--border-light) !important;
+}
+
+table.dataTable tbody tr:hover {
+    background: var(--primary-lighter) !important;
+}
+
+/* DataTable Pagination */
+.dataTables_wrapper .dataTables_paginate {
+    padding-top: 16px !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+    padding: 8px 14px !important;
+    margin: 0 4px !important;
+    border-radius: var(--radius-md) !important;
+    border: 1px solid var(--border-color) !important;
+    background: var(--base-white) !important;
+    color: var(--text-secondary) !important;
+    font-weight: 500 !important;
+    transition: all var(--transition-fast) !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+    background: var(--gray-100) !important;
+    border-color: var(--gray-300) !important;
+    color: var(--text-primary) !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
+    background: linear-gradient(135deg, var(--brand-600) 0%, var(--brand-800) 100%) !important;
+    border-color: transparent !important;
+    color: var(--base-white) !important;
+    box-shadow: var(--shadow-primary) !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button.disabled {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+}
+
+/* DataTable Search & Length */
+.dataTables_wrapper .dataTables_filter input,
+.dataTables_wrapper .dataTables_length select {
+    border: 2px solid var(--border-color) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 8px 14px !important;
+    transition: all var(--transition-fast) !important;
+}
+
+.dataTables_wrapper .dataTables_filter input:focus,
+.dataTables_wrapper .dataTables_length select:focus {
+    border-color: var(--brand-500) !important;
+    box-shadow: 0 0 0 4px rgba(89, 0, 204, 0.12) !important;
+    outline: none !important;
+}
+
+/* DataTable Info */
+.dataTables_wrapper .dataTables_info {
+    color: var(--text-muted) !important;
+    font-size: 13px !important;
+    padding-top: 16px !important;
+}
+
+/* =========================
+   🏷️ Badges - Soft Style
+========================= */
+.badge {
+    font-family: 'Tajawal', sans-serif !important;
+    font-weight: 500 !important;
+    padding: 6px 12px !important;
+    border-radius: var(--radius-full) !important;
+}
+
+.badge-primary,
+.badge.bg-primary {
+    background: var(--primary-light) !important;
+    color: var(--brand-700) !important;
+}
+
+.badge-success,
+.badge.bg-success {
+    background: #DCFCE7 !important;
+    color: #166534 !important;
+}
+
+.badge-warning,
+.badge.bg-warning {
+    background: var(--accent-100) !important;
+    color: var(--accent-800) !important;
+}
+
+.badge-danger,
+.badge.bg-danger {
+    background: #FEE2E2 !important;
+    color: #DC2626 !important;
+}
+
+.badge-info,
+.badge.bg-info {
+    background: #E0F2FE !important;
+    color: #0369A1 !important;
+}
+
+/* =========================
+   📜 Scrollbar - Subtle Style
+========================= */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--gray-100);
+    border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--gray-300);
+    border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--gray-400);
+}
+
+/* =========================
+   🔔 Alerts - Soft Style
+========================= */
+.alert {
+    border-radius: var(--radius-lg) !important;
+    border: none !important;
+    padding: 16px 20px !important;
+}
+
+.alert-primary {
+    background: var(--primary-light) !important;
+    color: var(--brand-800) !important;
+}
+
+.alert-success {
+    background: #DCFCE7 !important;
+    color: #166534 !important;
+}
+
+.alert-warning {
+    background: var(--accent-100) !important;
+    color: var(--accent-900) !important;
+}
+
+.alert-danger {
+    background: #FEE2E2 !important;
+    color: #DC2626 !important;
+}
+
+/* =========================
+   📑 Tabs & Nav Pills
+========================= */
+.nav-pills .nav-link {
+    border-radius: var(--radius-full) !important;
+    padding: 10px 20px !important;
+    color: var(--text-secondary) !important;
+    font-weight: 500 !important;
+    transition: all var(--transition-fast) !important;
+}
+
+.nav-pills .nav-link:hover {
+    background: var(--gray-100) !important;
+    color: var(--text-primary) !important;
+}
+
+.nav-pills .nav-link.active {
+    background: linear-gradient(135deg, var(--brand-600) 0%, var(--brand-800) 100%) !important;
+    color: var(--base-white) !important;
+    box-shadow: var(--shadow-primary) !important;
+}
+
+/* =========================
+   📦 Modal - Clean Style
+========================= */
+.modal-content {
+    border: none !important;
+    border-radius: var(--radius-xl) !important;
+    box-shadow: var(--shadow-xl) !important;
+}
+
+.modal-header {
+    border-bottom: 1px solid var(--border-light) !important;
+    padding: 20px 24px !important;
+}
+
+.modal-body {
+    padding: 24px !important;
+}
+
+.modal-footer {
+    border-top: 1px solid var(--border-light) !important;
+    padding: 16px 24px !important;
+}
+
+/* =========================
+   📋 Dropdown - Modern Style
+========================= */
+.dropdown-menu {
+    border: 1px solid var(--border-light) !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--shadow-lg) !important;
+    padding: 8px !important;
+}
+
+.dropdown-item {
+    border-radius: var(--radius-md) !important;
+    padding: 10px 16px !important;
+    color: var(--text-secondary) !important;
+    font-weight: 500 !important;
+    transition: all var(--transition-fast) !important;
+}
+
+.dropdown-item:hover {
+    background: var(--gray-100) !important;
+    color: var(--text-primary) !important;
+}
+
+.dropdown-item.active,
+.dropdown-item:active {
+    background: var(--primary-light) !important;
+    color: var(--brand-700) !important;
+}
+
+/* =========================
+   🔄 Loading & Spinners
+========================= */
+.spinner-border {
+    color: var(--brand-700) !important;
+}
+
+/* =========================
+   📊 Progress Bars
+========================= */
+.progress {
+    background: var(--gray-200) !important;
+    border-radius: var(--radius-full) !important;
+    height: 8px !important;
+}
+
+.progress-bar {
+    background: linear-gradient(90deg, var(--brand-600) 0%, var(--brand-700) 100%) !important;
+    border-radius: var(--radius-full) !important;
+}
+
+/* =========================
+   🎭 Tooltip & Popover
+========================= */
+.tooltip-inner {
+    background: var(--gray-900) !important;
+    border-radius: var(--radius-md) !important;
+    font-family: 'Tajawal', sans-serif !important;
+    padding: 8px 12px !important;
+}
+
+.popover {
+    border: 1px solid var(--border-light) !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--shadow-lg) !important;
+}
+
+/* =========================
+   🔗 Links
+========================= */
+a {
+    color: var(--brand-700) !important;
+    transition: color var(--transition-fast) !important;
+}
+
+a:hover {
+    color: var(--brand-800) !important;
+}
+
+/* =========================
+   📱 Responsive Adjustments
+========================= */
+@media (max-width: 991.98px) {
+    #kt_app_sidebar {
+        box-shadow: var(--shadow-xl) !important;
+    }
+}
+
+/* =============================================================================
+   🌙 DARK MODE - Complete Theme
+   ============================================================================= */
+[data-bs-theme="dark"],
+[data-theme="dark"],
+.dark-mode {
+    /* Override CSS Variables for Dark Mode */
+    --surface: #0F0F1A;
+    --surface-card: #1A1A2E;
+    --base-white: #1A1A2E;
+    --base-black: #FFFFFF;
+
+    --text-primary: #F0F0F5;
+    --text-secondary: #A0A0B8;
+    --text-muted: #7C7C9A;
+
+    --border-color: #2D2D44;
+    --border-light: #252538;
+
+    --gray-50: #12121F;
+    --gray-100: #1A1A2E;
+    --gray-200: #252538;
+    --gray-300: #3D3D5C;
+    --gray-400: #5C5C7A;
+    --gray-500: #7C7C9A;
+
+    --primary-light: #2D1F4D;
+    --primary-lighter: #1F1535;
+
+    /* Dark Mode Shadows */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5), 0 4px 8px rgba(0, 0, 0, 0.3);
+    --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.6), 0 8px 16px rgba(0, 0, 0, 0.4);
+    --shadow-primary: 0 4px 14px rgba(89, 0, 204, 0.5);
+    --shadow-primary-lg: 0 8px 24px rgba(89, 0, 204, 0.6);
+}
+
+/* Dark Mode - Body */
+[data-bs-theme="dark"] body,
+[data-theme="dark"] body,
+.dark-mode body {
+    background-color: #0F0F1A !important;
+    color: #F0F0F5 !important;
+}
+
+/* Dark Mode - Header */
+[data-bs-theme="dark"] #kt_app_header,
+[data-theme="dark"] #kt_app_header,
+.dark-mode #kt_app_header {
+    background: #1A1A2E !important;
+    border-bottom-color: #252538 !important;
+}
+
+[data-bs-theme="dark"] #kt_app_header_container,
+[data-theme="dark"] #kt_app_header_container,
+.dark-mode #kt_app_header_container {
+    background: #1A1A2E !important;
+}
+
+[data-bs-theme="dark"] #kt_app_header_container .btn.btn-icon,
+[data-theme="dark"] #kt_app_header_container .btn.btn-icon,
+.dark-mode #kt_app_header_container .btn.btn-icon {
+    background: #252538 !important;
+    border-color: #3D3D5C !important;
+}
+
+[data-bs-theme="dark"] #kt_app_header_container .btn.btn-icon:hover,
+[data-theme="dark"] #kt_app_header_container .btn.btn-icon:hover,
+.dark-mode #kt_app_header_container .btn.btn-icon:hover {
+    background: #2D1F4D !important;
+    border-color: var(--brand-500) !important;
+}
+
+/* Dark Mode - Sidebar */
+[data-bs-theme="dark"] #kt_app_sidebar,
+[data-theme="dark"] #kt_app_sidebar,
+.dark-mode #kt_app_sidebar {
+    background: #1A1A2E !important;
+    border-color: #252538 !important;
+}
+
+[data-bs-theme="dark"] #kt_app_sidebar .app-sidebar-logo,
+[data-theme="dark"] #kt_app_sidebar .app-sidebar-logo,
+.dark-mode #kt_app_sidebar .app-sidebar-logo {
+    border-bottom-color: #252538 !important;
+}
+
+[data-bs-theme="dark"] #kt_app_sidebar .menu-heading,
+[data-theme="dark"] #kt_app_sidebar .menu-heading,
+.dark-mode #kt_app_sidebar .menu-heading {
+    color: #7C7C9A !important;
+}
+
+[data-bs-theme="dark"] #kt_app_sidebar .menu-link,
+[data-theme="dark"] #kt_app_sidebar .menu-link,
+.dark-mode #kt_app_sidebar .menu-link {
+    color: #A0A0B8 !important;
+}
+
+[data-bs-theme="dark"] #kt_app_sidebar .menu-link .menu-icon,
+[data-theme="dark"] #kt_app_sidebar .menu-link .menu-icon,
+.dark-mode #kt_app_sidebar .menu-link .menu-icon {
+    background: #252538 !important;
+}
+
+[data-bs-theme="dark"] #kt_app_sidebar .menu-link .menu-icon i,
+[data-bs-theme="dark"] #kt_app_sidebar .menu-link .menu-icon svg,
+[data-theme="dark"] #kt_app_sidebar .menu-link .menu-icon i,
+[data-theme="dark"] #kt_app_sidebar .menu-link .menu-icon svg,
+.dark-mode #kt_app_sidebar .menu-link .menu-icon i,
+.dark-mode #kt_app_sidebar .menu-link .menu-icon svg {
+    color: #7C7C9A !important;
+}
+
+[data-bs-theme="dark"] #kt_app_sidebar .menu-link:hover,
+[data-theme="dark"] #kt_app_sidebar .menu-link:hover,
+.dark-mode #kt_app_sidebar .menu-link:hover {
+    background: #252538 !important;
+}
+
+[data-bs-theme="dark"] #kt_app_sidebar .menu-link:hover .menu-icon,
+[data-theme="dark"] #kt_app_sidebar .menu-link:hover .menu-icon,
+.dark-mode #kt_app_sidebar .menu-link:hover .menu-icon {
+    background: #2D2D44 !important;
+    box-shadow: 0 4px 12px rgba(89, 0, 204, 0.25) !important;
+}
+
+[data-bs-theme="dark"] #kt_app_sidebar .menu-link:hover .menu-icon i,
+[data-bs-theme="dark"] #kt_app_sidebar .menu-link:hover .menu-icon svg,
+[data-theme="dark"] #kt_app_sidebar .menu-link:hover .menu-icon i,
+[data-theme="dark"] #kt_app_sidebar .menu-link:hover .menu-icon svg,
+.dark-mode #kt_app_sidebar .menu-link:hover .menu-icon i,
+.dark-mode #kt_app_sidebar .menu-link:hover .menu-icon svg {
+    color: var(--brand-400) !important;
+}
+
+[data-bs-theme="dark"] #kt_app_sidebar .menu-link:hover .menu-title,
+[data-theme="dark"] #kt_app_sidebar .menu-link:hover .menu-title,
+.dark-mode #kt_app_sidebar .menu-link:hover .menu-title {
+    color: #F0F0F5 !important;
+}
+
+[data-bs-theme="dark"] #kt_app_sidebar .menu-link.active,
+[data-theme="dark"] #kt_app_sidebar .menu-link.active,
+.dark-mode #kt_app_sidebar .menu-link.active {
+    background: #2D1F4D !important;
+}
+
+[data-bs-theme="dark"] #kt_app_sidebar .menu-link.active .menu-title,
+[data-theme="dark"] #kt_app_sidebar .menu-link.active .menu-title,
+.dark-mode #kt_app_sidebar .menu-link.active .menu-title {
+    color: var(--brand-300) !important;
+}
+
+/* Dark Mode - Submenu */
+[data-bs-theme="dark"] #kt_app_sidebar .menu-sub,
+[data-theme="dark"] #kt_app_sidebar .menu-sub,
+.dark-mode #kt_app_sidebar .menu-sub {
+    background: #12121F !important;
+}
+
+[data-bs-theme="dark"] #kt_app_sidebar .menu-sub .menu-link:hover,
+[data-theme="dark"] #kt_app_sidebar .menu-sub .menu-link:hover,
+.dark-mode #kt_app_sidebar .menu-sub .menu-link:hover {
+    background: #1A1A2E !important;
+}
+
+[data-bs-theme="dark"] #kt_app_sidebar .menu-sub .menu-link.active,
+[data-theme="dark"] #kt_app_sidebar .menu-sub .menu-link.active,
+.dark-mode #kt_app_sidebar .menu-sub .menu-link.active {
+    background: #1A1A2E !important;
+}
+
+/* Dark Mode - Cards */
+[data-bs-theme="dark"] .card,
+[data-theme="dark"] .card,
+.dark-mode .card {
+    background: #1A1A2E !important;
+    border-color: #252538 !important;
+}
+
+[data-bs-theme="dark"] .card-header,
+[data-theme="dark"] .card-header,
+.dark-mode .card-header {
+    border-bottom-color: #252538 !important;
+}
+
+[data-bs-theme="dark"] .card-footer,
+[data-theme="dark"] .card-footer,
+.dark-mode .card-footer {
+    background: #12121F !important;
+    border-top-color: #252538 !important;
+}
+
+/* Dark Mode - Forms */
+[data-bs-theme="dark"] .form-control,
+[data-bs-theme="dark"] .form-select,
+[data-theme="dark"] .form-control,
+[data-theme="dark"] .form-select,
+.dark-mode .form-control,
+.dark-mode .form-select {
+    background: #252538 !important;
+    border-color: #3D3D5C !important;
+    color: #F0F0F5 !important;
+}
+
+[data-bs-theme="dark"] .form-control:focus,
+[data-bs-theme="dark"] .form-select:focus,
+[data-theme="dark"] .form-control:focus,
+[data-theme="dark"] .form-select:focus,
+.dark-mode .form-control:focus,
+.dark-mode .form-select:focus {
+    background: #2D2D44 !important;
+    border-color: var(--brand-500) !important;
+}
+
+[data-bs-theme="dark"] .form-control::placeholder,
+[data-theme="dark"] .form-control::placeholder,
+.dark-mode .form-control::placeholder {
+    color: #7C7C9A !important;
+}
+
+/* Dark Mode - Tables */
+[data-bs-theme="dark"] .table thead th,
+[data-theme="dark"] .table thead th,
+.dark-mode .table thead th,
+[data-bs-theme="dark"] table.dataTable thead th,
+[data-theme="dark"] table.dataTable thead th,
+.dark-mode table.dataTable thead th {
+    background: linear-gradient(180deg, #252538 0%, #1A1A2E 100%) !important;
+    color: #A0A0B8 !important;
+    /* border-bottom-color: var(--brand-900) !important; */
+}
+
+[data-bs-theme="dark"] .table thead th::after,
+[data-theme="dark"] .table thead th::after,
+.dark-mode .table thead th::after {
+    background: #3D3D5C !important;
+}
+
+[data-bs-theme="dark"] .table tbody td,
+[data-theme="dark"] .table tbody td,
+.dark-mode .table tbody td,
+[data-bs-theme="dark"] table.dataTable tbody td,
+[data-theme="dark"] table.dataTable tbody td,
+.dark-mode table.dataTable tbody td {
+    color: #F0F0F5 !important;
+    border-bottom-color: #252538 !important;
+}
+
+[data-bs-theme="dark"] .table tbody tr:hover,
+[data-theme="dark"] .table tbody tr:hover,
+.dark-mode .table tbody tr:hover,
+[data-bs-theme="dark"] table.dataTable tbody tr:hover,
+[data-theme="dark"] table.dataTable tbody tr:hover,
+.dark-mode table.dataTable tbody tr:hover {
+    background: #2D1F4D !important;
+}
+
+[data-bs-theme="dark"] .table tbody tr:hover td,
+[data-theme="dark"] .table tbody tr:hover td,
+.dark-mode .table tbody tr:hover td {
+    color: var(--brand-300) !important;
+}
+
+[data-bs-theme="dark"] .dataTables_wrapper .dataTables_paginate .paginate_button,
+[data-theme="dark"] .dataTables_wrapper .dataTables_paginate .paginate_button,
+.dark-mode .dataTables_wrapper .dataTables_paginate .paginate_button {
+    background: #252538 !important;
+    border-color: #3D3D5C !important;
+    color: #A0A0B8 !important;
+}
+
+[data-bs-theme="dark"] .dataTables_wrapper .dataTables_paginate .paginate_button:hover,
+[data-theme="dark"] .dataTables_wrapper .dataTables_paginate .paginate_button:hover,
+.dark-mode .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+    background: #2D2D44 !important;
+    color: #F0F0F5 !important;
+}
+
+[data-bs-theme="dark"] .dataTables_wrapper .dataTables_filter input,
+[data-bs-theme="dark"] .dataTables_wrapper .dataTables_length select,
+[data-theme="dark"] .dataTables_wrapper .dataTables_filter input,
+[data-theme="dark"] .dataTables_wrapper .dataTables_length select,
+.dark-mode .dataTables_wrapper .dataTables_filter input,
+.dark-mode .dataTables_wrapper .dataTables_length select {
+    background: #252538 !important;
+    border-color: #3D3D5C !important;
+    color: #F0F0F5 !important;
+}
+
+[data-bs-theme="dark"] .dataTables_wrapper .dataTables_info,
+[data-theme="dark"] .dataTables_wrapper .dataTables_info,
+.dark-mode .dataTables_wrapper .dataTables_info {
+    color: #7C7C9A !important;
+}
+
+/* Dark Mode - Dropdowns */
+[data-bs-theme="dark"] .dropdown-menu,
+[data-theme="dark"] .dropdown-menu,
+.dark-mode .dropdown-menu {
+    background: #1A1A2E !important;
+    border-color: #3D3D5C !important;
+}
+
+[data-bs-theme="dark"] .dropdown-item,
+[data-theme="dark"] .dropdown-item,
+.dark-mode .dropdown-item {
+    color: #A0A0B8 !important;
+}
+
+[data-bs-theme="dark"] .dropdown-item:hover,
+[data-theme="dark"] .dropdown-item:hover,
+.dark-mode .dropdown-item:hover {
+    background: #252538 !important;
+    color: #F0F0F5 !important;
+}
+
+/* Dark Mode - Modals */
+[data-bs-theme="dark"] .modal-content,
+[data-theme="dark"] .modal-content,
+.dark-mode .modal-content {
+    background: #1A1A2E !important;
+}
+
+[data-bs-theme="dark"] .modal-header,
+[data-theme="dark"] .modal-header,
+.dark-mode .modal-header {
+    border-bottom-color: #252538 !important;
+}
+
+[data-bs-theme="dark"] .modal-footer,
+[data-theme="dark"] .modal-footer,
+.dark-mode .modal-footer {
+    border-top-color: #252538 !important;
+}
+
+/* Dark Mode - Badges */
+[data-bs-theme="dark"] .badge.bg-primary,
+[data-theme="dark"] .badge.bg-primary,
+.dark-mode .badge.bg-primary {
+    background: #2D1F4D !important;
+    color: var(--brand-300) !important;
+}
+
+/* Dark Mode - Scrollbar */
+[data-bs-theme="dark"] ::-webkit-scrollbar-track,
+[data-theme="dark"] ::-webkit-scrollbar-track,
+.dark-mode ::-webkit-scrollbar-track {
+    background: #1A1A2E;
+}
+
+[data-bs-theme="dark"] ::-webkit-scrollbar-thumb,
+[data-theme="dark"] ::-webkit-scrollbar-thumb,
+.dark-mode ::-webkit-scrollbar-thumb {
+    background: #3D3D5C;
+}
+
+[data-bs-theme="dark"] ::-webkit-scrollbar-thumb:hover,
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover,
+.dark-mode ::-webkit-scrollbar-thumb:hover {
+    background: #5C5C7A;
+}
+
+/* =========================
+   ✨ Utility Classes
+========================= */
+.text-brand {
+    color: var(--brand-700) !important;
+}
+
+.bg-brand {
+    background-color: var(--brand-700) !important;
+}
+
+.bg-brand-light {
+    background-color: var(--primary-light) !important;
+}
+
+.text-accent {
+    color: var(--accent-500) !important;
+}
+
+.bg-accent {
+    background-color: var(--accent-500) !important;
+}
+
+.border-brand {
+    border-color: var(--brand-700) !important;
+}
+
+.shadow-brand {
+    box-shadow: var(--shadow-primary) !important;
+}
+
+/* Gradient Text */
+.text-gradient-brand {
+    background: linear-gradient(135deg, var(--brand-500) 0%, var(--brand-800) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.active>.page-link,
+.page-link.active {
+    background-color: transparent !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+    padding: 0px 0px !important;
+}
+
+/* Custom Toaster Styles */
+.toast-container {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 9999;
+}
+
+.custom-toast {
+    min-width: 300px;
+    /* box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); */
+    border-radius: 8px;
+    border: none;
+}
+
+.custom-toast.toast-success {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.custom-toast.toast-error {
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+}
+
+.custom-toast .toast-body {
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
 }

@@ -33,7 +33,7 @@ class SendAdmissionInviteJob implements ShouldQueue
         $phone = $invite->parent_mobile ?? null;
 
         $parentName = $invite->parent_name ?? null;
-        $nurseryName = 'Ghasselha';
+        $nurseryName = 'Glimz';
         $inviteUrl = route('admission.invite.open', $invite->token);
         $appUrl = 'https://example.com/app';
 
@@ -55,7 +55,7 @@ class SendAdmissionInviteJob implements ShouldQueue
         $sms->send(
             $phone,
             $message,
-            sender: 'Ghasselha',
+            sender: 'Glimz',
             type: 0
         );
 

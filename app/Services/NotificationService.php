@@ -209,7 +209,7 @@ class NotificationService
                     'notification' => [
                         'title' => $title,
                         'body' => $body,
-                        'icon' => 'https://app.ghasselha.com/favicon.ico',
+                        'icon' => 'https://glimz.com/favicon.ico',
                     ],
                     'fcm_options' => [
                         // الرابط اللي يفتح لما يضغط على الإشعار

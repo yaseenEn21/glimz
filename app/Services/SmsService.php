@@ -8,99 +8,128 @@ use Throwable;
 
 class SMsService
 {
-    protected string $apiToken;
-    protected string $apiUrl = "http://send.triple-core.com/sendbulksms.php";
+    protected string $token;
+    protected string $baseUrl;
 
     public function __construct()
     {
-        $this->apiToken = config('services.smsservice.api_token');
+        $this->token = (string) config('services.taqnyat.token');
+        $this->baseUrl = rtrim((string) config('services.taqnyat.base_url', 'https://api.taqnyat.sa'), '/');
     }
 
     /**
-     * إرسال رسالة SMS عبر Triple-Core
+     * Send SMS via Taqnyat
+     *
+     * @param string      $to      International format WITHOUT + or 00 (we normalize)
+     * @param string      $message SMS body
+     * @param string      $sender  Pre-defined sender name in your Taqnyat account
+     * @param int         $type    kept for backward compatibility (not used by Taqnyat)
+     * @param string|null $schedule ISO datetime e.g. 2026-01-19T14:26
      */
     public function send(
         string $to,
         string $message,
-        string $sender = 'Ghasselha',
-        int $type = 0
+        string $sender = 'Glimz',
+        int $type = 0,
+        ?string $schedule = null
     ): array {
+        if ($this->token === '') {
+            return [
+                'success' => false,
+                'message' => 'Missing TAQNYAT token',
+                'code' => null,
+                'raw' => null,
+                'http_status' => null,
+                'request' => null,
+            ];
+        }
 
-        $params = [
-            'api_token' => $this->apiToken,
-            'sender'    => $sender,
-            'mobile'    => $to,
-            'type'      => $type,
-            'text'      => $message,
+        $to = $this->normalizeMobile($to);
+
+        $url = $this->baseUrl . '/v1/messages';
+
+        $payload = [
+            'recipients' => [$to],       // array as per docs :contentReference[oaicite:1]{index=1}
+            'body' => $message,
+            'sender' => $sender,
         ];
 
-        // 📝 لوج قبل الإرسال
-        Log::info('SMSService: preparing to send SMS', [
-            'to'      => $to,
-            'sender'  => $sender,
-            'type'    => $type,
-            'length'  => mb_strlen($message),
-            'url'     => $this->apiUrl,
-            'params'  => $params,
+        if ($schedule) {
+            $payload['scheduledDatetime'] = $schedule; // optional :contentReference[oaicite:2]{index=2}
+        }
+
+        Log::info('TaqnyatSMS: sending', [
+            'url' => $url,
+            'to' => $to,
+            'sender' => $sender,
+            'len' => mb_strlen($message),
+            'scheduled' => $schedule,
         ]);
 
         try {
-            // Triple-Core uses GET only – نضيف timeout عشان ما يعلق
-            $response = Http::timeout(15)->get($this->apiUrl, $params);
+            $response = Http::timeout(20)
+                ->acceptJson()
+                ->withToken($this->token) // Authorization: Bearer <token> :contentReference[oaicite:3]{index=3}
+                ->post($url, $payload);
         } catch (Throwable $e) {
-            // ❌ لو صار exception (مش قادر يوصل للسيرفر مثلاً)
-            Log::error('SMSService: HTTP exception while sending SMS', [
-                'to'        => $to,
-                'sender'    => $sender,
-                'url'       => $this->apiUrl,
-                'params'    => $params,
+            Log::error('TaqnyatSMS: HTTP exception', [
+                'to' => $to,
+                'url' => $url,
                 'exception' => $e->getMessage(),
             ]);
 
             return [
                 'success' => false,
-                'raw'     => null,
-                'code'    => null,
                 'message' => 'فشل الاتصال بخدمة الرسائل',
-                'request' => $params,
+                'code' => null,
+                'raw' => null,
+                'http_status' => null,
+                'request' => $payload,
             ];
         }
 
-        $raw  = trim($response->body());
-        $code = $this->extractCode($raw);
-        $msg  = $this->translateCode($code);
+        $json = $response->json();
+        $raw = $response->body();
 
-        $result = [
-            'success' => $response->successful(),
-            'raw'     => $raw,
-            'code'    => $code,
-            'message' => $msg,
-            'request' => $params,
-            'http_status' => $response->status(),
-        ];
+        // توثيقهم يرجّع statusCode و messageId… الخ عند النجاح :contentReference[oaicite:4]{index=4}
+        $code = is_array($json) ? (string) ($json['statusCode'] ?? $response->status()) : (string) $response->status();
+        $msg = is_array($json) ? (string) ($json['message'] ?? '') : '';
 
-        // 📝 لوج بعد الإرسال
-        Log::info('SMSService: SMS send response', $result);
-
-        return $result;
-    }
-
-    /** استخراج الكود من النص الخام */
-    private function extractCode(string $raw): string
-    {
-        if (preg_match('/\d+/', $raw, $m)) {
-            return $m[0];
-        }
-        return '';
-    }
-
-    /** ترجمة كود النتيجة */
-    private function translateCode(string $code): string
-    {
         return [
-            '1001' => 'تم إرسال الرسالة بنجاح',
-            '1000' => 'لا يوجد رصيد كافي',
-            '2000' => 'خطأ في عملية التفويض',
-        ][$code] ?? 'نتيجة غير معروفة';
+            'success' => $response->successful(),
+            'message' => $msg !== '' ? $msg : ($response->successful() ? 'تم إرسال الرسالة' : 'فشل إرسال الرسالة'),
+            'code' => $code,
+            'raw' => $raw,
+            'http_status' => $response->status(),
+            'request' => $payload,
+            'response' => $json,
+        ];
+    }
+
+    /**
+     * Normalize to international format without + or 00
+     * Example: +9665xxxx -> 9665xxxx , 009665xxxx -> 9665xxxx :contentReference[oaicite:5]{index=5}
+     */
+    private function normalizeMobile(string $to): string
+    {
+        $to = trim($to);
+        $to = str_replace([' ', '-', '(', ')'], '', $to);
+
+        // +9665xxxx
+        if (str_starts_with($to, '+')) {
+            $to = substr($to, 1);
+        }
+
+        // 009665xxxx
+        if (str_starts_with($to, '00')) {
+            $to = substr($to, 2);
+        }
+
+        // 05xxxxxxxx -> 9665xxxxxxxx
+        if (str_starts_with($to, '05')) {
+            $to = '966' . substr($to, 1);
+        }
+
+        return $to;
     }
 }

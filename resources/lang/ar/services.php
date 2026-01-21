@@ -100,7 +100,9 @@ return [
         "reviews" => "تقييم",
         "comments" => "آراء العملاء",
         "no_reviews" => "لا يوجد تقييمات حتى الآن"
-    ]
+    ],
+
+    'additional_settings' => 'الاعدادات المضافة',
 
 
 ];

@@ -1,45 +1,41 @@
 @php
-    /** @var \App\Models\Product $product */
+    $user = auth()->user();
 @endphp
 
-<div class="d-flex gap-2">
+<div class="dropdown">
+    <button class="btn btn-sm btn-light btn-active-light-primary action-button" type="button" data-bs-toggle="dropdown"
+        aria-expanded="false">
+        <i class="fa-solid fa-ellipsis-vertical"></i>
+    </button>
 
-    @can('products.view')
-        <a href="{{ route('dashboard.products.show', $product->id) }}"
-           class="btn btn-icon btn-light-info btn-sm"
-           data-bs-toggle="tooltip"
-           title="{{ __('products.view') }}">
-            <i class="ki-duotone ki-eye fs-2">
-                <span class="path1"></span>
-                <span class="path2"></span>
-                <span class="path3"></span>
-            </i>
-        </a>
-    @endcan
+    <ul class="dropdown-menu dropdown-menu-end">
 
-    @can('products.edit')
-        <a href="{{ route('dashboard.products.edit', $product->id) }}"
-           class="btn btn-icon btn-light-warning btn-sm"
-           data-bs-toggle="tooltip"
-           title="{{ __('products.edit') }}">
-            <i class="ki-duotone ki-pencil fs-2">
-                <span class="path1"></span>
-                <span class="path2"></span>
-            </i>
-        </a>
-    @endcan
+        @can('products.view')
+            <li>
+                <a class="dropdown-item" href="{{ route('dashboard.products.show', $product->id) }}">
+                    <i class="fa-solid fa-circle-info text-info me-2"></i>
+                    <span>{{ __('messages.actions-btn.view') }}</span>
+                </a>
+            </li>
+        @endcan
 
-    @can('products.delete')
-        <button type="button"
-                class="btn btn-icon btn-light-danger btn-sm js-delete-product"
-                data-id="{{ $product->id }}"
-                data-bs-toggle="tooltip"
-                title="{{ __('products.delete') }}">
-            <i class="ki-duotone ki-trash fs-2">
-                <span class="path1"></span>
-                <span class="path2"></span>
-            </i>
-        </button>
-    @endcan
+        @can('products.edit')
+            <li>
+                <a class="dropdown-item" href="{{ route('dashboard.products.edit', $product->id) }}">
+                    <i class="fa-solid fa-pen text-warning me-2"></i>
+                    <span>{{ __('messages.actions-btn.edit') }}</span>
+                </a>
+            </li>
+        @endcan
 
+        @can('products.delete')
+            <li>
+                <button type="button" class="dropdown-item js-delete-product" data-id="{{ $product->id }}">
+                    <i class="fa-regular fa-trash-can text-danger me-2"></i>
+                    <span>{{ __('messages.actions-btn.delete') }}</span>
+                </button>
+            </li>
+        @endcan
+
+    </ul>
 </div>

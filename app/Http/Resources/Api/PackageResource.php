@@ -30,7 +30,9 @@ class PackageResource extends JsonResource
 
             'validity_days' => $this->validity_days,
 
-            'image_url' => $this->getFirstMediaUrl('image') ?: defaultImage(),
+            'coveer_image_url' => $this->getFirstMediaUrl('cover_image') ?: defaultImage('package-cover-1.png'),
+
+            'image_url' => $this->getFirstMediaUrl('image') ?: defaultImage('package-icon.svg'),
 
             // مهم للـ Home: هل هو مشترك وفعّال؟
             'is_subscribed_active' => $sub ? (bool) $sub->is_currently_active : false,

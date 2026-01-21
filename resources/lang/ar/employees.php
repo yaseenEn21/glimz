@@ -96,4 +96,6 @@ return [
 
     'no_work_area_defined' => 'لم يتم تحديد منطقة العمل بعد.',
 
+    'status' =>  'الحالة'
+
 ];

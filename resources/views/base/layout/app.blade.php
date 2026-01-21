@@ -28,9 +28,9 @@
     <meta property="og:url" content="https://keenthemes.com/metronic" />
     <meta property="og:site_name" content="Metronic by Keenthemes" />
     <link rel="canonical" href="http://preview.keenthemes.com?page=index" />
-    <link rel="shortcut icon" href="{{ asset('assets/media/logos/unnamed.png') }}" />
+    <link rel="shortcut icon" href="{{ asset('assets/media/logos/unnamed.avif') }}" />
     <!--begin::Fonts(mandatory for all pages)-->
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700" /> <!--end::Fonts-->
+    {{-- <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700" /> <!--end::Fonts--> --}}
     <!--begin::Vendor Stylesheets(used for this page only)-->
     <link href="{{ asset('assets/plugins/custom/fullcalendar/fullcalendar.bundle.css') }}" rel="stylesheet"
         type="text/css" />
@@ -41,7 +41,8 @@
         <link href="{{ asset('assets/plugins/custom/datatables/datatables.bundle.rtl.css') }}" rel="stylesheet"
             type="text/css" />
         <link href="{{ asset('assets/css/style.bundle.rtl.css') }}" rel="stylesheet" type="text/css" />
-        <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;700&display=swap" rel="stylesheet">
+        <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700;800&display=swap"
+            rel="stylesheet">
         <link href="{{ asset('assets/css/brand.css') }}" rel="stylesheet" type="text/css" />
 
         <link rel="stylesheet" href="https://unpkg.com/filepond/dist/filepond.min.css">
@@ -51,7 +52,10 @@
         <style>
             body,
             html {
-                font-family: 'Cairo', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif !important;
+                font-family: 'Tajawal', -apple-system, BlinkMacSystemFont, sans-serif !important;
+                font-weight: 400;
+                color: var(--text-primary);
+                background-color: var(--surface) !important;
             }
 
             .select2-container--bootstrap5 .select2-selection__clear {

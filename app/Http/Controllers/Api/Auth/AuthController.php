@@ -9,6 +9,7 @@ use App\Services\OtpService;
 use Hash;
 use Illuminate\Http\Request;
 use App\Models\OtpCode;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -29,18 +30,26 @@ class AuthController extends Controller
             ->where('is_active', true)
             ->first();
 
+        $otpCode = null;
+
         if (!$user) {
+
             $user = User::create([
                 'mobile' => $data['mobile'],
                 'user_type' => 'customer',
                 'is_active' => true,
-                'password' => Hash::make('123456'),
+                'password' => Hash::make(\Str::random(32)),
                 'name' => 'عميل جديد',
             ]);
-            
+
             $otp = $this->otpService->sendLoginOtp($user);
 
-            \Log::info('New User created', ['mobile' => $user->mobile, 'otp' => $otp->code]);
+            // return environment
+            \Log::info(app()->environment());
+
+            if (app()->environment('development')) {
+                $otpCode = $otp->code;
+            }
 
             return response()->json([
                 'message' => 'تم إرسال رمز التحقق إلى رقم الجوال.',
@@ -73,11 +82,15 @@ class AuthController extends Controller
 
         $otp = $this->otpService->sendLoginOtp($user);
 
+        if (app()->environment('development')) {
+            $otpCode = $otp->code;
+        }
+
         return response()->json([
             'message' => 'تم إرسال رمز التحقق إلى رقم الجوال.',
             'data' => [
                 'mobile' => $user->mobile,
-                'otp' => $otp->code,
+                'otp' => $otpCode
             ],
         ]);
     }

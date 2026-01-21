@@ -81,6 +81,7 @@ Route::prefix('v1')->middleware(['set.api.locale'])->group(function () {
 
         Route::get('my-cars', [MyCarController::class, 'index']);
         Route::post('my-cars', [MyCarController::class, 'store']);
+        Route::post('my-cars/{car}/make-default', [MyCarController::class, 'makeDefault']);
         Route::get('my-cars/{car}', [MyCarController::class, 'show']);
         Route::put('my-cars/{car}', [MyCarController::class, 'update']);
         Route::delete('my-cars/{car}', [MyCarController::class, 'destroy']);

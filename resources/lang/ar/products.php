@@ -95,4 +95,5 @@ return [
     'unit_price' => 'سعر الوحدة',
     'line_total' => 'الإجمالي',
     'created_at' => 'تاريخ الإنشاء',
+    'additional_settings' => 'الاعدادات المضافة',
 ];

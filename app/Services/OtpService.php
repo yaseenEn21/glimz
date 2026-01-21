@@ -8,9 +8,20 @@ use Carbon\Carbon;
 
 class OtpService
 {
+    protected SMsService $smsService;
+
+    public function __construct(SMsService $smsService)
+    {
+        $this->smsService = $smsService;
+    }
+
     public function sendLoginOtp(User $user): OtpCode
     {
-        $code = random_int(1000, 9999);
+        if (app()->environment('development')) {
+            $code = '1111';
+        }else{
+            $code = random_int(1000, 9999);
+        }
 
         OtpCode::where('user_id', $user->id)
             ->where('type', 'login')
@@ -24,14 +35,19 @@ class OtpService
             'expires_at' => Carbon::now()->addMinutes(1),
         ]);
 
-        $this->sendSms($user->mobile, "رمز التحقق للدخول إلى Ghasselha هو: {$code} (صالح لمدة 5 دقائق).");
+        $message = "رمز التحقق للدخول إلى Glimz هو: {$code}";
+
+        // Turn off SMS
+
+        // $this->smsService->send(
+        //     to: $user->mobile,
+        //     message: $message,
+        //     sender: 'GLIMZ'
+        // );
 
         return $otp;
     }
 
-    /**
-     * التحقق من الكود
-     */
     public function verifyLoginOtp(User $user, string $code): bool
     {
         $otp = OtpCode::where('user_id', $user->id)
@@ -53,17 +69,8 @@ class OtpService
             return false;
         }
 
-        $otp->is_used = true;
-        $otp->save();
+        $otp->update(['is_used' => true]);
 
         return true;
-    }
-
-    /**
-     * Msegat
-     */
-    protected function sendSms(string $mobile, string $message): void
-    {
-        \Log::info("Send OTP SMS to {$mobile}: {$message}");
     }
 }

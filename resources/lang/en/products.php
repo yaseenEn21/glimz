@@ -91,4 +91,5 @@ return [
     'unit_price' => 'Unit price',
     'line_total' => 'Line total',
     'created_at' => 'Created at',
+    'additional_settings' => 'Additional Settings'
 ];

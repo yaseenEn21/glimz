@@ -21,7 +21,7 @@ if (!function_exists('t')) {
         return __($key, $replace, $locale);
     }
 
-    function defaultImage($name = 'service.png')
+    function defaultImage($name = 'service.svg')
     {
         return asset('assets/media/avatars/' . $name);
     }

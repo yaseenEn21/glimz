@@ -2,306 +2,384 @@
 
 @section('content')
 
-@section('top-btns')
-    <a href="{{ route('dashboard.services.index') }}" class="btn btn-light">
-        {{ __('services.back_to_list') }}
-    </a>
-@endsection
+<form id="service_create_form" action="{{ route('dashboard.services.store') }}" method="POST"
+    enctype="multipart/form-data">
+    @csrf
+    
+    {{-- رسالة التنبيه --}}
+    <div id="form_result" class="alert d-none mb-7"></div>
 
-<div class="card">
-    <form id="service_create_form" action="{{ route('dashboard.services.store') }}" method="POST"
-        enctype="multipart/form-data">
-        @csrf
-
-        <div class="card-body">
-            <div id="form_result" class="alert d-none"></div>
-
-            <div class="row g-9">
-                {{-- العمود الرئيسي --}}
-                <div class="col-lg-8">
-                    {{-- بيانات الخدمة --}}
-                    <div class="card mb-7">
-                        <div class="card-header border-0 pt-5">
-                            <h3 class="card-title align-items-start flex-column">
-                                <span class="card-label fw-bold fs-3 mb-1">
-                                    {{ __('services.basic_data') }}
-                                </span>
-                                <span class="text-muted mt-1 fw-semibold fs-7">
-                                    {{ __('services.basic_data_hint') }}
-                                </span>
-                            </h3>
+    <div class="row g-7">
+        {{-- العمود العلوي الكامل: معلومات أساسية --}}
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body p-10">
+                    <div class="d-flex align-items-center mb-8">
+                        <div class="symbol symbol-50px me-4">
+                            <span class="symbol-label bg-light-primary">
+                                <i class="fas fa-tools fs-2 ki-element-11 fs-2x text-primary"></i>
+                            </span>
                         </div>
-                        <div class="card-body pt-0">
-                            <div class="row g-6">
-                                {{-- تصنيف الخدمة --}}
-                                <div class="col-12 fv-row">
-                                    <label class="required fw-semibold fs-6 mb-2">
-                                        {{ __('services.category') }}
-                                    </label>
-                                    <select name="service_category_id" class="form-select">
-                                        <option value="">
-                                            {{ __('services.select_category') }}
-                                        </option>
-                                        @php $locale = app()->getLocale(); @endphp
-                                        @foreach ($categories as $category)
-                                            @php
-                                                $catName = $category->name;
-                                                if (is_array($catName)) {
-                                                    $catName = $catName[$locale] ?? (reset($catName) ?? '');
-                                                }
-                                            @endphp
-                                            <option value="{{ $category->id }}">{{ $catName }}</option>
-                                        @endforeach
-                                    </select>
-                                    <div class="invalid-feedback"></div>
-                                </div>
+                        <div class="flex-grow-1">
+                            <h2 class="text-gray-800 fw-bold mb-1">{{ __('services.basic_data') }}</h2>
+                            <span class="text-muted fw-semibold d-block">{{ __('services.basic_data_hint') }}</span>
+                        </div>
+                    </div>
 
-                                {{-- اسم الخدمة بالعربية --}}
-                                <div class="col-md-6 fv-row">
-                                    <label class="required fw-semibold fs-6 mb-2">
+                    <div class="row g-6">
+                        {{-- التصنيف --}}
+                        <div class="col-12">
+                            <div class="fv-row">
+                                <label class="required fs-5 fw-bold mb-3">{{ __('services.category') }}</label>
+                                <select name="service_category_id" class="form-select form-select-lg" data-control="select2">
+                                    <option value="">{{ __('services.select_category') }}</option>
+                                    @php $locale = app()->getLocale(); @endphp
+                                    @foreach ($categories as $category)
+                                        @php
+                                            $catName = $category->name;
+                                            if (is_array($catName)) {
+                                                $catName = $catName[$locale] ?? (reset($catName) ?? '');
+                                            }
+                                        @endphp
+                                        <option value="{{ $category->id }}">{{ $catName }}</option>
+                                    @endforeach
+                                </select>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+
+                        {{-- الاسم والوصف بالعربي --}}
+                        <div class="col-md-6">
+                            <div class="border border-dashed border-gray-300 rounded p-6 h-100">
+                                <div class="mb-5">
+                                    <label class="required fs-6 fw-bold mb-2 text-gray-700">
+                                        <i class="ki-duotone ki-flag fs-3 text-primary me-1">
+                                            <span class="path1"></span>
+                                            <span class="path2"></span>
+                                        </i>
                                         {{ __('services.name_ar') }}
                                     </label>
-                                    <input type="text" name="name[ar]" class="form-control"
-                                        placeholder="مثال: غسيل خارجي" />
+                                    <input type="text" name="name[ar]" class="form-control form-control-lg bg-light" placeholder="مثال: غسيل خارجي"/>
                                     <div class="invalid-feedback"></div>
                                 </div>
+                                <div>
+                                    <label class="fs-6 fw-bold mb-2 text-gray-700">{{ __('services.description_ar') }}</label>
+                                    <textarea name="description[ar]" class="form-control bg-light" rows="4" placeholder="وصف مختصر للخدمة"></textarea>
+                                    <div class="invalid-feedback"></div>
+                                </div>
+                            </div>
+                        </div>
 
-                                {{-- اسم الخدمة بالإنجليزية --}}
-                                <div class="col-md-6 fv-row">
-                                    <label class="fw-semibold fs-6 mb-2">
+                        {{-- الاسم والوصف بالإنجليزي --}}
+                        <div class="col-md-6">
+                            <div class="border border-dashed border-gray-300 rounded p-6 h-100">
+                                <div class="mb-5">
+                                    <label class="fs-6 fw-bold mb-2 text-gray-700">
+                                        <i class="ki-duotone ki-flag fs-3 text-success me-1">
+                                            <span class="path1"></span>
+                                            <span class="path2"></span>
+                                        </i>
                                         {{ __('services.name_en') }}
                                     </label>
-                                    <input type="text" name="name[en]" class="form-control"
-                                        placeholder="Example: Exterior wash" />
+                                    <input type="text" name="name[en]" class="form-control form-control-lg bg-light" placeholder="Example: Exterior wash"/>
                                     <div class="invalid-feedback"></div>
                                 </div>
-
-                                {{-- الوصف AR --}}
-                                <div class="col-md-6 fv-row">
-                                    <label class="fw-semibold fs-6 mb-2">
-                                        {{ __('services.description_ar') }}
-                                    </label>
-                                    <textarea name="description[ar]" class="form-control" rows="3" placeholder="وصف مختصر للخدمة"></textarea>
-                                    <div class="invalid-feedback"></div>
-                                </div>
-
-                                {{-- الوصف EN --}}
-                                <div class="col-md-6 fv-row">
-                                    <label class="fw-semibold fs-6 mb-2">
-                                        {{ __('services.description_en') }}
-                                    </label>
-                                    <textarea name="description[en]" class="form-control" rows="3" placeholder="Short description"></textarea>
+                                <div>
+                                    <label class="fs-6 fw-bold mb-2 text-gray-700">{{ __('services.description_en') }}</label>
+                                    <textarea name="description[en]" class="form-control bg-light" rows="4" placeholder="Short description"></textarea>
                                     <div class="invalid-feedback"></div>
                                 </div>
                             </div>
                         </div>
                     </div>
-
-                    {{-- التسعير والمدة --}}
-                    <div class="card">
-                        <div class="card-header border-0 pt-5">
-                            <h3 class="card-title align-items-start flex-column">
-                                <span class="card-label fw-bold fs-3 mb-1">
-                                    {{ __('services.pricing_block') }}
-                                </span>
-                            </h3>
-                        </div>
-                        <div class="card-body pt-0">
-                            <div class="row g-6">
-                                {{-- المدة بالدقائق --}}
-                                <div class="col-md-4 fv-row">
-                                    <label class="required fw-semibold fs-6 mb-2">
-                                        {{ __('services.duration') }}
-                                    </label>
-                                    <input type="number" min="0" name="duration_minutes" class="form-control"
-                                        placeholder="{{ __('services.duration_placeholder') }}" />
-                                    <div class="invalid-feedback"></div>
-                                </div>
-
-                                {{-- السعر --}}
-                                <div class="col-md-4 fv-row">
-                                    <label class="required fw-semibold fs-6 mb-2">
-                                        {{ __('services.price') }}
-                                    </label>
-                                    <input type="number" step="0.01" min="0" name="price"
-                                        class="form-control" placeholder="{{ __('services.price_placeholder') }}" />
-                                    <div class="invalid-feedback"></div>
-                                </div>
-
-                                {{-- السعر بعد الخصم --}}
-                                <div class="col-md-4 fv-row">
-                                    <label class="fw-semibold fs-6 mb-2">
-                                        {{ __('services.discount_price') }}
-                                    </label>
-                                    <input type="number" step="0.01" min="0" name="discounted_price"
-                                        class="form-control" placeholder="{{ __('services.price_placeholder') }}" />
-                                    <div class="invalid-feedback"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- الحالة --}}
-                    <div class="card mt-7">
-                        <div class="card-body">
-                            <div class="row mb-5">
-                                
-                                <div class="col-md-4">
-                                    <label class="fw-semibold fs-6 mb-2">
-                                        {{ __('services.points') }}
-                                    </label>
-                                    <input type="number" name="points" class="form-control" min="0"
-                                        value="{{ old('points', $service->points ?? '') }}"
-                                        placeholder="مثال: 10">
-                                    <div class="invalid-feedback"></div>
-                                </div>
-
-                                <div class="col-md-4 fv-row">
-                                    <label class="fw-semibold fs-6 mb-2">
-                                        {{ __('services.sort_order') }}
-                                    </label>
-                                    <input type="number" name="sort_order" class="form-control" min="1"
-                                        value="{{ old('sort_order', $service->sort_order ?? '') }}"
-                                        placeholder="مثال: 1">
-                                    <div class="invalid-feedback"></div>
-                                </div>
-
-                                <div class="col-md-4">
-                                    <label class="fw-semibold fs-6 mb-2 d-block">
-                                        {{ __('services.status') }}
-                                    </label>
-                                    <div
-                                        class="form-check form-switch form-switch-sm form-check-custom form-check-solid mt-6">
-                                        <input class="form-check-input" type="checkbox" name="is_active"
-                                            value="1" checked />
-                                        <label class="form-check-label fw-semibold">
-                                            {{ __('services.active') }}
-                                        </label>
-                                    </div>
-                                    <div class="invalid-feedback d-block"></div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                 </div>
+            </div>
+        </div>
 
-                {{-- العمود الجانبي: الصور والحالة --}}
-                <div class="col-lg-4">
-                    {{-- صورة العربية --}}
-                    <div class="card mb-7">
-                        <div class="card-header border-0 pt-5">
-                            <h3 class="card-title align-items-start flex-column">
-                                <span class="card-label fw-bold fs-4 mb-1">
-                                    {{ __('services.image_ar') }}
-                                </span>
-                                <span class="text-muted mt-1 fw-semibold fs-7">
-                                    {{ __('services.image_ar_hint') }}
-                                </span>
-                            </h3>
+        {{-- العمود الأيسر: التسعير والإعدادات --}}
+        <div class="col-lg-7">
+            {{-- التسعير --}}
+            <div class="card shadow-sm mb-7">
+                <div class="card-body p-10">
+                    <div class="d-flex align-items-center mb-8">
+                        <div class="symbol symbol-50px me-4">
+                            <span class="symbol-label bg-light-success">
+                                <i class="ki-duotone ki-dollar fs-2x text-success">
+                                    <span class="path1"></span>
+                                    <span class="path2"></span>
+                                    <span class="path3"></span>
+                                </i>
+                            </span>
                         </div>
-                        <div class="card-body pt-0">
-                            <div class="fv-row mb-4">
-                                <div class="image-input image-input-outline w-150px h-150px"
-                                    data-kt-image-input="true">
-                                    <div class="image-input-wrapper w-150px h-150px"
-                                        style="background-image: url('{{ asset('assets/media/svg/files/blank-image.svg') }}')">
-                                    </div>
-
-                                    <label
-                                        class="btn btn-icon btn-circle btn-active-color-primary w-25px h-25px bg-body shadow"
-                                        data-kt-image-input-action="change" title="{{ __('services.image_ar') }}">
-                                        <i class="ki-duotone ki-pencil fs-7">
-                                            <span class="path1"></span>
-                                            <span class="path2"></span>
-                                        </i>
-                                        <input type="file" name="image_ar" accept=".png, .jpg, .jpeg, .webp" />
-                                        <input type="hidden" name="image_ar_remove" />
-                                    </label>
-
-                                    <span
-                                        class="btn btn-icon btn-circle btn-active-color-primary w-25px h-25px bg-body shadow"
-                                        data-kt-image-input-action="cancel" title="@lang('messages.cancel', [], app()->getLocale())">
-                                        <i class="ki-duotone ki-cross fs-2">
-                                            <span class="path1"></span>
-                                            <span class="path2"></span>
-                                        </i>
-                                    </span>
-                                </div>
-                                <div class="form-text">
-                                    {{ __('services.images_note') }}
-                                </div>
-                                <div class="invalid-feedback d-block"></div>
-                            </div>
+                        <div class="flex-grow-1">
+                            <h2 class="text-gray-800 fw-bold mb-0">{{ __('services.pricing_block') }}</h2>
                         </div>
                     </div>
 
-                    {{-- صورة الإنجليزية --}}
-                    <div class="card mb-7">
-                        <div class="card-header border-0 pt-5">
-                            <h3 class="card-title align-items-start flex-column">
-                                <span class="card-label fw-bold fs-4 mb-1">
-                                    {{ __('services.image_en') }}
-                                </span>
-                                <span class="text-muted mt-1 fw-semibold fs-7">
-                                    {{ __('services.image_en_hint') }}
-                                </span>
-                            </h3>
-                        </div>
-                        <div class="card-body pt-0">
-                            <div class="fv-row mb-4">
-                                <div class="image-input image-input-outline w-150px h-150px"
-                                    data-kt-image-input="true">
-                                    <div class="image-input-wrapper w-150px h-150px"
-                                        style="background-image: url('{{ asset('assets/media/svg/files/blank-image.svg') }}')">
-                                    </div>
-
-                                    <label
-                                        class="btn btn-icon btn-circle btn-active-color-primary w-25px h-25px bg-body shadow"
-                                        data-kt-image-input-action="change" title="{{ __('services.image_en') }}">
-                                        <i class="ki-duotone ki-pencil fs-7">
-                                            <span class="path1"></span>
-                                            <span class="path2"></span>
-                                        </i>
-                                        <input type="file" name="image_en" accept=".png, .jpg, .jpeg, .webp" />
-                                        <input type="hidden" name="image_en_remove" />
-                                    </label>
-
-                                    <span
-                                        class="btn btn-icon btn-circle btn-active-color-primary w-25px h-25px bg-body shadow"
-                                        data-kt-image-input-action="cancel" title="@lang('messages.cancel', [], app()->getLocale())">
-                                        <i class="ki-duotone ki-cross fs-2">
-                                            <span class="path1"></span>
-                                            <span class="path2"></span>
-                                        </i>
-                                    </span>
-                                </div>
-                                <div class="form-text">
-                                    {{ __('services.images_note') }}
-                                </div>
-                                <div class="invalid-feedback d-block"></div>
+                    <div class="row g-5">
+                        <div class="col-md-4">
+                            <label class="required fs-6 fw-bold mb-3 d-block">{{ __('services.price') }}</label>
+                            <div class="position-relative">
+                                <input type="number" step="0.01" min="0" name="price" 
+                                    class="form-control form-control-lg ps-12" placeholder="0.00"/>
                             </div>
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="fs-6 fw-bold mb-3 d-block">{{ __('services.discount_price') }}</label>
+                            <div class="position-relative">
+                                <input type="number" step="0.01" min="0" name="discounted_price" 
+                                    class="form-control form-control-lg ps-12" placeholder="0.00"/>
+                            </div>
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="required fs-6 fw-bold mb-3 d-block">{{ __('services.duration') }}</label>
+                            <div class="position-relative">
+                                <input type="number" min="0" name="duration_minutes" 
+                                    class="form-control form-control-lg pe-16" placeholder="30"/>
+                            </div>
+                            <div class="invalid-feedback"></div>
                         </div>
                     </div>
-
                 </div>
             </div>
 
+            {{-- الإعدادات الإضافية --}}
+            <div class="card shadow-sm">
+                <div class="card-body p-10">
+                    <div class="d-flex align-items-center mb-8">
+                        <div class="symbol symbol-50px me-4">
+                            <span class="symbol-label bg-light-warning">
+                                <i class="ki-duotone ki-setting-2 fs-2x text-warning">
+                                    <span class="path1"></span>
+                                    <span class="path2"></span>
+                                </i>
+                            </span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h2 class="text-gray-800 fw-bold mb-0">{{ __('services.additional_settings') }}</h2>
+                        </div>
+                    </div>
+
+                    <div class="row g-5">
+                        <div class="col-md-4">
+                            <label class="fs-6 fw-bold mb-3">{{ __('services.points') }}</label>
+                            <input type="number" name="points" class="form-control form-control-lg" min="0" placeholder="10"/>
+                            <div class="text-muted fs-7 mt-2">نقاط المكافآت</div>
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="fs-6 fw-bold mb-3">{{ __('services.sort_order') }}</label>
+                            <input type="number" name="sort_order" class="form-control form-control-lg" min="1" placeholder="1"/>
+                            <div class="text-muted fs-7 mt-2">ترتيب العرض</div>
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="fs-6 fw-bold mb-5 d-block">{{ __('services.status') }}</label>
+                            <div class="form-check form-switch form-check-custom form-check-success form-check-solid">
+                                <input class="form-check-input h-30px w-50px" type="checkbox" name="is_active" value="1" id="is_active" checked/>
+                                <label class="form-check-label fw-semibold text-gray-700 ms-3" for="is_active">
+                                    {{ __('services.active') }}
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div class="card-footer d-flex justify-content-end">
-            <button type="submit" class="btn btn-primary">
-                <span class="indicator-label">
-                    {{ __('services.save') }}
-                </span>
-            </button>
+        {{-- العمود الأيمن: الصور --}}
+        <div class="col-lg-5">
+            <div class="card shadow-sm h-100">
+                <div class="card-body p-10">
+                    <div class="d-flex align-items-center mb-8">
+                        <div class="symbol symbol-50px me-4">
+                            <span class="symbol-label bg-light-info">
+                                <i class="ki-duotone ki-picture fs-2x text-info">
+                                    <span class="path1"></span>
+                                    <span class="path2"></span>
+                                </i>
+                            </span>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h2 class="text-gray-800 fw-bold mb-1">{{ __('messages.images') }}</h2>
+                            <span class="text-muted fs-7">{{ __('services.images_note') }}</span>
+                        </div>
+                    </div>
+
+                    {{-- الصورة العربية --}}
+                    <div class="mb-10">
+                        <div class="bg-light-primary rounded p-5">
+                            <label class="fs-5 fw-bold text-gray-800 mb-4 d-flex align-items-center">
+                                <span class="badge badge-circle badge-primary me-3">AR</span>
+                                {{ __('services.image_ar') }}
+                            </label>
+                            
+                            <div class="dropzone-custom border-2 border-dashed border-primary rounded text-center p-8" 
+                                data-image-input="ar">
+                                <input type="file" name="image_ar" accept=".png,.jpg,.jpeg,.webp" class="d-none" id="image_ar_input"/>
+                                
+                                <div class="preview-container d-none">
+                                    <img src="" class="mw-100 rounded" style="max-height: 180px;" id="image_ar_preview"/>
+                                    <div class="mt-4">
+                                        <button type="button" class="btn btn-sm btn-light-primary me-2" onclick="document.getElementById('image_ar_input').click()">
+                                            <i class="ki-duotone ki-pencil fs-4"><span class="path1"></span><span class="path2"></span></i>
+                                            تغيير
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-light-danger" onclick="removeImage('ar')">
+                                            <i class="ki-duotone ki-trash fs-4"><span class="path1"></span><span class="path2"></span><span class="path3"></span><span class="path4"></span><span class="path5"></span></i>
+                                            حذف
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="upload-prompt">
+                                    <i class="ki-duotone ki-file-up fs-3x text-primary mb-3">
+                                        <span class="path1"></span>
+                                        <span class="path2"></span>
+                                    </i>
+                                    <div class="fs-5 fw-bold text-gray-800 mb-2">اسحب الصورة هنا</div>
+                                    <div class="text-muted fs-7 mb-4">أو</div>
+                                    <label for="image_ar_input" class="btn btn-primary btn-sm">
+                                        اختر ملف
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="invalid-feedback d-block"></div>
+                        </div>
+                    </div>
+
+                    {{-- الصورة الإنجليزية --}}
+                    <div>
+                        <div class="bg-light-success rounded p-5">
+                            <label class="fs-5 fw-bold text-gray-800 mb-4 d-flex align-items-center">
+                                <span class="badge badge-circle badge-success me-3">EN</span>
+                                {{ __('services.image_en') }}
+                            </label>
+                            
+                            <div class="dropzone-custom border-2 border-dashed border-success rounded text-center p-8" 
+                                data-image-input="en">
+                                <input type="file" name="image_en" accept=".png,.jpg,.jpeg,.webp" class="d-none" id="image_en_input"/>
+                                
+                                <div class="preview-container d-none">
+                                    <img src="" class="mw-100 rounded" style="max-height: 180px;" id="image_en_preview"/>
+                                    <div class="mt-4">
+                                        <button type="button" class="btn btn-sm btn-light-success me-2" onclick="document.getElementById('image_en_input').click()">
+                                            <i class="ki-duotone ki-pencil fs-4"><span class="path1"></span><span class="path2"></span></i>
+                                            تغيير
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-light-danger" onclick="removeImage('en')">
+                                            <i class="ki-duotone ki-trash fs-4"><span class="path1"></span><span class="path2"></span><span class="path3"></span><span class="path4"></span><span class="path5"></span></i>
+                                            حذف
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div class="upload-prompt">
+                                    <i class="ki-duotone ki-file-up fs-3x text-success mb-3">
+                                        <span class="path1"></span>
+                                        <span class="path2"></span>
+                                    </i>
+                                    <div class="fs-5 fw-bold text-gray-800 mb-2">Drag image here</div>
+                                    <div class="text-muted fs-7 mb-4">or</div>
+                                    <label for="image_en_input" class="btn btn-success btn-sm">
+                                        Choose File
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="invalid-feedback d-block"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-    </form>
-</div>
+    </div>
+
+    {{-- أزرار الحفظ والإلغاء --}}
+    <div class="d-flex justify-content-end mt-7 gap-3">
+        <button type="submit" class="btn btn-primary btn-lg px-10">
+            <span class="indicator-label">{{ __('messages.save') }}</span>
+        </button>
+    </div>
+</form>
+
 @endsection
 
 @push('custom-script')
 <script>
+    // معالجة رفع الصور بمنطق Drag & Drop
+    function initImageUpload(lang) {
+        const input = document.getElementById(`image_${lang}_input`);
+        const dropzone = document.querySelector(`[data-image-input="${lang}"]`);
+        const preview = document.getElementById(`image_${lang}_preview`);
+        const previewContainer = dropzone.querySelector('.preview-container');
+        const uploadPrompt = dropzone.querySelector('.upload-prompt');
+
+        // عند اختيار ملف
+        input.addEventListener('change', function(e) {
+            handleFile(e.target.files[0]);
+        });
+
+        // Drag & Drop
+        dropzone.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            dropzone.classList.add('border-primary', 'bg-light-primary');
+        });
+
+        dropzone.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            dropzone.classList.remove('border-primary', 'bg-light-primary');
+        });
+
+        dropzone.addEventListener('drop', function(e) {
+            e.preventDefault();
+            dropzone.classList.remove('border-primary', 'bg-light-primary');
+            
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                input.files = dt.files;
+                handleFile(file);
+            }
+        });
+
+        function handleFile(file) {
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                previewContainer.classList.remove('d-none');
+                uploadPrompt.classList.add('d-none');
+            };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    function removeImage(lang) {
+        const input = document.getElementById(`image_${lang}_input`);
+        const preview = document.getElementById(`image_${lang}_preview`);
+        const dropzone = document.querySelector(`[data-image-input="${lang}"]`);
+        const previewContainer = dropzone.querySelector('.preview-container');
+        const uploadPrompt = dropzone.querySelector('.upload-prompt');
+
+        input.value = '';
+        preview.src = '';
+        previewContainer.classList.add('d-none');
+        uploadPrompt.classList.remove('d-none');
+    }
+
+    // تهيئة رفع الصور
+    initImageUpload('ar');
+    initImageUpload('en');
+
+    // إرسال الفورم
     (function() {
         const $form = $('#service_create_form');
 
@@ -324,8 +402,7 @@
                     Swal.fire({
                         icon: 'success',
                         title: '{{ __('services.singular_title') }}',
-                        text: res.message ||
-                            '{{ __('services.created_successfully') }}',
+                        text: res.message || '{{ __('services.created_successfully') }}',
                         timer: 2000,
                         showConfirmButton: false
                     });

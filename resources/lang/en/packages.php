@@ -100,4 +100,10 @@ return [
 
     'minutes_suffix' => 'min',
     'currency_suffix' => 'SAR',
+
+    'cover_image' => 'Cover image',
+    'cover_image_hint' => 'Base image for the package (PNG, JPG, WEBP - up to 5MB)',
+    'icon_ar' => 'Arabic icon',
+    'icon_en' => 'English icon',
+    'icon_hint' => 'Small icon for the package (PNG, JPG, WEBP - up to 5MB)',
 ];

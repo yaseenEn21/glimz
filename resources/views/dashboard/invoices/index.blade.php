@@ -42,19 +42,16 @@
         </div>
 
         <div class="table-responsive">
-            <table id="invoices_table" class="table align-middle table-row-dashed fs-6 gy-5">
+            <table id="invoices_table" class="table table-row-bordered gy-5">
                 <thead>
-                <tr class="text-start text-muted fw-bold fs-7 text-uppercase gs-0">
+                <tr class="fw-semibold fs-6 text-muted">
                     <th>#</th>
                     <th>{{ __('invoices.fields.number') }}</th>
                     <th>{{ __('invoices.fields.user') }}</th>
                     <th>{{ __('invoices.fields.invoiceable') }}</th>
-                    {{-- <th>{{ __('invoices.fields.type') }}</th> --}}
                     <th>{{ __('invoices.fields.status') }}</th>
-                    {{-- <th>{{ __('invoices.fields.locked') }}</th> --}}
                     <th>{{ __('invoices.fields.subtotal') }}</th>
                     <th>{{ __('invoices.fields.discount') }}</th>
-                    {{-- <th>{{ __('invoices.fields.tax') }}</th> --}}
                     <th>{{ __('invoices.fields.total') }}</th>
                     <th>{{ __('invoices.fields.issued_at') }}</th>
                     <th>{{ __('invoices.fields.paid_at') }}</th>
@@ -91,12 +88,9 @@
             {data: 'number', name: 'number'},
             {data: 'user_label', name: 'user_id', orderable:false, searchable:false},
             {data: 'invoiceable_label', name: 'invoiceable_id', orderable:false, searchable:false},
-            // {data: 'type_badge', name: 'type', orderable:false, searchable:false},
             {data: 'status_badge', name: 'status', orderable:false, searchable:false},
-            // {data: 'locked_badge', name: 'is_locked', orderable:false, searchable:false},
             {data: 'subtotal', name: 'subtotal', searchable:false},
             {data: 'discount', name: 'discount', searchable:false},
-            // {data: 'tax', name: 'tax', searchable:false},
             {data: 'total', name: 'total', searchable:false},
             {data: 'issued_at_label', name: 'issued_at', orderable:false, searchable:false},
             {data: 'paid_at_label', name: 'paid_at', orderable:false, searchable:false},

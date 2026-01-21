@@ -96,4 +96,6 @@ return [
         'package' => 'Package',
     ],
 
+    'additional_settings' => 'Additional settings'
+
 ];

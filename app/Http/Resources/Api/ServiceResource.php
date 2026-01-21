@@ -66,8 +66,7 @@ class ServiceResource extends JsonResource
             // (اختياري للتأكد أثناء التطوير)
             'pricing_source' => $source,
 
-            // 'image_url' => $this->getFirstMediaUrl('image') ?: defaultImage(),
-            'image_url' => $this->getImageUrl(app()->getLocale()) ?: defaultImage(),
+            'image_url' => $this->getImageUrl(app()->getLocale()) ?: defaultImage('service.svg'),
         ];
     }
 

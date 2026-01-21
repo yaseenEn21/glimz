@@ -28,7 +28,7 @@ class AppPageController extends Controller
         return [
             'about_us' => [
                 'name'        => 'من نحن',
-                'description' => 'صفحة تعريفية عن Ghasselha.',
+                'description' => 'صفحة تعريفية عن Glimz.',
             ],
             'policies_and_terms' => [
                 'name'        => 'الشروط والأحكام',

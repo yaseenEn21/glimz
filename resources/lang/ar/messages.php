@@ -32,4 +32,15 @@ return [
     'delete_success_text' => 'تم حذف السجل بنجاح.',
     'delete_error_title' => 'خطأ',
     'delete_error_text' => 'حدث خطأ أثناء الحذف، حاول مرة أخرى.',
+    'deleting' => 'جاري الحذف',
+    'currency_symbol' => 'ر.س',
+    'save' => 'حفظ',
+    'images' => 'الصور',
+
+    'actions-btn' => [
+        'delete' => 'حذف',
+        'edit' => 'تعديل',
+        'view' => 'عرض',
+    ]
+
 ];

@@ -51,6 +51,11 @@ return [
         'api_token' => env('SMS_API_TOKEN', ''),
     ],
 
+    'taqnyat' => [
+        'token' => env('TAQNYAT_TOKEN'),
+        'base_url' => env('TAQNYAT_BASE_URL', 'https://api.taqnyat.sa'),
+    ],
+
     'moyasar' => [
         'secret' => env('MOYASAR_SECRET_KEY'),
         'webhook_secret' => env('MOYASAR_WEBHOOK_SECRET'),

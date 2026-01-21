@@ -1,12 +1,13 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
     <base href="../../../" />
     <title>{{ config('app.name', 'Laravel') }} - تسجيل الدخول</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <link rel="shortcut icon" href="{{ asset('assets/media/logos/unnamed.png') }}" />
+    <link rel="shortcut icon" href="{{ asset('assets/media/logos/unnamed.avif') }}" />
 
     <!-- Fonts -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Inter:300,400,500,600,700" />
@@ -16,10 +17,11 @@
 
     <style>
         .btn-submit {
-            background-color: rgba(43, 55, 132, 1) !important;
+            background-color: rgba(111, 0, 255, 1) !important;
         }
+
         .btn-submit:hover {
-            background-color: rgba(43, 55, 132, 0.8) !important;
+            background-color: rgba(89, 0, 204, 1) !important;
         }
     </style>
 
@@ -67,7 +69,7 @@
 
         <!-- Authentication - Sign-in -->
         <div class="d-flex flex-column flex-lg-row flex-column-fluid align-items-center justify-content-center">
-           
+
             <!-- Body (الفورم) -->
             <div class="d-flex flex-column-fluid flex-lg-row-auto justify-content-center justify-content-lg-end p-12">
                 <!-- Wrapper -->
@@ -104,13 +106,13 @@
 
                                 <!-- Logo -->
                                 <div class="mb-10 text-center">
-                                    <img alt="Logo" src="{{ asset('assets/media/logos/logo.webp') }}" />
+                                    <img alt="Logo" src="{{ asset('assets/media/logos/logo.png') }}" />
                                 </div>
 
                                 <!-- Heading -->
                                 <div class="text-center mb-11">
                                     <div class="text-gray-500 fw-semibold fs-6">
-                                        ادخل بياناتك للدخول إلى لوحة تحكم Ghasselha
+                                        ادخل بياناتك للدخول إلى لوحة تحكم Glimz
                                     </div>
                                 </div>
 
@@ -122,10 +124,9 @@
                                 <!-- Email -->
                                 <div class="fv-row mb-8">
                                     <input type="email" placeholder="البريد الإلكتروني" name="email"
-                                           autocomplete="username"
-                                           value="{{ old('email') }}"
-                                           class="form-control bg-transparent @error('email') is-invalid @enderror"
-                                           required />
+                                        autocomplete="username" value="{{ old('email') }}"
+                                        class="form-control bg-transparent @error('email') is-invalid @enderror"
+                                        required />
                                     @error('email')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
@@ -134,9 +135,9 @@
                                 <!-- Password -->
                                 <div class="fv-row mb-3">
                                     <input type="password" placeholder="كلمة المرور" name="password"
-                                           autocomplete="current-password"
-                                           class="form-control bg-transparent @error('password') is-invalid @enderror"
-                                           required />
+                                        autocomplete="current-password"
+                                        class="form-control bg-transparent @error('password') is-invalid @enderror"
+                                        required />
                                     @error('password')
                                         <div class="invalid-feedback">{{ $message }}</div>
                                     @enderror
@@ -169,7 +170,7 @@
                                 <!-- Footer text -->
                                 <div class="text-gray-500 text-center fw-semibold fs-6">
                                     {{ date('Y') }}&copy;
-                                    {{ config('app.name', 'Ghasselha') }} - جميع الحقوق محفوظة
+                                    {{ config('app.name', 'Glimz') }} - جميع الحقوق محفوظة
                                 </div>
                             </form>
                             <!-- End Form -->
@@ -179,21 +180,23 @@
                         <!-- Footer (لغات + روابط) - اختياري -->
                         <div class="d-flex flex-stack d-none">
                             <div class="me-10">
-                                <button class="btn btn-flex btn-link btn-color-gray-700 btn-active-color-primary rotate fs-base"
-                                        data-kt-menu-trigger="click" data-kt-menu-placement="bottom-start"
-                                        data-kt-menu-offset="0px, 0px">
+                                <button
+                                    class="btn btn-flex btn-link btn-color-gray-700 btn-active-color-primary rotate fs-base"
+                                    data-kt-menu-trigger="click" data-kt-menu-placement="bottom-start"
+                                    data-kt-menu-offset="0px, 0px">
                                     <img data-kt-element="current-lang-flag" class="w-20px h-20px rounded ms-3"
-                                         src="{{ asset('assets/media/flags/united-states.svg') }}" alt="" />
+                                        src="{{ asset('assets/media/flags/united-states.svg') }}" alt="" />
                                     <span data-kt-element="current-lang-name" class="ms-1">English</span>
                                     <i class="ki-duotone ki-down fs-5 text-muted rotate-180 m-0"></i>
                                 </button>
                                 <div class="menu menu-sub menu-sub-dropdown menu-column menu-rounded menu-gray-800 menu-state-bg-light-primary fw-semibold w-200px py-4 fs-7"
-                                     data-kt-menu="true" id="kt_auth_lang_menu">
+                                    data-kt-menu="true" id="kt_auth_lang_menu">
                                     <div class="menu-item px-3">
                                         <a href="#" class="menu-link d-flex px-5" data-kt-lang="English">
                                             <span class="symbol symbol-20px ms-4">
                                                 <img data-kt-element="lang-flag" class="rounded-1"
-                                                     src="{{ asset('assets/media/flags/united-states.svg') }}" alt="" />
+                                                    src="{{ asset('assets/media/flags/united-states.svg') }}"
+                                                    alt="" />
                                             </span>
                                             <span data-kt-element="lang-name">English</span>
                                         </a>
@@ -230,4 +233,5 @@
     {{-- مهم: لا نستخدم general.js حتى لا يمنع إرسال الفورم الطبيعي للـ Laravel --}}
     {{-- <script src="{{ asset('assets/js/custom/authentication/sign-in/general.js') }}"></script> --}}
 </body>
+
 </html>

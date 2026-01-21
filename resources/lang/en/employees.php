@@ -96,4 +96,6 @@ return [
     // work area
     'no_work_area_defined' => 'Work area has not been defined yet.',
     'working_hours_title' => 'Weekly working hours',
+
+    'status' =>  'Status'
 ];

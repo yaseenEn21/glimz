@@ -33,7 +33,7 @@ use Illuminate\Validation\ValidationException;
 class BookingController extends Controller
 {
     /**
-     * GET /api/v1/bookings?type=active|past
+     * GET /api/v1/bookings?type=all|upcoming|completed|cancelled
      */
     public function index(Request $request)
     {
@@ -42,7 +42,7 @@ class BookingController extends Controller
             return api_error('Unauthenticated', 401);
 
         $v = validator($request->all(), [
-            'type' => ['nullable', Rule::in(['active', 'past'])],
+            'type' => ['nullable', 'string', Rule::in(['all', 'upcoming', 'completed', 'cancelled'])],
         ]);
 
         if ($v->fails())
@@ -50,16 +50,31 @@ class BookingController extends Controller
 
         $q = Booking::query()
             ->where('user_id', $user->id)
-            ->with(['service', 'products.product', 'invoices']); // ✅ أضف invoices هنا
+            ->with(['service', 'products.product', 'invoices']);
 
         if ($request->filled('type')) {
-            $activeStatuses = ['pending', 'confirmed', 'moving', 'arrived'];
-            $pastStatuses = ['completed', 'cancelled'];
+            $type = $request->input('type');
 
-            if ($request->input('type') === 'active') {
-                $q->whereIn('status', $activeStatuses);
-            } elseif ($request->input('type') === 'past') {
-                $q->whereIn('status', $pastStatuses);
+            switch ($type) {
+                case 'upcoming':
+                    // الحجوزات القادمة = pending + confirmed + moving + arrived
+                    $q->whereIn('status', ['pending', 'confirmed', 'moving', 'arrived']);
+                    break;
+
+                case 'completed':
+                    // الحجوزات المكتملة فقط
+                    $q->where('status', 'completed');
+                    break;
+
+                case 'cancelled':
+                    // الحجوزات الملغاة فقط
+                    $q->where('status', 'cancelled');
+                    break;
+
+                case 'all':
+                default:
+                    // لا نطبق أي فلتر، نعرض الكل
+                    break;
             }
         }
 

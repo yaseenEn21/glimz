@@ -20,4 +20,14 @@ return [
     'delete_success_text' => 'The record has been deleted successfully.',
     'delete_error_title' => 'Error',
     'delete_error_text' => 'An error occurred while deleting. Please try again.',
+
+    'currency_symbol' => 'SAR',
+    'save' => 'Save',
+    'images' => 'Images',
+
+    'actions-btn' => [
+        'delete' => 'Delete',
+        'edit' => 'Edit',
+        'view' => 'View',
+    ]
 ];
