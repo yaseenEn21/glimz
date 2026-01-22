@@ -50,8 +50,8 @@ class ServiceResource extends JsonResource
             'id' => $this->id,
             'service_category_id' => $this->service_category_id,
 
-            'name' => i18n($this->category->name),
-            'category_name' => i18n($this->name),
+            'category_name' => i18n($this->category->name),
+            'name' => i18n($this->name),
             'description' => i18n($this->description),
 
             'rate' => $this->rating_count > 0
