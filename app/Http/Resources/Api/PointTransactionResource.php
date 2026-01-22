@@ -12,7 +12,7 @@ class PointTransactionResource extends JsonResource
         return [
             'id' => $this->id,
             'type' => $this->type,
-
+            'type_label' => __('points.types.' . $this->type),
             'points' => (int) $this->points,
 
             'money_amount' => $this->money_amount !== null ? (string) $this->money_amount : null,

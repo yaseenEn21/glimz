@@ -29,5 +29,7 @@ return [
         'delete' => 'Delete',
         'edit' => 'Edit',
         'view' => 'View',
-    ]
+    ],
+
+    'invoice' => 'Invoice',
 ];

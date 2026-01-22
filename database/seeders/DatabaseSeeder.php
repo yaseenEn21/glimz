@@ -36,7 +36,9 @@ class DatabaseSeeder extends Seeder
             PointsTestSeeder::class,
             PermissionsSeeder::class,
             NotificationTemplateSeeder::class,
-            BookingCancelReasonsSettingsSeeder::class
+            BookingCancelReasonsSettingsSeeder::class,
+            FaqSeeder::class,
+            ContactSettingsSeeder::class
         ]);
     }
 }

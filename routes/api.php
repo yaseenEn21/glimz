@@ -148,8 +148,11 @@ Route::prefix('v1')->middleware(['set.api.locale'])->group(function () {
     Route::get('vehicle-models', [VehicleModelController::class, 'index']); // ?vehicle_make_id=...
     Route::get('car-colors', [CarColorController::class, 'index']);
 
+    Route::get('help-and-support/faqs', [SettingController::class, 'faqs']);
+    Route::get('help-and-support/contact-info', [SettingController::class, 'contactInfo']);
     Route::get('settings/policies', [SettingController::class, 'policies']);
     Route::get('settings/about-us', [SettingController::class, 'aboutUs']);
+    Route::get('settings/cancellation-and-refund', [SettingController::class, 'cancellationAndRefund']);
 
     Route::get('app-translation', [AppTranslationController::class, 'show']);
     Route::post('app-translation', [AppTranslationController::class, 'upload'])

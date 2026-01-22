@@ -22,18 +22,23 @@ class InvoiceResource extends JsonResource
             $lastPayment = $this->latestPayment;
         }
 
-        // حاول تلتقط اسم الحقل عندك لأي تسمية كانت
         $paymentMethod = $lastPayment?->method
             ?? $lastPayment?->payment_method
             ?? $lastPayment?->gateway
             ?? $lastPayment?->provider
             ?? null;
 
+        $short = class_basename($this->invoiceable_type);
+        $purpose = invoiceable_label($short, (int) $this->invoiceable_id, $this->invoiceable);
+        $purposeLabel = $purpose['label'] === '—' ? __('messages.invoice') . ' ' . $this->number : $purpose['label'];
+
         return [
             'id' => $this->id,
             'number' => $this->number,
 
             'type' => $this->type,
+            'purpose_label' => $purposeLabel,
+
             'status' => $this->status,
             'status_label' => __('invoice_statuses.' . $this->status),
             'version' => (int) $this->version,
@@ -55,7 +60,7 @@ class InvoiceResource extends JsonResource
                 ->map(fn ($i) => new InvoiceItemResource($i))->values(),
 
             'coupon' => $this->couponSnapshot(),
-            'payment_method' => $paymentMethod, // string أو null
+            'payment_method' => $paymentMethod,
             'payment_method_label' => $paymentMethod ? __('payment_methods.' . $paymentMethod) : null,
         ];
     }
@@ -77,10 +82,10 @@ class InvoiceResource extends JsonResource
             'eligible_base' => isset($coupon['eligible_base']) ? (string) $coupon['eligible_base'] : null,
             'discount' => isset($coupon['discount']) ? (string) $coupon['discount'] : null,
 
-            'discount_type' => $coupon['discount_type'] ?? null,   // percent/fixed
+            'discount_type' => $coupon['discount_type'] ?? null,
             'discount_value' => isset($coupon['discount_value']) ? (string) $coupon['discount_value'] : null,
 
-            'applies_to' => $coupon['applies_to'] ?? null,          // both/services/packages...
+            'applies_to' => $coupon['applies_to'] ?? null,
             'apply_all_services' => (bool) ($coupon['apply_all_services'] ?? false),
             'apply_all_packages' => (bool) ($coupon['apply_all_packages'] ?? false),
 
