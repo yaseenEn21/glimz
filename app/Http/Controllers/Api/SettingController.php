@@ -6,7 +6,7 @@ use App;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Setting;
-use App\Models\Faq;
+use App\Models\FAQ;
 use App\Models\SchoolEvent;
 use App\Models\Announcement;
 use App\Models\StudentUpdate;
@@ -73,7 +73,7 @@ class SettingController extends Controller
     public function faqs(Request $request)
     {
 
-        $faqs = Faq::query()
+        $faqs = FAQ::query()
             ->where('is_active', true)
             ->orderBy('sort_order')
             ->orderBy('id')
