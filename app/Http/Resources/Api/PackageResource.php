@@ -12,6 +12,7 @@ class PackageResource extends JsonResource
         // Controller سيحمّل subscriptions للمستخدم الحالي فقط (active) إن كان مسجل
         $sub = $this->relationLoaded('subscriptions') ? $this->subscriptions->first() : null;
         $randomPattern = 'package-pattren-' . rand(1, 3) . '.png';
+        $randomIcon = 'card-icon-' . rand(1, 3) . '.png';
 
         return [
             'id' => $this->id,
@@ -32,7 +33,7 @@ class PackageResource extends JsonResource
             'validity_days' => $this->validity_days,
 
             'pattren_url' => $this->getFirstMediaUrl('cover_image') ?: defaultImage($randomPattern),
-            'image_url' => $this->getFirstMediaUrl('image') ?: defaultImage('package-icon.svg'),
+            'image_url' => $this->getFirstMediaUrl('image') ?: defaultImage($randomIcon),
 
             // مهم للـ Home: هل هو مشترك وفعّال؟
             'is_subscribed_active' => $sub ? (bool) $sub->is_currently_active : false,

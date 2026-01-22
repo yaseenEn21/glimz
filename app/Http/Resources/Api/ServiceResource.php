@@ -44,7 +44,7 @@ class ServiceResource extends JsonResource
             }
         }
 
-        // $randomPattern = 'service-pattren-' . rand(1, 3) . '.png';
+        $randomIcon = 'card-icon-' . rand(1, 3) . '.png';
 
         return [
             'id' => $this->id,
@@ -69,7 +69,7 @@ class ServiceResource extends JsonResource
             'pricing_source' => $source,
 
             'pattren_url' => $this->getFirstMediaUrl('cover_image') ?: defaultImage('service-pattren-1.png'),
-            'image_url' => $this->getImageUrl(app()->getLocale()) ?: defaultImage('service.svg'),
+            'image_url' => $this->getImageUrl(app()->getLocale()) ?: defaultImage($randomIcon),
         ];
     }
 
