@@ -15,23 +15,30 @@ class PaymentController extends Controller
     public function index(PaymentsIndexRequest $request)
     {
         $user = $request->user();
-        if (!$user) return api_error('Unauthenticated', 401);
+        if (!$user)
+            return api_error('Unauthenticated', 401);
 
         $q = Payment::query()
             ->where('user_id', $user->id)
             ->with(['invoice:id,number,type,status,total'])
             ->orderByDesc('id');
 
+        if ($request->filled('period')) {
+            $period = $request->input('period');
+
+            if ($period === 'last_30_days') {
+                $q->where('created_at', '>=', now()->subDays(30));
+            }
+        }
+
         if ($request->filled('status')) {
-            $q->where('status', $request->input('status'));
-        }
+            $status = $request->input('status');
 
-        if ($request->filled('method')) {
-            $q->where('method', $request->input('method'));
-        }
-
-        if ($request->filled('invoice_id')) {
-            $q->where('invoice_id', (int) $request->input('invoice_id'));
+            if ($status === 'completed') {
+                $q->where('status', 'paid');
+            } elseif ($status === 'failed') {
+                $q->where('status', 'failed');
+            }
         }
 
         $paginator = $q->paginate(50);
@@ -49,7 +56,8 @@ class PaymentController extends Controller
     public function show($paymentId)
     {
         $user = request()->user();
-        if (!$user) return api_error('Unauthenticated', 401);
+        if (!$user)
+            return api_error('Unauthenticated', 401);
 
         $payment = Payment::query()
             ->where('id', $paymentId)
@@ -57,7 +65,8 @@ class PaymentController extends Controller
             ->with(['invoice:id,number,type,status,total'])
             ->first();
 
-        if (!$payment) return api_error('Not found', 404);
+        if (!$payment)
+            return api_error('Not found', 404);
 
         return api_success(new PaymentResource($payment));
     }

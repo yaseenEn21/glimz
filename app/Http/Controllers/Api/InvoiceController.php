@@ -24,36 +24,58 @@ class InvoiceController extends Controller
 
         $q = Invoice::query()
             ->with([
-                    'payments',
-                    'latestPaidPayment',
-                    'latestPayment',
-                    'items' => fn($q) => $q->orderBy('sort_order'),
-                    'items.itemable' => function (MorphTo $morphTo) {
-                        $morphTo->morphWith([
-                            Service::class => ['media'],
-                            Product::class => ['media'],
-                            Package::class => ['media'],
-                        ]);
-                    },
-                ])
+                'payments',
+                'latestPaidPayment',
+                'latestPayment',
+                'items' => fn($q) => $q->orderBy('sort_order'),
+                'items.itemable' => function (MorphTo $morphTo) {
+                    $morphTo->morphWith([
+                        Service::class => ['media'],
+                        Product::class => ['media'],
+                        Package::class => ['media'],
+                    ]);
+                },
+            ])
             ->where('user_id', $user->id)
             ->orderByDesc('issued_at')
             ->orderByDesc('id')
             ->withCount('items')
             ->withSum([
-                    'payments as paid_amount' => function ($pq) {
-                        $pq->where('status', 'paid');
-                    }
-                ], 'amount');
+                'payments as paid_amount' => function ($pq) {
+                    $pq->where('status', 'paid');
+                }
+            ], 'amount');
 
-        if ($request->filled('status')) {
-            $q->where('status', $request->input('status'));
+        // فلتر الفترة الزمنية (كل التواريخ / آخر 30 يوم)
+        if ($request->filled('period')) {
+            $period = $request->input('period');
+
+            if ($period === 'last_30_days') {
+                $q->where('issued_at', '>=', now()->subDays(30));
+            }
+            // 'all_dates' لا يحتاج فلتر
         }
 
+        if ($request->filled('status')) {
+            $status = $request->input('status');
+
+            if ($status === 'paid') {
+                $q->where('status', 'paid');
+            } elseif ($status === 'unpaid') {
+                $q->where('status', 'unpaid');
+            } elseif ($status === 'cancelled') {
+                $q->where('status', 'cancelled');
+            } elseif ($status === 'refunded') {
+                $q->where('status', 'refunded');
+            }
+        }
+
+        // فلتر النوع (إذا كان موجود)
         if ($request->filled('type')) {
             $q->where('type', $request->input('type'));
         }
 
+        // البحث برقم الفاتورة
         if ($request->filled('q')) {
             $search = trim((string) $request->input('q'));
             $q->where('number', 'like', "%{$search}%");
@@ -81,11 +103,11 @@ class InvoiceController extends Controller
             ->where('id', $invoiceId)
             ->where('user_id', $user->id)
             ->with([
-                    'items.itemable.media',
-                    'payments' => fn($q) => $q->orderByDesc('id'),
-                    'latestPaidPayment',
-                    'latestPayment',
-                ])
+                'items.itemable.media',
+                'payments' => fn($q) => $q->orderByDesc('id'),
+                'latestPaidPayment',
+                'latestPayment',
+            ])
             ->first();
 
         if (!$invoice) {
