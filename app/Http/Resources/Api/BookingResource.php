@@ -28,6 +28,7 @@ class BookingResource extends JsonResource
             'duration_minutes' => (int) $this->duration_minutes,
 
             'car_id' => (int) $this->car_id,
+            'car' => new CarResource($this->whenLoaded('car')),
             'address_id' => (int) $this->address_id,
             'address_label' => $this->address?->address_line, 
             // 'service_id' => (int) $this->service_id,

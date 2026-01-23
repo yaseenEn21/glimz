@@ -50,7 +50,7 @@ class BookingController extends Controller
 
         $q = Booking::query()
             ->where('user_id', $user->id)
-            ->with(['service', 'products.product', 'invoices']);
+            ->with(['service', 'products.product', 'invoices', 'car']);
 
         if ($request->filled('type')) {
             $type = $request->input('type');
@@ -95,7 +95,7 @@ class BookingController extends Controller
         if ($booking->user_id !== $user->id)
             return api_error('Not found', 404);
 
-        $booking->load(['service', 'products.product', 'invoices']);
+        $booking->load(['service', 'products.product', 'invoices', 'car']);
 
         return api_success(new BookingResource($booking), 'Booking');
     }
@@ -564,7 +564,7 @@ class BookingController extends Controller
                     ->delay(now()->addMinutes((int) config('booking.pending_auto_cancel_minutes', 10)));
             }
 
-            return $booking->fresh(['service', 'products.product', 'invoices']);
+            return $booking->fresh(['service', 'products.product', 'invoices', 'car']);
         });
 
         return api_success(new BookingResource($booking), 'Booking created', 201);
@@ -1012,7 +1012,7 @@ class BookingController extends Controller
                 }
             }
 
-            return $b->fresh(['service', 'products.product', 'invoices']);
+            return $b->fresh(['service', 'products.product', 'invoices', 'cars']);
         });
 
         return api_success(new BookingResource($updated), 'Booking updated', 200);
