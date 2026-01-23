@@ -12,12 +12,21 @@ class Notification extends Model
     protected $guarded = [];
 
     protected $casts = [
-        'data'    => 'array',
+        'data' => 'array',
         'is_read' => 'boolean',
     ];
+
+    public function getIconUrlAttribute(): ?string
+    {
+        if ($this->icon_path) {
+            return asset('storage/' . $this->icon_path);
+        }
+        return null;
+    }
 
     public function user()
     {
         return $this->belongsTo(User::class);
     }
+
 }

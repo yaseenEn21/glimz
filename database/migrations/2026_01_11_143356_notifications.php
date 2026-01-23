@@ -15,9 +15,11 @@ return new class extends Migration {
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->string('title');
             $table->text('body');
+            $table->string('icon_path')->nullable();
             $table->string('locale', 5)->default('ar');
             $table->json('data')->nullable();
             $table->boolean('is_read')->default(false);
+            $table->boolean('is_new')->default(true);
             $table->foreignId('created_by')
                 ->nullable()
                 ->constrained('users')

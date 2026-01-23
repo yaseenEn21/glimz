@@ -26,65 +26,75 @@ class NotificationController extends Controller
         ]);
     }
 
-    /**
-     * إرجاع قائمة الإشعارات للمستخدم الحالي + تعليمها كمقروء
-     * GET /api/v1/notifications?page=1
-     */
     public function index(Request $request)
     {
         $user = $request->user();
-
         $perPage = (int) $request->input('per_page', 20);
 
-        // 1) نجلب إشعارات المستخدم (أحدث أولاً)
+        // 1) نجلب إشعارات المستخدم
         $paginator = Notification::where('user_id', $user->id)
             ->orderByDesc('created_at')
             ->paginate($perPage);
 
-        // 2) نحدد الإشعارات في هذه الصفحة فقط التي ما زالت غير مقروءة
+        // 2) نحدد الإشعارات غير المقروءة في هذه الصفحة (هذي راح تصير جديدة)
         $idsToMark = $paginator->getCollection()
             ->where('is_read', false)
             ->pluck('id')
             ->all();
 
+        // 3) نحدد الإشعارات المقروءة سابقاً (هذي نخليها مش جديدة)
+        $alreadyReadIds = $paginator->getCollection()
+            ->where('is_read', true)
+            ->where('is_new', true)
+            ->pluck('id')
+            ->all();
+
+        // 4) تحديث الإشعارات الجديدة اللي للتو قريناها
         if (!empty($idsToMark)) {
             Notification::whereIn('id', $idsToMark)
                 ->update([
                     'is_read' => true,
                     'updated_by' => $user->id,
                     'updated_at' => now(),
+                    // is_new يبقى true (القيمة الافتراضية من الـ migration)
                 ]);
 
-            // نحدّث الكولكشن في الذاكرة عشان ترجع is_read = true في الـ API
+            // تحديث الكولكشن في الذاكرة
             $paginator->setCollection(
                 $paginator->getCollection()->map(function (Notification $n) use ($idsToMark) {
                     if (in_array($n->id, $idsToMark)) {
                         $n->is_read = true;
+                        // is_new يبقى true (من الـ database)
                     }
                     return $n;
                 })
             );
         }
 
-        // 3) حساب عدد غير المقروء بعد التحديث
+        // 5) تحديث الإشعارات المقروءة من قبل لتصبح مش جديدة
+        if (!empty($alreadyReadIds)) {
+            Notification::whereIn('id', $alreadyReadIds)
+                ->update(['is_new' => false]);
+
+            // تحديث الكولكشن في الذاكرة
+            $paginator->setCollection(
+                $paginator->getCollection()->map(function (Notification $n) use ($alreadyReadIds) {
+                    if (in_array($n->id, $alreadyReadIds)) {
+                        $n->is_new = false;
+                    }
+                    return $n;
+                })
+            );
+        }
+
+        // 6) حساب عدد غير المقروء
         $unreadCount = Notification::where('user_id', $user->id)
             ->where('is_read', false)
             ->count();
 
-        // 4) تبسيط شكل البيانات داخل الـ paginator (زي posts)
-        $paginator->getCollection()->transform(function (Notification $n) {
-            return [
-                'id' => $n->id,
-                'title' => $n->title,
-                'body' => $n->body,
-                'data' => $n->data ?: (object) [],
-                'is_read' => (bool) $n->is_read,
-                'created_at' => $n->created_at?->toDateTimeString(),
-            ];
-        });
-
-        // 5) نحول الـ paginator لمصفوفة ونضيف لها unread_count
-        $payload = $paginator->toArray();
+        // 7) استخدام Resource
+        $notifications = NotificationResource::collection($paginator);
+        $payload = $notifications->response()->getData(true);
         $payload['unread_count'] = $unreadCount;
 
         return api_success($payload, 'قائمة الإشعارات');

@@ -68,6 +68,13 @@ return [
             'folderId' => env('GOOGLE_DRIVE_FOLDER_ID', null), // فولدر معيّن أو null للجذر
         ],
 
+        'notification_icons' => [
+            'driver' => 'local',
+            'root' => public_path('assets/media/icons/duotune/notifications'),
+            'url' => env('APP_URL') . '/assets/media/icons/duotune/notifications',
+            'visibility' => 'public',
+        ],
+
     ],
 
     /*

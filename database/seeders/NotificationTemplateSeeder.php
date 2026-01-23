@@ -9,31 +9,30 @@ class NotificationTemplateSeeder extends Seeder
 {
     public function run(): void
     {
+        $iconsBasePath = public_path('assets/media/icons/duotune/notifications');
+
         /**
          * ==========================
          * Customer Booking Status Notifications
          * ==========================
-         * Placeholders you can use:
-         * {booking_id}, {branch_name}, {date}, {time},
-         * {service_name}, {package_name},
-         * {employee_name}, {vehicle_plate}
          */
 
-        // pending
-        NotificationTemplate::updateOrCreate(
+        // pending - استخدام أيقونة الوقت/الساعة
+        $pending = NotificationTemplate::updateOrCreate(
             ['key' => 'booking_status_pending_customer'],
             [
                 'title' => 'تم استلام طلب الحجز',
                 'body' => 'تم استلام طلبك #{booking_id}. سنقوم بتأكيده قريبًا.',
                 'title_en' => 'Booking request received',
-                'body_en' => 'We received your booking #{booking_id}. We’ll confirm it shortly.',
+                'body_en' => 'We received your booking #{booking_id}. we will confirm it shortly.',
                 'description' => 'للزبون: عند إنشاء الحجز وحالته pending.',
                 'is_active' => true,
             ]
         );
+        $this->attachIcon($pending, $iconsBasePath . '/time.png'); // ⏰ ساعة - في انتظار التأكيد
 
-        // confirmed (this is the "special" confirmation notification)
-        NotificationTemplate::updateOrCreate(
+        // confirmed - استخدام أيقونة الصح/التأكيد
+        $confirmed = NotificationTemplate::updateOrCreate(
             ['key' => 'booking_status_confirmed_customer'],
             [
                 'title' => 'تم تأكيد الحجز ✅',
@@ -44,9 +43,10 @@ class NotificationTemplateSeeder extends Seeder
                 'is_active' => true,
             ]
         );
+        $this->attachIcon($confirmed, $iconsBasePath . '/check.png'); // ✅ علامة صح - تم التأكيد
 
-        // moving
-        NotificationTemplate::updateOrCreate(
+        // moving - استخدام أيقونة السيارة/الموقع
+        $moving = NotificationTemplate::updateOrCreate(
             ['key' => 'booking_status_moving_customer'],
             [
                 'title' => 'في الطريق إليك',
@@ -57,9 +57,10 @@ class NotificationTemplateSeeder extends Seeder
                 'is_active' => true,
             ]
         );
+        $this->attachIcon($moving, $iconsBasePath . '/location-car.png'); // 🚗 سيارة - في الطريق
 
-        // arrived
-        NotificationTemplate::updateOrCreate(
+        // arrived - استخدام أيقونة الموقع
+        $arrived = NotificationTemplate::updateOrCreate(
             ['key' => 'booking_status_arrived_customer'],
             [
                 'title' => 'وصلنا ✅',
@@ -70,9 +71,10 @@ class NotificationTemplateSeeder extends Seeder
                 'is_active' => true,
             ]
         );
+        $this->attachIcon($arrived, $iconsBasePath . '/location-car.png'); // 📍 موقع - وصلنا
 
-        // completed
-        NotificationTemplate::updateOrCreate(
+        // completed - استخدام أيقونة النجمة/الهدية
+        $completed = NotificationTemplate::updateOrCreate(
             ['key' => 'booking_status_completed_customer'],
             [
                 'title' => 'تم إكمال الخدمة ✨',
@@ -83,9 +85,10 @@ class NotificationTemplateSeeder extends Seeder
                 'is_active' => true,
             ]
         );
+        $this->attachIcon($completed, $iconsBasePath . '/gift-box.png'); // 🎁 هدية - اكتمل بنجاح
 
-        // cancelled
-        NotificationTemplate::updateOrCreate(
+        // cancelled - استخدام أيقونة X/الإلغاء
+        $cancelled = NotificationTemplate::updateOrCreate(
             ['key' => 'booking_status_cancelled_customer'],
             [
                 'title' => 'تم إلغاء الحجز',
@@ -96,6 +99,7 @@ class NotificationTemplateSeeder extends Seeder
                 'is_active' => true,
             ]
         );
+        $this->attachIcon($cancelled, $iconsBasePath . '/cancel.png'); // ❌ إلغاء
 
         /**
          * ==========================
@@ -103,7 +107,8 @@ class NotificationTemplateSeeder extends Seeder
          * ==========================
          */
 
-        NotificationTemplate::updateOrCreate(
+        // admin - استخدام أيقونة الحجز/التقويم
+        $admin = NotificationTemplate::updateOrCreate(
             ['key' => 'booking_created_admin'],
             [
                 'title' => 'حجز جديد 🆕',
@@ -114,5 +119,26 @@ class NotificationTemplateSeeder extends Seeder
                 'is_active' => true,
             ]
         );
+        $this->attachIcon($admin, $iconsBasePath . '/booking.png'); // 📅 حجز جديد
+
+    }
+
+    /**
+     * ربط أيقونة بالـ Template باستخدام Spatie Media Library
+     */
+    protected function attachIcon(NotificationTemplate $template, string $iconPath): void
+    {
+        if (!file_exists($iconPath)) {
+            $this->command->warn("Icon not found: {$iconPath}");
+            return;
+        }
+
+        $template->clearMediaCollection('icon');
+
+        $template->addMedia($iconPath)
+            ->preservingOriginal()
+            ->toMediaCollection('icon');
+
+        $this->command->info("Icon attached to: {$template->key}");
     }
 }

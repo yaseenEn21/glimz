@@ -94,6 +94,62 @@
         </div>
     </div>
 
+    {{-- اختيار الأيقونة --}}
+<div class="mb-6">
+    <label class="form-label fw-bold">اختيار أيقونة الإشعار</label>
+    
+    <div class="row g-4">
+        @if(isset($icons) && count($icons) > 0)
+            @foreach($icons as $icon)
+                <div class="col-6 col-md-4 col-lg-3">
+                    <label class="icon-selector {{ (isset($currentIcon) && $currentIcon === $icon) ? 'selected' : '' }}">
+                        <input type="radio" 
+                            name="icon" 
+                            value="{{ $icon }}" 
+                            class="d-none icon-radio"
+                            {{ (isset($currentIcon) && $currentIcon === $icon) ? 'checked' : '' }}>
+                        
+                        <div class="icon-box">
+                            <img src="{{ asset('assets/media/icons/duotune/notifications/' . $icon) }}" 
+                                alt="{{ $icon }}" 
+                                class="icon-preview">
+                            <div class="icon-name">{{ pathinfo($icon, PATHINFO_FILENAME) }}</div>
+                        </div>
+                    </label>
+                </div>
+            @endforeach
+            
+            {{-- خيار بدون أيقونة --}}
+            <div class="col-6 col-md-4 col-lg-3">
+                <label class="icon-selector {{ (!isset($currentIcon) || !$currentIcon) ? 'selected' : '' }}">
+                    <input type="radio" 
+                        name="icon" 
+                        value="" 
+                        class="d-none icon-radio"
+                        {{ (!isset($currentIcon) || !$currentIcon) ? 'checked' : '' }}>
+                    
+                    <div class="icon-box">
+                        <div class="no-icon-placeholder">
+                            <i class="fas fa-ban fs-3x text-muted"></i>
+                        </div>
+                        <div class="icon-name">بدون أيقونة</div>
+                    </div>
+                </label>
+            </div>
+        @else
+            <div class="col-12">
+                <div class="alert alert-warning">
+                    لا توجد أيقونات متاحة في المجلد المحدد.
+                </div>
+            </div>
+        @endif
+    </div>
+    
+    @error('icon')
+        <div class="invalid-feedback d-block">{{ $message }}</div>
+    @enderror
+</div>
+
     {{-- حالة القالب --}}
     <div class="col-md-3">
         <label class="form-label fw-bold d-block">حالة القالب</label>
@@ -128,6 +184,15 @@
 @push('custom-script')
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+
+    $(document).ready(function() {
+        // تحديث الواجهة عند اختيار أيقونة
+        $('.icon-radio').on('change', function() {
+            $('.icon-selector').removeClass('selected');
+            $(this).closest('.icon-selector').addClass('selected');
+        });
+    });
+
     const input = document.getElementById('template_is_active');
     if (!input) return;
 

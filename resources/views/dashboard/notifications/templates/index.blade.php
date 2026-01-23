@@ -60,7 +60,6 @@
                                 <td class="text-center">
                                     <a href="{{ route('dashboard.notification-templates.edit', $template) }}"
                                        class="btn btn-sm btn-light-primary">
-                                        <i class="ki-duotone ki-pencil fs-4"></i>
                                         تعديل
                                     </a>
                                 </td>
