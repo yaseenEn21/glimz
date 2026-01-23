@@ -36,12 +36,14 @@ class BookingResource extends JsonResource
 
             // 'service_name' => $this->relationLoaded('service') ? i18n($this->service->name) : null,
 
-            'service' => [
-                'id' => $service->id,
-                'name' => i18n($service->name),
-                'image_url' => $service->getImageUrl(app()->getLocale()) ?: defaultImage(),
-                'price' => (float) $this->service_final_price_snapshot,
-            ],
+            // 'service' => [
+            //     'id' => $service->id,
+            //     'name' => i18n($service->name),
+            //     'image_url' => $service->getImageUrl(app()->getLocale()) ?: defaultImage(),
+            //     'price' => (float) $this->service_final_price_snapshot,
+            // ],
+
+            'service' => new ServiceResource($this->whenLoaded('service')),
 
             'package_subscription_id' => $this->package_subscription_id ? (int) $this->package_subscription_id : null,
             'package_covers_service' => (bool) ($this->meta['package_covers_service'] ?? false),
