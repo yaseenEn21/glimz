@@ -259,9 +259,18 @@
             border-right: 3px solid transparent;
         }
 
+        [dir="ltr"] .booking-item {
+            border-right: none;
+            border-left: 3px solid transparent;
+        }
+
         .booking-item.pending {
             background: #FFF8DD;
             border-right-color: #FFA800;
+        }
+
+        [dir="ltr"] .booking-item.pending {
+            border-left-color: #FFA800;
         }
 
         .booking-item.confirmed {
@@ -269,9 +278,17 @@
             border-right-color: #009EF7;
         }
 
+        [dir="ltr"] .booking-item.confirmed {
+            border-left-color: #009EF7;
+        }
+
         .booking-item.moving {
             background: #F1E6FF;
             border-right-color: #7239EA;
+        }
+
+        [dir="ltr"] .booking-item.moving {
+            border-left-color: #7239EA;
         }
 
         .booking-item.arrived {
@@ -279,14 +296,26 @@
             border-right-color: #00A3A1;
         }
 
+        [dir="ltr"] .booking-item.arrived {
+            border-left-color: #00A3A1;
+        }
+
         .booking-item.completed {
             background: #E8FFF3;
             border-right-color: #50CD89;
         }
 
+        [dir="ltr"] .booking-item.completed {
+            border-left-color: #50CD89;
+        }
+
         .booking-item.cancelled {
             background: #FFE2E5;
             border-right-color: #F1416C;
+        }
+
+        [dir="ltr"] .booking-item.cancelled {
+            border-left-color: #F1416C;
         }
 
         .booking-info {
@@ -446,12 +475,12 @@
         <div class="loader"></div>
     </div>
 
-    <div>
+    <div class="dashboard-container">
         <!-- Date Filter -->
         <div class="date-filter-section">
-            <span class="filter-label">الفترة:</span>
-            <input type="text" id="dateRange" class="date-input" placeholder="اختر الفترة" readonly>
-            <button id="applyFilter" class="filter-btn">تطبيق</button>
+            <span class="filter-label">{{ __('dashboard.filter.period') }}:</span>
+            <input type="text" id="dateRange" class="date-input" placeholder="{{ __('dashboard.filter.select_period') }}" readonly>
+            <button id="applyFilter" class="filter-btn">{{ __('dashboard.filter.apply') }}</button>
         </div>
 
         <!-- Stats Cards -->
@@ -459,7 +488,7 @@
             <!-- Active Bookings -->
             <div class="stat-box">
                 <div class="stat-number" id="activeCount">—</div>
-                <div class="stat-label">الحجوزات النشطة</div>
+                <div class="stat-label">{{ __('dashboard.stats.active_bookings') }}</div>
                 <div class="stat-footer">
                     <div class="progress-bar">
                         <div class="progress-fill" id="activeProgress" style="width: 0%"></div>
@@ -471,21 +500,21 @@
             <!-- Revenue -->
             <div class="stat-box">
                 <div class="stat-number" id="revenue">
-                    <span style="font-size: 18px; color: var(--text-secondary)">SR</span> —
+                    <span style="font-size: 18px; color: var(--text-secondary)">{{ __('dashboard.currency') }}</span> —
                 </div>
-                <div class="stat-label">إيرادات الفترة</div>
+                <div class="stat-label">{{ __('dashboard.stats.period_revenue') }}</div>
                 <div class="stat-footer">
                     <span id="revenueTrend">—</span>
-                    <span>من الفترة السابقة</span>
+                    <span>{{ __('dashboard.stats.from_previous_period') }}</span>
                 </div>
             </div>
 
             <!-- Active Customers -->
             <div class="stat-box">
                 <div class="stat-number" id="activeCustomers">—</div>
-                <div class="stat-label">المستخدمون النشطون</div>
+                <div class="stat-label">{{ __('dashboard.stats.active_users') }}</div>
                 <div class="stat-footer">
-                    <span>لديهم على الأقل حجز واحد خلال الفترة</span>
+                    <span>{{ __('dashboard.stats.users_with_booking') }}</span>
                 </div>
             </div>
 
@@ -493,10 +522,10 @@
             <div class="stat-box">
                 <div class="stat-number" id="avgRating">—<span
                         style="font-size: 18px; color: var(--text-secondary)">/5</span></div>
-                <div class="stat-label">متوسط التقييم</div>
+                <div class="stat-label">{{ __('dashboard.stats.avg_rating') }}</div>
                 <div class="stat-footer">
                     <span id="ratingTrend">—</span>
-                    <span>من الفترة السابقة</span>
+                    <span>{{ __('dashboard.stats.from_previous_period') }}</span>
                 </div>
             </div>
         </div>
@@ -507,8 +536,8 @@
             <div class="schedule-box">
                 <div class="schedule-header">
                     <div>
-                        <div class="schedule-title">الحجوزات القادمة</div>
-                        <div class="schedule-subtitle" id="scheduleSubtitle">جاري التحميل...</div>
+                        <div class="schedule-title">{{ __('dashboard.schedule.upcoming_bookings') }}</div>
+                        <div class="schedule-subtitle" id="scheduleSubtitle">{{ __('dashboard.schedule.loading') }}</div>
                     </div>
                 </div>
 
@@ -521,25 +550,25 @@
 
             <!-- Sidebar -->
             <div class="sidebar-box">
-                <div class="sidebar-title">ملخص اليوم</div>
+                <div class="sidebar-title">{{ __('dashboard.daily_summary.title') }}</div>
 
                 <div class="metric-row">
-                    <span class="metric-label">مكتملة</span>
+                    <span class="metric-label">{{ __('dashboard.daily_summary.completed') }}</span>
                     <span class="metric-value" id="dailyCompleted">—</span>
                 </div>
 
                 <div class="metric-row">
-                    <span class="metric-label">ملغاة</span>
+                    <span class="metric-label">{{ __('dashboard.daily_summary.cancelled') }}</span>
                     <span class="metric-value" id="dailyCancelled">—</span>
                 </div>
 
                 <div class="metric-row">
-                    <span class="metric-label">معلقة</span>
+                    <span class="metric-label">{{ __('dashboard.daily_summary.pending') }}</span>
                     <span class="metric-value" id="dailyPending">—</span>
                 </div>
 
                 <div class="metric-row">
-                    <span class="metric-label">الإيرادات</span>
+                    <span class="metric-label">{{ __('dashboard.daily_summary.revenue') }}</span>
                     <span class="metric-value" id="dailyRevenue">—</span>
                 </div>
             </div>
@@ -560,6 +589,17 @@
                 to: null
             };
 
+            // Translations
+            const trans = {
+                days: @json(__('dashboard.calendar.days')),
+                currency: @json(__('dashboard.currency')),
+                client_label: @json(__('dashboard.schedule.client')),
+                view_btn: @json(__('dashboard.schedule.view')),
+                no_bookings: @json(__('dashboard.schedule.no_bookings')),
+                bookings_for_day: @json(__('dashboard.schedule.bookings_for_day')),
+                locale: @json(app()->getLocale())
+            };
+
             function show() {
                 loading.classList.add('show');
             }
@@ -572,7 +612,7 @@
             const fp = flatpickr("#dateRange", {
                 mode: "range",
                 dateFormat: "Y-m-d",
-                locale: "ar",
+                locale: trans.locale === 'ar' ? "ar" : "default",
                 defaultDate: [
                     new Date(new Date().getFullYear(), new Date().getMonth(), 1),
                     new Date()
@@ -600,7 +640,6 @@
 
             // Generate calendar
             function generateCalendar() {
-                const days = ['أحد', 'إثن', 'ثلا', 'أرب', 'خمي', 'جمع', 'سبت'];
                 const calendar = document.getElementById('calendar');
                 const today = new Date();
                 calendar.innerHTML = '';
@@ -616,7 +655,7 @@
                     cell.className = 'day-cell' + (i === 0 ? ' today' : '');
                     cell.dataset.date = dateStr;
                     cell.innerHTML = `
-                        <div class="day-label">${days[d.getDay()]}</div>
+                        <div class="day-label">${trans.days[d.getDay()]}</div>
                         <div class="day-date">${d.getDate()}</div>
                     `;
 
@@ -657,7 +696,6 @@
 
             // Update stats cards
             function updateStatsCards(data) {
-                
                 data = data.data;
                 
                 // Active Bookings
@@ -669,7 +707,7 @@
                 // Revenue
                 const revenue = data.revenue || 0;
                 document.getElementById('revenue').innerHTML =
-                    `<span style="font-size: 18px; color: var(--text-secondary)">SR</span> ${revenue.toLocaleString()}`;
+                    `<span style="font-size: 18px; color: var(--text-secondary)">${trans.currency}</span> ${revenue.toLocaleString()}`;
 
                 const revenueTrend = data.revenue_trend || 0;
                 const revenueTrendClass = revenueTrend >= 0 ? 'trend-positive' : 'trend-negative';
@@ -680,7 +718,6 @@
                 // Active Customers
                 const customers = data.active_customers || 0;
                 document.getElementById('activeCustomers').textContent = customers;
-                document.getElementById('customersMore').textContent = customers > 4 ? `+${customers - 4}` : '';
 
                 // Average Rating
                 const rating = data.avg_rating || 0;
@@ -711,13 +748,14 @@
                     updateDailyStats(data.stats || {});
 
                     const dateObj = new Date(date);
-                    const formatted = dateObj.toLocaleDateString('ar-SA', {
+                    const localeStr = trans.locale === 'ar' ? 'ar-SA' : 'en-US';
+                    const formatted = dateObj.toLocaleDateString(localeStr, {
                         weekday: 'long',
                         year: 'numeric',
                         month: 'long',
                         day: 'numeric'
                     });
-                    document.getElementById('scheduleSubtitle').textContent = `حجوزات يوم ${formatted}`;
+                    document.getElementById('scheduleSubtitle').textContent = `${trans.bookings_for_day} ${formatted}`;
                 } catch (e) {
                     console.error('Error loading bookings:', e);
                     render([]);
@@ -739,7 +777,7 @@
                     container.innerHTML = `
                         <div class="empty-state">
                             <div class="empty-state-icon">📅</div>
-                            <div>لا توجد حجوزات في هذا اليوم</div>
+                            <div>${trans.no_bookings}</div>
                         </div>
                     `;
                     return;
@@ -752,22 +790,20 @@
                                 ${b.time} <span class="period">${b.period}</span>
                             </div>
                             <div class="booking-title">${b.title}</div>
-                            <div class="booking-client">العميل: ${b.meta}</div>
+                            <div class="booking-client">${trans.client_label}: ${b.meta}</div>
                         </div>
                         <a href="/dashboard/bookings/${b.id}" class="booking-btn">
-                            عرض
+                            ${trans.view_btn}
                         </a>
                     </div>
                 `).join('');
             }
 
             function updateDailyStats(s) {
-                console.log(s.revenue);
-                
                 document.getElementById('dailyCompleted').textContent = s.completed || '0';
                 document.getElementById('dailyCancelled').textContent = s.cancelled || '0';
                 document.getElementById('dailyPending').textContent = s.pending || '0';
-                document.getElementById('dailyRevenue').textContent = s.revenue || 'SR 0';
+                document.getElementById('dailyRevenue').textContent = s.revenue || `${trans.currency} 0`;
             }
 
             // Apply filter button
