@@ -34,7 +34,7 @@ class HomeController extends Controller
 
         view()->share([
             'title' => __('dashboard.title'),
-            // 'page_title' => __('dashboard.home.title'),
+            'page_title' => __('dashboard.title'),
         ]);
 
         $from = Carbon::now()->startOfMonth()->toDateString();

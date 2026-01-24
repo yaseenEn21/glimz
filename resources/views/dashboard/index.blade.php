@@ -29,12 +29,6 @@
             color: var(--text-primary);
         }
 
-        .dashboard-container {
-            padding: 24px;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
         /* Date Filter */
         .date-filter-section {
             background: var(--card-bg);
@@ -427,10 +421,6 @@
 
         /* Responsive */
         @media (max-width: 768px) {
-            .dashboard-container {
-                padding: 16px;
-            }
-
             .stats-grid {
                 grid-template-columns: 1fr;
             }
@@ -456,7 +446,7 @@
         <div class="loader"></div>
     </div>
 
-    <div class="dashboard-container">
+    <div>
         <!-- Date Filter -->
         <div class="date-filter-section">
             <span class="filter-label">الفترة:</span>
