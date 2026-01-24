@@ -4,42 +4,49 @@ return [
 
     'title' => 'لوحة التحكم',
 
-    'kpi' => [
-        'title' => 'لوحة مؤشرات الأداء (KPI)',
-        'subtitle' => 'افتراضيًا الشهر الحالي — وتقدر تغيّر المدة',
+    'currency' => 'ر.س',
 
-        'actions' => [
-            'refresh' => 'تحديث',
-        ],
+    'filter' => [
+        'period' => 'الفترة',
+        'select_period' => 'اختر الفترة',
+        'apply' => 'تطبيق',
+    ],
 
-        'cards' => [
-            'total_bookings' => 'إجمالي الحجوزات',
-            'active_bookings' => 'حجوزات فعّالة',
-            'completed' => 'مكتملة',
-            'cancelled' => 'ملغية',
-            'cancel_rate' => 'نسبة الإلغاء %',
-            'package_bookings' => 'حجوزات بالباقات',
-            'gross' => 'إجمالي المبيعات',
-            'paid' => 'المدفوع',
-            'unpaid' => 'غير مدفوع',
-            'avg_ticket' => 'متوسط الفاتورة',
-        ],
+    'stats' => [
+        'active_bookings' => 'الحجوزات النشطة',
+        'period_revenue' => 'إيرادات الفترة',
+        'active_users' => 'المستخدمون النشطون',
+        'avg_rating' => 'متوسط التقييم',
+        'from_previous_period' => 'من الفترة السابقة',
+        'users_with_booking' => 'لديهم على الأقل حجز واحد خلال الفترة',
+    ],
 
-        'sections' => [
-            'status_distribution' => 'توزيع الحالات',
-            'trend_daily' => 'الحجوزات والمدفوعات (يوميًا)',
-            'top_bikers' => 'أفضل الموظفين',
-            'top_services' => 'أفضل الخدمات',
-        ],
+    'schedule' => [
+        'upcoming_bookings' => 'الحجوزات القادمة',
+        'loading' => 'جاري التحميل...',
+        'client' => 'العميل',
+        'view' => 'عرض',
+        'no_bookings' => 'لا توجد حجوزات في هذا اليوم',
+        'bookings_for_day' => 'حجوزات يوم',
+    ],
 
-        'charts' => [
-            'series' => [
-                'bookings' => 'الحجوزات',
-                'paid' => 'المدفوع',
-            ],
-            'bars' => [
-                'bookings_count' => 'عدد الحجوزات',
-            ],
+    'daily_summary' => [
+        'title' => 'ملخص اليوم',
+        'completed' => 'مكتملة',
+        'cancelled' => 'ملغاة',
+        'pending' => 'معلقة',
+        'revenue' => 'الإيرادات',
+    ],
+
+    'calendar' => [
+        'days' => [
+            'أحد',     // Sunday (0)
+            'إثن',     // Monday (1)
+            'ثلا',     // Tuesday (2)
+            'أرب',     // Wednesday (3)
+            'خمي',     // Thursday (4)
+            'جمع',     // Friday (5)
+            'سبت',     // Saturday (6)
         ],
     ],
 

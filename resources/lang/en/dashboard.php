@@ -4,42 +4,49 @@ return [
 
     'title' => 'Dashboard',
 
-    'kpi' => [
-        'title' => 'KPI Dashboard',
-        'subtitle' => 'Default is the current month — you can change the date range',
+    'currency' => 'SAR',
 
-        'actions' => [
-            'refresh' => 'Refresh',
-        ],
+    'filter' => [
+        'period' => 'Period',
+        'select_period' => 'Select period',
+        'apply' => 'Apply',
+    ],
 
-        'cards' => [
-            'total_bookings' => 'Total bookings',
-            'active_bookings' => 'Active bookings',
-            'completed' => 'Completed',
-            'cancelled' => 'Cancelled',
-            'cancel_rate' => 'Cancel rate %',
-            'package_bookings' => 'Package bookings',
-            'gross' => 'Total sales',
-            'paid' => 'Paid',
-            'unpaid' => 'Unpaid',
-            'avg_ticket' => 'Avg. ticket',
-        ],
+    'stats' => [
+        'active_bookings' => 'Active Bookings',
+        'period_revenue' => 'Period Revenue',
+        'active_users' => 'Active Users',
+        'avg_rating' => 'Average Rating',
+        'from_previous_period' => 'from previous period',
+        'users_with_booking' => 'have at least one booking during the period',
+    ],
 
-        'sections' => [
-            'status_distribution' => 'Status distribution',
-            'trend_daily' => 'Bookings & payments (daily)',
-            'top_bikers' => 'Top employees',
-            'top_services' => 'Top services',
-        ],
+    'schedule' => [
+        'upcoming_bookings' => 'Upcoming Bookings',
+        'loading' => 'Loading...',
+        'client' => 'Client',
+        'view' => 'View',
+        'no_bookings' => 'No bookings on this day',
+        'bookings_for_day' => 'Bookings for',
+    ],
 
-        'charts' => [
-            'series' => [
-                'bookings' => 'Bookings',
-                'paid' => 'Paid',
-            ],
-            'bars' => [
-                'bookings_count' => 'Bookings count',
-            ],
+    'daily_summary' => [
+        'title' => 'Daily Summary',
+        'completed' => 'Completed',
+        'cancelled' => 'Cancelled',
+        'pending' => 'Pending',
+        'revenue' => 'Revenue',
+    ],
+
+    'calendar' => [
+        'days' => [
+            'Sun',     // Sunday (0)
+            'Mon',     // Monday (1)
+            'Tue',     // Tuesday (2)
+            'Wed',     // Wednesday (3)
+            'Thu',     // Thursday (4)
+            'Fri',     // Friday (5)
+            'Sat',     // Saturday (6)
         ],
     ],
 

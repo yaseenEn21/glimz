@@ -232,6 +232,270 @@ class HomeController extends Controller
         ]);
     }
 
+    /**
+     * Get dashboard statistics for a date range
+     */
+    public function stats(Request $request)
+    {
+        [$from, $to] = $this->parseRange($request);
+
+        // Calculate previous period (same number of days before)
+        $daysDiff = Carbon::parse($from)->diffInDays(Carbon::parse($to)) + 1;
+        $prevFrom = Carbon::parse($from)->subDays($daysDiff)->toDateString();
+        $prevTo = Carbon::parse($from)->subDay()->toDateString();
+
+        // 1. Active Bookings (غير مكتملة وغير ملغية)
+        $activeBookings = Booking::query()
+            ->whereDate('booking_date', '>=', $from)
+            ->whereDate('booking_date', '<=', $to)
+            ->whereIn('status', ['pending', 'confirmed', 'moving', 'arrived'])
+            ->count();
+
+        // Total bookings for percentage calculation
+        $totalBookings = Booking::query()
+            ->whereDate('booking_date', '>=', $from)
+            ->whereDate('booking_date', '<=', $to)
+            ->count();
+
+        $activeBookingsPercent = $totalBookings > 0
+            ? round(($activeBookings / $totalBookings) * 100, 0)
+            : 0;
+
+        // 2. Revenue (إجمالي الفواتير المدفوعة)
+        $revenue = Invoice::query()
+            ->where('status', 'paid')
+            ->whereDate('paid_at', '>=', $from)
+            ->whereDate('paid_at', '<=', $to)
+            ->sum('total');
+
+        // Previous period revenue
+        $prevRevenue = Invoice::query()
+            ->where('status', 'paid')
+            ->whereDate('paid_at', '>=', $prevFrom)
+            ->whereDate('paid_at', '<=', $prevTo)
+            ->sum('total');
+
+        $revenueTrend = $prevRevenue > 0
+            ? (($revenue - $prevRevenue) / $prevRevenue) * 100
+            : 0;
+
+        // 3. Active Customers (عملاء لديهم حجز واحد على الأقل غير ملغي)
+        $activeCustomers = DB::table('bookings')
+            ->join('users', 'users.id', '=', 'bookings.user_id')
+            ->whereDate('bookings.booking_date', '>=', $from)
+            ->whereDate('bookings.booking_date', '<=', $to)
+            ->where('bookings.status', '!=', 'cancelled')
+            ->where('users.user_type', '=', 'customer') // ✅ استخدام user_type مباشرة
+            ->distinct('bookings.user_id')
+            ->count('bookings.user_id');
+
+        // 4. Average Rating (متوسط التقييمات للحجوزات المكتملة)
+        $avgRating = Booking::query()
+            ->whereDate('booking_date', '>=', $from)
+            ->whereDate('booking_date', '<=', $to)
+            ->where('status', 'completed')
+            ->whereNotNull('rating')
+            ->avg('rating');
+
+        $avgRating = $avgRating ? round($avgRating, 1) : 0;
+
+        // Previous period rating
+        $prevAvgRating = Booking::query()
+            ->whereDate('booking_date', '>=', $prevFrom)
+            ->whereDate('booking_date', '<=', $prevTo)
+            ->where('status', 'completed')
+            ->whereNotNull('rating')
+            ->avg('rating');
+
+        $prevAvgRating = $prevAvgRating ? round($prevAvgRating, 1) : 0;
+        $ratingTrend = $avgRating - $prevAvgRating;
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'active_bookings' => $activeBookings,
+                'active_bookings_percent' => $activeBookingsPercent,
+                'revenue' => round($revenue, 0),
+                'revenue_trend' => round($revenueTrend, 1),
+                'active_customers' => $activeCustomers,
+                'avg_rating' => $avgRating,
+                'rating_trend' => round($ratingTrend, 1),
+                'period' => [
+                    'from' => $from,
+                    'to' => $to,
+                    'prev_from' => $prevFrom,
+                    'prev_to' => $prevTo,
+                ],
+            ],
+        ]);
+    }
+
+    /**
+     * Get upcoming bookings (next 5 bookings from now OR bookings for specific date)
+     */
+    public function upcomingBookings(Request $request)
+    {
+        $date = $request->query('date');
+
+        if ($date) {
+            // Get bookings for specific date
+            return $this->getBookingsByDate($date);
+        }
+
+        // Get next 5 upcoming bookings
+        return $this->getUpcomingBookings();
+    }
+
+    /**
+     * Get bookings for a specific date
+     */
+    private function getBookingsByDate(string $date)
+    {
+        try {
+            $targetDate = Carbon::parse($date)->toDateString();
+        } catch (\Exception $e) {
+            $targetDate = Carbon::today()->toDateString();
+        }
+
+        // Get all bookings for this date
+        $bookings = Booking::query()
+            ->with(['user:id,name', 'service:id,name', 'car:id,vehicle_model_id,vehicle_make_id', 'employee.user:id,name'])
+            ->whereDate('booking_date', $targetDate)
+            ->whereIn('status', ['pending', 'confirmed', 'moving', 'arrived'])
+            ->orderBy('start_time', 'asc')
+            ->get();
+
+        // Format bookings
+        $formattedBookings = $bookings->map(function ($booking) {
+            return $this->formatBooking($booking);
+        });
+
+        // Get stats for this specific date
+        $dateStats = $this->getStatsForDate($targetDate);
+
+        return response()->json([
+            'success' => true,
+            'bookings' => $formattedBookings,
+            'stats' => $dateStats,
+            'date' => $targetDate,
+        ]);
+    }
+
+    /**
+     * Get next 5 upcoming bookings from now
+     */
+    private function getUpcomingBookings()
+    {
+        $now = Carbon::now();
+
+        // Get next 5 bookings starting from current date/time
+        $bookings = Booking::query()
+            ->with(['user:id,name', 'service:id,name', 'car:id,vehicle_model_id,vehicle_make_id', 'employee.user:id,name'])
+            ->where(function ($q) use ($now) {
+                // Future bookings (today or later)
+                $q->where('booking_date', '>', $now->toDateString())
+                    // OR today's bookings that haven't started yet
+                    ->orWhere(function ($q2) use ($now) {
+                    $q2->where('booking_date', '=', $now->toDateString())
+                        ->where('start_time', '>=', $now->format('H:i:s'));
+                });
+            })
+            ->whereIn('status', ['pending', 'confirmed', 'moving', 'arrived'])
+            ->orderBy('booking_date', 'asc')
+            ->orderBy('start_time', 'asc')
+            ->limit(5)
+            ->get();
+
+        // Format bookings
+        $formattedBookings = $bookings->map(function ($booking) {
+            return $this->formatBooking($booking);
+        });
+
+        // Get today's stats
+        $todayStats = $this->getTodayStats();
+
+        return response()->json([
+            'success' => true,
+            'bookings' => $formattedBookings,
+            'stats' => $todayStats,
+        ]);
+    }
+
+    /**
+     * Format a booking for frontend display
+     */
+    private function formatBooking($booking): array
+    {
+        $serviceName = is_array($booking->service->name)
+            ? ($booking->service->name[app()->getLocale()] ?? $booking->service->name['ar'] ?? 'غير محدد')
+            : $booking->service->name;
+
+
+        $makeNameData = $booking->car->make->name;
+        $modelNameData = $booking->car->model->name;
+
+        // بعد
+        $makeName = is_array($makeNameData)
+            ? ($makeNameData[app()->getLocale()] ?? $makeNameData['ar'] ?? 'غير محدد')
+            : $makeNameData;
+
+        $modelName = is_array($modelNameData)
+            ? ($modelNameData[app()->getLocale()] ?? $modelNameData['ar'] ?? 'غير محدد')
+            : $modelNameData;
+
+        $carInfo = "{$makeName} {$modelName}";
+
+        $startTime = Carbon::parse($booking->start_time);
+        $endTime = Carbon::parse($booking->end_time);
+
+        return [
+            'id' => $booking->id,
+            'time' => $startTime->format('H:i') . ' - ' . $endTime->format('H:i'),
+            'period' => $startTime->format('A') === 'AM' ? 'صباحاً' : 'مساءً',
+            'title' => "{$serviceName} - {$carInfo}",
+            'meta' => $booking->user->name ?? 'غير محدد',
+            'status' => $booking->status,
+            'date' => $booking->booking_date,
+            'employee' => $booking->employee?->user?->name,
+        ];
+    }
+
+    /**
+     * Get statistics for a specific date
+     */
+    private function getStatsForDate(string $date): array
+    {
+        $dateBookings = Booking::whereDate('booking_date', $date);
+
+        $completed = (clone $dateBookings)->where('status', 'completed')->count();
+        $cancelled = (clone $dateBookings)->where('status', 'cancelled')->count();
+        $pending = (clone $dateBookings)->where('status', 'pending')->count();
+
+        // Calculate today's revenue from completed bookings
+        $revenue = (clone $dateBookings)
+            ->where('status', 'completed')
+            ->sum('total_snapshot');
+
+        return [
+            'completed' => $completed,
+            'cancelled' => $cancelled,
+            'pending' => $pending,
+            'revenue' => 'SR ' . number_format($revenue, 0),
+        ];
+    }
+
+    /**
+     * Get today's booking statistics
+     */
+    private function getTodayStats(): array
+    {
+        $today = Carbon::today()->toDateString();
+        return $this->getStatsForDate($today);
+    }
+
+    /**
+     * Parse date range from request
+     */
     private function parseRange(Request $request): array
     {
         $from = $request->query('from');
@@ -244,9 +508,9 @@ class HomeController extends Controller
         }
 
         try {
-            $to = $to ? Carbon::parse($to)->toDateString() : Carbon::now()->endOfMonth()->toDateString();
+            $to = $to ? Carbon::parse($to)->toDateString() : Carbon::now()->toDateString();
         } catch (\Throwable $e) {
-            $to = Carbon::now()->endOfMonth()->toDateString();
+            $to = Carbon::now()->toDateString();
         }
 
         if ($from > $to) {

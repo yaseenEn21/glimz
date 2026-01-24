@@ -39,6 +39,9 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/', [HomeController::class, 'index'])->name('index');
         Route::get('/kpi', [HomeController::class, 'kpi'])->name('kpi');
+        Route::get('/upcoming-bookings', [HomeController::class, 'upcomingBookings'])->name('upcoming-bookings');
+        Route::get('/stats', [HomeController::class, 'stats'])->name('stats');
+
 
         Route::get('lang/{locale}', [HomeController::class, 'switchLang'])
             ->whereIn('locale', ['ar', 'en'])
