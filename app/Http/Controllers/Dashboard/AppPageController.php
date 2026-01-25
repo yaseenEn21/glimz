@@ -26,13 +26,17 @@ class AppPageController extends Controller
     protected function pages(): array
     {
         return [
-            'about_us' => [
-                'name'        => 'من نحن',
-                'description' => 'صفحة تعريفية عن Glimz.',
+            'cancellation_and_refund' => [
+                'name'        => 'الإلغاء والإسترجاع',
+                'description' => 'سياسية الإلغاء والإسترجاع.',
             ],
             'policies_and_terms' => [
                 'name'        => 'الشروط والأحكام',
-                'description' => 'اتفاقية الالتحاق وسياسة الدوام والدفع.',
+                'description' => 'الشروط والأحكام.',
+            ],
+            'privacy_policy' => [
+                'name'        => 'سياسة الخصوصية',
+                'description' => 'سياسة الخصوصية.',
             ],
         ];
     }
