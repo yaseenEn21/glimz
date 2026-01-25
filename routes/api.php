@@ -151,7 +151,7 @@ Route::prefix('v1')->middleware(['set.api.locale'])->group(function () {
     Route::get('help-and-support/faqs', [SettingController::class, 'faqs']);
     Route::get('help-and-support/contact-info', [SettingController::class, 'contactInfo']);
     Route::get('settings/policies', [SettingController::class, 'policies']);
-    Route::get('settings/about-us', [SettingController::class, 'aboutUs']);
+    Route::get('settings/privacy-policy', [SettingController::class, 'privacyPolicy']);
     Route::get('settings/cancellation-and-refund', [SettingController::class, 'cancellationAndRefund']);
 
     Route::get('app-translation', [AppTranslationController::class, 'show']);

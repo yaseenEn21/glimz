@@ -26,11 +26,11 @@ class SettingController extends Controller
         return api_success($value, 'policies html loaded successfully');
     }
 
-    public function aboutUs()
+    public function privacyPolicy()
     {
-        $value = Setting::where('key', 'about_us')->value('value');
+        $value = Setting::where('key', 'privacy_policy')->value('value');
 
-        return api_success($value, 'about us html loaded successfully');
+        return api_success($value, 'privacy policy us html loaded successfully');
     }
 
     public function cancellationAndRefund()
