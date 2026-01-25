@@ -51,7 +51,7 @@ class InvoiceController extends Controller
             $period = $request->input('period');
 
             if ($period === 'last_30_days') {
-                $q->where('issued_at', '>=', now()->subDays(30));
+                $q->where('created_at', '>=', now()->subDays(30));
             }
             // 'all_dates' لا يحتاج فلتر
         }
