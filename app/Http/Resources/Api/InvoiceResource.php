@@ -33,6 +33,7 @@ class InvoiceResource extends JsonResource
         $purposeLabel = $purpose['label'] === '—' ? __('messages.invoice') . ' ' . $this->number : $purpose['label'];
 
         return [
+            'user_id' => $this->user_id,
             'id' => $this->id,
             'number' => $this->number,
 
