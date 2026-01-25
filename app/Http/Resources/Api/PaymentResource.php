@@ -21,7 +21,7 @@ class PaymentResource extends JsonResource
             'method' => $this->method,   // wallet / credit_card / apple_pay...
             'method_label' => __('payment_methods.' . $this->method),
             'status' => $this->status,   // pending / paid / failed...
-            'status_label' => __('payment_statuses.' . $this->status),
+            'status_label' => __('payments.status.' . $this->status),
             
 
             'provider' => $this->provider,
