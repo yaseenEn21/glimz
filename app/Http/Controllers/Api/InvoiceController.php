@@ -79,6 +79,8 @@ class InvoiceController extends Controller
             $q->where('number', 'like', "%{$search}%");
         }
 
+        $q->where('user_id', $user->id);
+        
         $paginator = $q->paginate(50);
 
         $paginator->setCollection(
