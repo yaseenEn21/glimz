@@ -57,6 +57,7 @@ Route::prefix('v1')->middleware(['set.api.locale'])->group(function () {
 
         Route::get('profile', [ProfileController::class, 'show']);
         Route::post('profile', [ProfileController::class, 'update']);
+        Route::delete('delete-account', [ProfileController::class, 'deleteAccount']);
         Route::delete('profile/image', [ProfileController::class, 'deleteProfileImage']);
 
         Route::get('notifications/unread-count', [NotificationController::class, 'unreadCount']);

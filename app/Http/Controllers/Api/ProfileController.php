@@ -121,4 +121,17 @@ class ProfileController extends Controller
 
     }
 
+    public function deleteAccount(Request $request)
+    {
+        $user = auth()->user();
+
+        $user->update(['is_active' => false]);
+
+        $user->tokens()->delete();
+
+        // auth()->guard('sanctum')->logout();
+
+        return api_success(null, 'تم حذف حسابك وتسجيل الخروج من جميع الأجهزة بنجاح.');
+    }
+
 }

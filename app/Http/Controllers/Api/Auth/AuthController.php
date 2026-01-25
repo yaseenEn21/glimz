@@ -27,8 +27,14 @@ class AuthController extends Controller
         ]);
 
         $user = User::where('mobile', $data['mobile'])
-            ->where('is_active', true)
+            // ->where('is_active', true)
             ->first();
+
+        if ($user && !$user->is_active) {
+            return response()->json([
+                'message' => 'الحساب غير فعال. يرجى التواصل مع الادارة.',
+            ], 422);
+        }
 
         $otpCode = null;
 
