@@ -21,23 +21,28 @@ class PaymentController extends Controller
         $q = Payment::query()
             ->where('user_id', $user->id)
             ->with(['invoice:id,number,type,status,total'])
+            ->orderByDesc('created_at')  // ← أفضل من id عشان الترتيب الزمني الصحيح
             ->orderByDesc('id');
 
+        // فلتر الفترة الزمنية
         if ($request->filled('period')) {
             $period = $request->input('period');
 
             if ($period === 'last_30_days') {
                 $q->where('created_at', '>=', now()->subDays(30));
             }
+            // 'all_dates' لا يحتاج فلتر
         }
 
+        // فلتر الحالة
         if ($request->filled('status')) {
             $status = $request->input('status');
 
             if ($status === 'completed') {
                 $q->where('status', 'paid');
             } elseif ($status === 'not_completed') {
-                $q->where('status', 'failed');
+                // إذا عندك statuses ثانية غير failed، استخدم whereIn
+                $q->whereIn('status', ['failed', 'pending', 'cancelled']); // ← حسب الـ statuses الموجودة عندك
             }
         }
 

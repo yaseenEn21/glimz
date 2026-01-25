@@ -55,6 +55,7 @@ class InvoiceResource extends JsonResource
 
             'currency' => $this->currency,
             'issued_at' => $this->issued_at?->toDateTimeString(),
+            'created_at' => $this->created_at?->toDateTimeString(),
             'paid_at' => $this->paid_at?->toDateTimeString(),
 
             'items' => $this->items->sortBy('sort_order')
