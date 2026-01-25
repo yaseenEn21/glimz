@@ -36,7 +36,7 @@ class PaymentController extends Controller
 
             if ($status === 'completed') {
                 $q->where('status', 'paid');
-            } elseif ($status === 'failed') {
+            } elseif ($status === 'not_completed') {
                 $q->where('status', 'failed');
             }
         }

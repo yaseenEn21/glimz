@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Api\CarUpdateRequest;
 use App\Http\Resources\Api\CarResource;
 use App\Models\Car;
 use Illuminate\Http\Request;
@@ -54,7 +55,7 @@ class MyCarController extends Controller
         return api_success(new \App\Http\Resources\Api\CarResource($car));
     }
 
-    public function update(\App\Http\Requests\Api\CarUpdateRequest $request, \App\Models\Car $car)
+    public function update(CarUpdateRequest $request, Car $car)
     {
         if ($car->user_id !== $request->user()->id) {
             return api_error(__('api.not_found'), 404);
@@ -64,14 +65,14 @@ class MyCarController extends Controller
             $data = $request->validated();
 
             if (!empty($data['is_default'])) {
-                \App\Models\Car::where('user_id', $car->user_id)->update(['is_default' => false]);
+                Car::where('user_id', $car->user_id)->update(['is_default' => false]);
             }
 
             $car->update($data);
         });
 
         $car->refresh()->load(['make:id,name', 'model:id,name,vehicle_make_id']);
-        return api_success(new \App\Http\Resources\Api\CarResource($car), __('cars.updated'));
+        return api_success(new CarResource($car), __('cars.updated'));
     }
 
     public function makeDefault(Request $request, Car $car)

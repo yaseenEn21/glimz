@@ -59,14 +59,12 @@ class InvoiceController extends Controller
         if ($request->filled('status')) {
             $status = $request->input('status');
 
-            if ($status === 'paid') {
+            if ($status === 'completed') {
                 $q->where('status', 'paid');
-            } elseif ($status === 'unpaid') {
-                $q->where('status', 'unpaid');
-            } elseif ($status === 'cancelled') {
-                $q->where('status', 'cancelled');
-            } elseif ($status === 'refunded') {
-                $q->where('status', 'refunded');
+            } elseif ($status === 'not_completed') {
+                $q->where('status', 'unpaid')
+                ->orWhere('status', 'cancelled')
+                ->orWhere('status', 'refunded');
             }
         }
 
