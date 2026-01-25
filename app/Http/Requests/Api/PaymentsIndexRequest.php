@@ -12,7 +12,7 @@ class PaymentsIndexRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => ['nullable', Rule::in(['pending','paid','failed','cancelled','refunded'])],
+            'status' => ['nullable', Rule::in(['completed', 'not_completed'])],
             'method' => ['nullable', Rule::in(['wallet','credit_card','apple_pay','google_pay','cash'])],
             'invoice_id' => ['nullable', 'integer'],
         ];
