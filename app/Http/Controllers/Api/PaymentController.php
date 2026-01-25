@@ -41,8 +41,7 @@ class PaymentController extends Controller
             if ($status === 'completed') {
                 $q->where('status', 'paid');
             } elseif ($status === 'not_completed') {
-                // إذا عندك statuses ثانية غير failed، استخدم whereIn
-                $q->whereIn('status', ['failed', 'pending', 'cancelled']); // ← حسب الـ statuses الموجودة عندك
+                $q->whereIn('status', ['failed', 'pending', 'cancelled']); 
             }
         }
 
