@@ -62,9 +62,7 @@ class InvoiceController extends Controller
             if ($status === 'completed') {
                 $q->where('status', 'paid');
             } elseif ($status === 'not_completed') {
-                $q->where('status', 'unpaid')
-                ->orWhere('status', 'cancelled')
-                ->orWhere('status', 'refunded');
+                $q->whereIn('status', ['unpaid', 'cancelled', 'refunded']);
             }
         }
 
@@ -79,8 +77,6 @@ class InvoiceController extends Controller
             $q->where('number', 'like', "%{$search}%");
         }
 
-        $q->where('user_id', $user->id);
-        
         $paginator = $q->paginate(50);
 
         $paginator->setCollection(
