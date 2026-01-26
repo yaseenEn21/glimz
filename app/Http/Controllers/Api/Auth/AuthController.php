@@ -92,11 +92,17 @@ class AuthController extends Controller
             $otpCode = $otp->code;
         }
 
+        // حساب المدة المتبقية
+        $secondsRemaining = now()->diffInSeconds($otp->expires_at, false);
+        $minutes = ceil($secondsRemaining / 60);
+
         return response()->json([
             'message' => 'تم إرسال رمز التحقق إلى رقم الجوال.',
             'data' => [
                 'mobile' => $user->mobile,
-                'otp' => $otpCode
+                'otp' => $otpCode,
+                'seconds_remaining' => $secondsRemaining,
+                'minutes_remaining' => $minutes,
             ],
         ]);
     }
