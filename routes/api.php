@@ -28,6 +28,7 @@ use App\Http\Controllers\Api\InvoicePaymentController;
 use App\Http\Controllers\Api\CouponController;
 use App\Http\Controllers\Api\InvoiceCouponController;
 use App\Http\Controllers\Api\MoyasarWebhookController;
+use App\Http\Controllers\Api\RekazWebhookController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\AppTranslationController;
@@ -36,6 +37,8 @@ use Illuminate\Http\Request;
 
 
 Route::prefix('v1')->middleware(['set.api.locale'])->group(function () {
+
+    Route::post('rekaz/webhook', [MoyasarWebhookController::class, 'handle']);
 
     Route::post('moyasar/webhook', [MoyasarWebhookController::class, 'handle']);
     Route::get('moyasar/callback', [MoyasarWebhookController::class, 'callback']);
