@@ -907,6 +907,7 @@ class RekazService
                     ],
                 ],
             ],
+            'input' => (object) [], // ✅ إضافة input كـ object فاضي
         ];
 
         // استخدم customerId إذا موجود، وإلا customerDetails
@@ -962,7 +963,10 @@ class RekazService
     /**
      * بناء custom fields للحجز
      */
-    protected function buildCustomFields($booking): array
+    /**
+     * بناء custom fields للحجز
+     */
+    protected function buildCustomFields($booking): object
     {
         $customFields = [];
 
@@ -972,7 +976,8 @@ class RekazService
             // حسب ما يدعمه ركاز
         }
 
-        return $customFields;
+        // ✅ إرجاع object فاضي بدل array
+        return (object) $customFields;
     }
 
     /**
