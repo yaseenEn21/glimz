@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\SyncableWithRekaz;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -14,7 +15,7 @@ use Laravel\Sanctum\HasApiTokens;
 class User extends Authenticatable implements HasMedia
 {
 
-    use SoftDeletes, Notifiable, InteractsWithMedia, HasRoles, HasApiTokens;
+    use SoftDeletes, Notifiable, InteractsWithMedia, HasRoles, HasApiTokens, SyncableWithRekaz;
 
     protected $table = 'users';
 

@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\SyncableWithRekaz;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Booking extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, SyncableWithRekaz;
 
     protected $fillable = [
         'user_id',

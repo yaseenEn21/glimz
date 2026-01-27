@@ -39,6 +39,31 @@ class RekazService
     }
 
     /**
+     * تنسيق رقم الموبايل للسعودية
+     * 
+     * @param string $mobile
+     * @return string
+     */
+    protected function formatSaudiMobile(string $mobile): string
+    {
+        // إزالة كل شي غير الأرقام
+        $mobile = preg_replace('/[^0-9]/', '', $mobile);
+
+        // إزالة 0 من البداية
+        if (substr($mobile, 0, 1) === '0') {
+            $mobile = substr($mobile, 1);
+        }
+
+        // إزالة 966 من البداية إذا موجودة
+        if (substr($mobile, 0, 3) === '966') {
+            $mobile = substr($mobile, 3);
+        }
+
+        // إرجاع الرقم بصيغة دولية
+        return '+966' . $mobile;
+    }
+
+    /**
      * إنشاء HTTP client مع Basic Auth و Tenant header
      */
     protected function client()
@@ -811,34 +836,92 @@ class RekazService
     /**
      * تحويل بيانات Booking إلى صيغة ركاز
      */
+    /**
+     * تحويل بيانات Booking إلى صيغة ركاز
+     */
+    /**
+     * تحويل بيانات Booking إلى صيغة ركاز
+     */
     public function transformBookingToRekazPayload($booking): array
     {
         $booking->loadMissing(['user', 'service', 'address', 'car', 'employee']);
 
-        // 1. تحقق من وجود Customer مسبقاً في ركاز
+        // 1. تحقق من وجود Customer mapping محلياً
         $userMapping = $booking->user->rekazMapping;
         $customerId = null;
         $customerDetails = null;
 
         if ($userMapping && $userMapping->rekaz_id) {
+            // ✅ User موجود في rekaz_mappings
             $customerId = $userMapping->rekaz_id;
-            Log::info('Using existing Rekaz customer', [
+
+            Log::info('Using existing Rekaz customer from local mapping', [
                 'user_id' => $booking->user_id,
                 'rekaz_customer_id' => $customerId,
             ]);
+
         } else {
-            $cleanMobile = preg_replace('/^(\+|00)/', '', $booking->user->mobile);
-            $customerDetails = [
-                'name' => $booking->user->name,
-                'mobileNumber' => '+' . $cleanMobile,
-                'email' => $booking->user->email ?? '',
-                'type' => 1,
-                'companyName' => '',
-            ];
-            Log::info('Creating new Rekaz customer via customerDetails', [
+            // 2. ابحث في ركاز عن الموبايل
+            Log::info('Searching for customer in Rekaz', [
                 'user_id' => $booking->user_id,
-                'mobile' => $customerDetails['mobileNumber'],
+                'mobile' => $booking->user->mobile,
             ]);
+
+            $searchResult = $this->findCustomerByMobile($booking->user->mobile);
+
+            if ($searchResult['success'] && $searchResult['found']) {
+                // ✅ لقيناه في ركاز - خزّن الـ mapping
+                $customer = $searchResult['customer'];
+                $customerId = $customer['id'];
+
+                // حفظ mapping في قاعدة البيانات
+                $booking->user->syncWithRekaz(
+                    $customerId,
+                    'Customer',
+                    [
+                        'customer_number' => $customer['customerNumber'] ?? null,
+                        'mobile' => $customer['mobileNumber'] ?? null,
+                        'email' => $customer['email'] ?? null,
+                        'found_via_search' => true,
+                        'search_date' => now()->toDateTimeString(),
+                    ]
+                );
+
+                Log::info('Customer found in Rekaz and mapping saved', [
+                    'user_id' => $booking->user_id,
+                    'rekaz_customer_id' => $customerId,
+                    'customer_number' => $customer['customerNumber'] ?? null,
+                ]);
+
+            } else {
+                // ❌ ما لقيناه (أو البحث فشل) - استخدم customerDetails
+                if (!$searchResult['success']) {
+                    Log::warning('Search failed, will try to create new customer', [
+                        'user_id' => $booking->user_id,
+                        'error' => $searchResult['error'] ?? 'Unknown error',
+                    ]);
+                } else {
+                    Log::info('Customer not found in Rekaz, creating new', [
+                        'user_id' => $booking->user_id,
+                    ]);
+                }
+
+                // 3. إنشاء customer جديد عبر customerDetails
+                $formattedMobile = $this->formatSaudiMobile($booking->user->mobile);
+
+                $customerDetails = [
+                    'name' => $booking->user->name,
+                    'mobileNumber' => $formattedMobile,
+                    'email' => $booking->user->email ?? '',
+                    'type' => 1,
+                    'companyName' => '',
+                ];
+
+                Log::info('Will create new Rekaz customer via customerDetails', [
+                    'user_id' => $booking->user_id,
+                    'mobile_formatted' => $formattedMobile,
+                ]);
+            }
         }
 
         // 2. الحصول على service rekaz_id (priceId)
@@ -851,8 +934,7 @@ class RekazService
         // 3. الحصول على branch_id
         $branchId = $this->determineBranchId($booking);
 
-        // 4. ✅ تحويل التواريخ إلى UTC ISO 8601
-        // تنظيف booking_date
+        // 4. تحويل التواريخ إلى UTC ISO 8601
         $bookingDate = $booking->booking_date;
         if ($bookingDate instanceof \Carbon\Carbon) {
             $bookingDate = $bookingDate->format('Y-m-d');
@@ -860,11 +942,9 @@ class RekazService
             $bookingDate = substr($bookingDate, 0, 10);
         }
 
-        // تنظيف الأوقات (إزالة الثواني)
         $startTime = is_string($booking->start_time) ? substr($booking->start_time, 0, 5) : $booking->start_time;
         $endTime = is_string($booking->end_time) ? substr($booking->end_time, 0, 5) : $booking->end_time;
 
-        // إنشاء Carbon instances في التوقيت المحلي (Saudi Arabia)
         $bookingDateTime = \Carbon\Carbon::createFromFormat(
             'Y-m-d H:i',
             $bookingDate . ' ' . $startTime,
@@ -877,7 +957,6 @@ class RekazService
             'Asia/Riyadh'
         );
 
-        // تحويل إلى UTC وتنسيق ISO 8601 مع Z
         $from = $bookingDateTime->utc()->format('Y-m-d\TH:i:s\Z');
         $to = $endDateTime->utc()->format('Y-m-d\TH:i:s\Z');
 
@@ -900,17 +979,17 @@ class RekazService
                     'from' => $from,
                     'to' => $to,
                     'providerIds' => $providerIds,
-                    'customFields' => (object) [],  // ✅ تأكد من هذا السطر
+                    'customFields' => new \stdClass(),
                     'discount' => [
                         'type' => 'percentage',
                         'value' => 0,
                     ],
                 ],
             ],
-            'input' => (object) [],  // ✅ وهذا السطر
+            'input' => new \stdClass(),
         ];
 
-        // استخدم customerId إذا موجود، وإلا customerDetails
+        // ✅ استخدم customerId إذا موجود، وإلا customerDetails
         if ($customerId) {
             $payload['customerId'] = $customerId;
         } else {
@@ -1072,6 +1151,79 @@ class RekazService
         }
 
         return null;
+    }
+
+    /**
+     * البحث عن عميل في ركاز بواسطة رقم الجوال
+     * 
+     * @param string $mobileNumber
+     * @return array
+     */
+    public function findCustomerByMobile(string $mobileNumber): array
+    {
+        try {
+            // تنسيق رقم الجوال
+            $formattedMobile = $this->formatSaudiMobile($mobileNumber);
+
+            $response = $this->client()
+                ->get("{$this->baseUrl}/customers", [
+                    'mobileNumber' => $formattedMobile,
+                ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                $items = $data['items'] ?? [];
+
+                if (!empty($items)) {
+                    Log::info('Customer found in Rekaz', [
+                        'mobile' => $formattedMobile,
+                        'customer_id' => $items[0]['id'] ?? null,
+                    ]);
+
+                    return [
+                        'success' => true,
+                        'found' => true,
+                        'customer' => $items[0],
+                    ];
+                }
+
+                Log::info('Customer not found in Rekaz', [
+                    'mobile' => $formattedMobile,
+                ]);
+
+                return [
+                    'success' => true,
+                    'found' => false,
+                    'customer' => null,
+                ];
+            }
+
+            Log::warning('Failed to search customer in Rekaz', [
+                'mobile' => $formattedMobile,
+                'status' => $response->status(),
+                'response' => $response->json(),
+            ]);
+
+            return [
+                'success' => false,
+                'found' => false,
+                'error' => $response->json('message', 'Failed to search customer'),
+                'status_code' => $response->status(),
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Rekaz API search customer exception', [
+                'mobile' => $mobileNumber,
+                'error' => $e->getMessage(),
+            ]);
+
+            // ✅ في حالة الـ exception، نرجع success: false لكن ما نرمي exception
+            return [
+                'success' => false,
+                'found' => false,
+                'error' => $e->getMessage(),
+            ];
+        }
     }
 
 }

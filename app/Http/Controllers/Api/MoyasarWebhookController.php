@@ -49,10 +49,16 @@ class MoyasarWebhookController extends Controller
         $localInvoiceId = $data['metadata']['invoice_id'] ?? null;
         $bookingId = $data['metadata']['booking_id'] ?? null;
 
+        // 🔥 جديد: دعم wallet_topup من الموبايل
+        $purpose = $data['metadata']['purpose'] ?? $data['metadata']['type'] ?? null;
+        $topupAmount = isset($data['metadata']['amount']) ? (float) $data['metadata']['amount'] : null;
+
         \Log::info('📋 Extracted Metadata', [
             'local_payment_id' => $localPaymentId,
             'local_invoice_id' => $localInvoiceId,
             'booking_id' => $bookingId,
+            'purpose' => $purpose,
+            'topup_amount' => $topupAmount,
         ]);
 
         /** @var Payment|null $payment */
@@ -88,7 +94,7 @@ class MoyasarWebhookController extends Controller
             }
         }
 
-        // 🔥 محاولة 3: البحث بـ gateway_payment_id (للـ payments اللي انعملت من الويب)
+        // محاولة 3: البحث بـ gateway_payment_id
         if (!$payment && $gatewayPaymentId) {
             \Log::info('🔍 Searching payment by gateway_payment_id', ['gateway_payment_id' => $gatewayPaymentId]);
             $payment = Payment::query()
@@ -103,17 +109,50 @@ class MoyasarWebhookController extends Controller
             }
         }
 
-        // 🔥 محاولة 4: إنشاء payment جديد فقط لـ Apple/Google Pay
+        // محاولة 4: البحث بـ pending payment بنفس المبلغ (للويب)
+        if (!$payment && $type === 'payment_paid' && $gatewayInvoiceId) {
+            $amountPaid = ((int) ($data['amount'] ?? 0)) / 100;
+
+            \Log::info('🔍 Searching pending payment by amount and null gateway_invoice_id', [
+                'amount' => $amountPaid,
+                'gateway_invoice_id' => $gatewayInvoiceId,
+            ]);
+
+            $payment = Payment::query()
+                ->where('gateway', 'moyasar')
+                ->where('status', 'pending')
+                ->where('amount', $amountPaid)
+                ->whereNull('gateway_invoice_id')
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            if ($payment) {
+                \Log::info('✅ Payment found by amount match (updating gateway IDs)', [
+                    'payment_id' => $payment->id,
+                    'updating_gateway_invoice_id' => $gatewayInvoiceId,
+                    'updating_gateway_payment_id' => $gatewayPaymentId,
+                ]);
+
+                $payment->update([
+                    'gateway_invoice_id' => $gatewayInvoiceId,
+                    'gateway_payment_id' => $gatewayPaymentId,
+                ]);
+            } else {
+                \Log::info('⚠️ Payment NOT found by amount match');
+            }
+        }
+
+        // 🔥 محاولة 5: إنشاء payment جديد
         if (!$payment && $type === 'payment_paid') {
 
             $sourceType = strtolower($data['source']['type'] ?? '');
+            $amountPaid = ((int) ($data['amount'] ?? 0)) / 100;
 
-            // فقط Apple Pay و Google Pay نعمل لهم auto-create
+            // 🔥 حالة 1: Apple/Google Pay لحجز (invoice_id موجود)
             if (in_array($sourceType, ['applepay', 'googlepay']) && $localInvoiceId) {
 
-                \Log::info('🆕 Payment not found (Apple/Google Pay), attempting to create new one');
+                \Log::info('🆕 Creating payment for booking (Apple/Google Pay)');
 
-                \Log::info('🔍 Searching for invoice', ['invoice_id' => $localInvoiceId]);
                 $invoice = Invoice::find((int) $localInvoiceId);
 
                 if (!$invoice) {
@@ -130,23 +169,7 @@ class MoyasarWebhookController extends Controller
                     'purpose' => $invoice->meta['purpose'] ?? null,
                 ]);
 
-                // تحديد نوع الدفع
-                $paymentMethod = 'credit_card'; // default
-                if ($sourceType === 'applepay') {
-                    $paymentMethod = 'apple_pay';
-                } elseif ($sourceType === 'googlepay') {
-                    $paymentMethod = 'google_pay';
-                }
-
-                $amountPaid = ((int) ($data['amount'] ?? 0)) / 100;
-
-                \Log::info('💳 Creating new payment', [
-                    'amount' => $amountPaid,
-                    'method' => $paymentMethod,
-                    'source_type' => $sourceType,
-                    'user_id' => $invoice->user_id,
-                    'invoice_id' => $invoice->id,
-                ]);
+                $paymentMethod = $sourceType === 'applepay' ? 'apple_pay' : 'google_pay';
 
                 try {
                     $payment = Payment::create([
@@ -172,7 +195,7 @@ class MoyasarWebhookController extends Controller
                         'updated_by' => $invoice->user_id,
                     ]);
 
-                    \Log::info('✅ Payment created successfully', [
+                    \Log::info('✅ Payment created successfully (booking)', [
                         'payment_id' => $payment->id,
                         'payment_status' => $payment->status,
                         'payment_amount' => $payment->amount,
@@ -186,12 +209,69 @@ class MoyasarWebhookController extends Controller
                     return response()->json(['success' => false, 'message' => 'Payment creation failed'], 500);
                 }
             }
+
+            // 🔥 حالة 2: Apple/Google Pay لشحن محفظة (purpose = wallet_topup)
+            elseif (in_array($sourceType, ['applepay', 'googlepay']) && $purpose === 'wallet_topup') {
+
+                \Log::info('🆕 Creating payment for wallet topup (Apple/Google Pay)');
+
+                // نحتاج user_id من metadata
+                $userId = $data['metadata']['user_id'] ?? null;
+
+                if (!$userId) {
+                    \Log::error('❌ Cannot create wallet topup payment: user_id missing');
+                    return response()->json(['success' => true, 'message' => 'User ID missing'], 200);
+                }
+
+                $paymentMethod = $sourceType === 'applepay' ? 'apple_pay' : 'google_pay';
+
+                try {
+                    $payment = Payment::create([
+                        'user_id' => (int) $userId,
+                        'invoice_id' => null,
+                        'payable_type' => 'wallet_topup',
+                        'payable_id' => null,
+                        'amount' => $amountPaid,
+                        'currency' => $data['currency'] ?? 'SAR',
+                        'method' => $paymentMethod,
+                        'status' => 'pending',
+                        'gateway' => 'moyasar',
+                        'gateway_payment_id' => $gatewayPaymentId,
+                        'gateway_invoice_id' => $gatewayInvoiceId,
+                        'gateway_status' => $data['status'] ?? 'paid',
+                        'gateway_raw' => $data,
+                        'meta' => [
+                            'auto_created_from_webhook' => true,
+                            'source_type' => $sourceType,
+                            'purpose' => 'wallet_topup',
+                            'webhook_received_at' => now()->toIso8601String(),
+                        ],
+                        'created_by' => (int) $userId,
+                        'updated_by' => (int) $userId,
+                    ]);
+
+                    \Log::info('✅ Payment created successfully (wallet topup)', [
+                        'payment_id' => $payment->id,
+                        'payment_status' => $payment->status,
+                        'payment_amount' => $payment->amount,
+                        'user_id' => $userId,
+                    ]);
+
+                } catch (\Exception $e) {
+                    \Log::error('❌ Failed to create wallet topup payment', [
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+                    return response()->json(['success' => false, 'message' => 'Payment creation failed'], 500);
+                }
+            }
         }
 
         if (!$payment) {
             \Log::warning('⚠️ No payment found or created - ignoring webhook', [
                 'gateway_payment_id' => $gatewayPaymentId,
                 'gateway_invoice_id' => $gatewayInvoiceId,
+                'purpose' => $purpose,
             ]);
             return response()->json(['success' => true, 'message' => 'Ignored'], 200);
         }
@@ -201,6 +281,7 @@ class MoyasarWebhookController extends Controller
             'current_status' => $payment->status,
             'amount' => $payment->amount,
             'invoice_id' => $payment->invoice_id,
+            'payable_type' => $payment->payable_type,
         ]);
 
         // منع التكرار
@@ -335,6 +416,7 @@ class MoyasarWebhookController extends Controller
                         \Log::info('ℹ️ Payment has no invoice_id');
                     }
 
+                    // 🔥 شحن محفظة
                     if ($payment->payable_type === 'wallet_topup') {
                         \Log::info('💳 Processing wallet topup');
 
@@ -352,6 +434,7 @@ class MoyasarWebhookController extends Controller
                         $after = $before + (float) $amountPaid;
 
                         \Log::info('💰 Updating wallet balance', [
+                            'user_id' => $payment->user_id,
                             'before' => $before,
                             'amount' => $amountPaid,
                             'after' => $after,
@@ -375,13 +458,17 @@ class MoyasarWebhookController extends Controller
                                 'gateway' => 'moyasar',
                                 'gateway_payment_id' => $gatewayPaymentId,
                                 'gateway_invoice_id' => $payment->gateway_invoice_id,
+                                'source_type' => $data['source']['type'] ?? null,
                             ],
                             'payment_id' => $payment->id,
                             'created_by' => $payment->user_id,
                             'updated_by' => $payment->user_id,
                         ]);
 
-                        \Log::info('✅ Wallet transaction created');
+                        \Log::info('✅ Wallet transaction created', [
+                            'wallet_id' => $wallet->id,
+                            'new_balance' => $after,
+                        ]);
                     }
 
                 } else {
@@ -411,6 +498,7 @@ class MoyasarWebhookController extends Controller
                     'invoice_id' => $invoice?->id,
                     'invoice_status' => $invoice?->status,
                     'invoice_paid_at' => $invoice?->paid_at,
+                    'payable_type' => $payment->payable_type,
                 ]);
 
                 if ($payment->status !== 'paid') {
