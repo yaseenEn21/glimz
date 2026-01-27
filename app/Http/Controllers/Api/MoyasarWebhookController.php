@@ -34,6 +34,13 @@ class MoyasarWebhookController extends Controller
         $gatewayPaymentId = $data['id'] ?? null;
         $gatewayInvoiceId = $data['invoice_id'] ?? null;
 
+        \Log::info('Moyasar webhook', [
+            'type' => $type,
+            'data' => $data,
+            'gateway_payment_id' => $gatewayPaymentId,
+            'gateway_invoice_id' => $gatewayInvoiceId,
+        ]);
+
         // أفضل ربط: metadata.local_payment_id
         $localPaymentId = $data['metadata']['local_payment_id'] ?? null;
         
