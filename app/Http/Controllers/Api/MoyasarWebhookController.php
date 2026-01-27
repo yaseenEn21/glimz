@@ -17,20 +17,18 @@ class MoyasarWebhookController extends Controller
     {
         $secret = config('services.moyasar.webhook_secret');
 
-        // Moyasar webhook payload includes secret_token :contentReference[oaicite:6]{index=6}
         if ($secret && $request->input('secret_token') !== $secret) {
             \Log::error('Invalid Moyasar webhook token');
             return response()->json(['success' => false, 'message' => 'Invalid webhook token'], 403);
         }
 
-        $type = $request->input('type'); // e.g payment_paid
+        $type = $request->input('type');
         $data = $request->input('data', []);
 
         if (!is_array($data)) {
             return response()->json(['success' => false, 'message' => 'Invalid payload'], 400);
         }
 
-        // نحن أنشأنا invoice، فالدفع الحقيقي يأتي لاحقاً وفيه invoice_id
         $gatewayPaymentId = $data['id'] ?? null;
         $gatewayInvoiceId = $data['invoice_id'] ?? null;
 
@@ -41,9 +39,11 @@ class MoyasarWebhookController extends Controller
             'gateway_invoice_id' => $gatewayInvoiceId,
         ]);
 
-        // أفضل ربط: metadata.local_payment_id
+        // محاولة إيجاد Payment موجود
         $localPaymentId = $data['metadata']['local_payment_id'] ?? null;
-        
+        $localInvoiceId = $data['metadata']['invoice_id'] ?? null;
+        $bookingId = $data['metadata']['booking_id'] ?? null;
+
         /** @var Payment|null $payment */
         $payment = null;
 
@@ -56,6 +56,60 @@ class MoyasarWebhookController extends Controller
                 ->where('gateway', 'moyasar')
                 ->where('gateway_invoice_id', $gatewayInvoiceId)
                 ->first();
+        }
+
+        // 🔥 جديد: إذا ما لقينا payment ونوع الدفع paid، ننشئ واحد جديد
+        if (!$payment && $type === 'payment_paid' && $localInvoiceId) {
+
+            $invoice = Invoice::find((int) $localInvoiceId);
+
+            if ($invoice) {
+                // تحديد نوع الدفع من source
+                $paymentMethod = 'credit_card'; // default
+                $sourceType = strtolower($data['source']['type'] ?? '');
+
+                if ($sourceType === 'applepay') {
+                    $paymentMethod = 'apple_pay';
+                } elseif ($sourceType === 'googlepay') {
+                    $paymentMethod = 'google_pay';
+                } elseif (in_array($sourceType, ['creditcard', 'credit_card'])) {
+                    $paymentMethod = 'credit_card';
+                }
+
+                $amountPaid = ((int) ($data['amount'] ?? 0)) / 100;
+
+                // إنشاء Payment جديد
+                $payment = Payment::create([
+                    'user_id' => $invoice->user_id,
+                    'invoice_id' => $invoice->id,
+                    'payable_type' => $invoice->meta['purpose'] ?? 'invoice_payment',
+                    'payable_id' => $bookingId ?? $invoice->id,
+                    'amount' => $amountPaid,
+                    'currency' => $data['currency'] ?? 'SAR',
+                    'method' => $paymentMethod,
+                    'status' => 'pending', // سنحدثه لاحقاً
+                    'gateway' => 'moyasar',
+                    'gateway_payment_id' => $gatewayPaymentId,
+                    'gateway_invoice_id' => $gatewayInvoiceId,
+                    'gateway_status' => $data['status'] ?? 'paid',
+                    'gateway_raw' => $data,
+                    'meta' => [
+                        'auto_created_from_webhook' => true,
+                        'source_type' => $sourceType,
+                    ],
+                    'created_by' => $invoice->user_id,
+                    'updated_by' => $invoice->user_id,
+                ]);
+
+                \Log::info('Payment auto-created from webhook', [
+                    'payment_id' => $payment->id,
+                    'invoice_id' => $invoice->id,
+                    'gateway_payment_id' => $gatewayPaymentId,
+                ]);
+            } else {
+                \Log::warning('Invoice not found for webhook', ['invoice_id' => $localInvoiceId]);
+                return response()->json(['success' => true, 'message' => 'Invoice not found'], 200);
+            }
         }
 
         if (!$payment) {
@@ -71,8 +125,8 @@ class MoyasarWebhookController extends Controller
         if ($type === 'payment_paid') {
             DB::transaction(function () use ($payment, $data, $gatewayPaymentId, $svc) {
 
-                $amountPaid = ((int) ($data['amount'] ?? 0)) / 100; // halalas -> SAR
-                
+                $amountPaid = ((int) ($data['amount'] ?? 0)) / 100;
+
                 if ($amountPaid == $payment->amount) {
 
                     $payment->update([
@@ -99,16 +153,15 @@ class MoyasarWebhookController extends Controller
 
                             $remaining = max(0, (float) $invoice->total - $paidAmount);
 
-                            // ✅ إذا اكتملت الفاتورة
                             if ($remaining <= 0.0) {
                                 $invoice->update([
                                     'status' => 'paid',
                                     'paid_at' => now(),
                                     'is_locked' => true,
-                                    'updated_by' => $payment->user_id, // أو null
+                                    'updated_by' => $payment->user_id,
                                 ]);
 
-                                // ✅ هنا مكان fulfillPaidInvoice
+                                // تنفيذ الإجراءات بناءً على نوع الفاتورة
                                 if (data_get($invoice->meta, 'purpose') === 'package_purchase') {
                                     $svc->fulfillPaidInvoice($invoice->fresh(), $payment->user_id);
                                 }
@@ -121,7 +174,7 @@ class MoyasarWebhookController extends Controller
                         }
                     }
 
-                    // 2) تطبيق الأثر: شحن محفظة
+                    // شحن محفظة
                     if ($payment->payable_type === 'wallet_topup') {
 
                         $wallet = Wallet::query()->where('user_id', $payment->user_id)->lockForUpdate()->first();
@@ -141,14 +194,11 @@ class MoyasarWebhookController extends Controller
                         WalletTransaction::create([
                             'wallet_id' => $wallet->id,
                             'user_id' => $payment->user_id,
-
                             'direction' => 'credit',
                             'type' => 'topup',
-
                             'amount' => $amountPaid,
                             'balance_before' => $before,
                             'balance_after' => $after,
-
                             'description' => [
                                 'ar' => 'شحن محفظة',
                                 'en' => 'Wallet topup',
@@ -158,7 +208,6 @@ class MoyasarWebhookController extends Controller
                                 'gateway_payment_id' => $gatewayPaymentId,
                                 'gateway_invoice_id' => $payment->gateway_invoice_id,
                             ],
-
                             'payment_id' => $payment->id,
                             'created_by' => $payment->user_id,
                             'updated_by' => $payment->user_id,
