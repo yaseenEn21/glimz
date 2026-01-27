@@ -20,6 +20,7 @@ class Payment extends Model
         'status',
         'gateway',
         'gateway_payment_id',
+        'gateway_invoice_id',
         'gateway_status',
         'gateway_transaction_url',
         'gateway_raw',
