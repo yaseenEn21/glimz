@@ -81,4 +81,29 @@ return [
         ],
     ],
 
+    'rekaz' => [
+        'api_key' => env('REKAZ_API_KEY'),
+        'api_secret' => env('REKAZ_API_SECRET', ''),
+        'tenant_id' => env('REKAZ_TENANT_ID'),
+        'base_url' => env('REKAZ_API_URL', 'https://platform.rekaz.io/api/public'),
+        'timeout' => env('REKAZ_API_TIMEOUT', 30),
+        'retry_times' => env('REKAZ_API_RETRY_TIMES', 3),
+        'retry_delay' => env('REKAZ_API_RETRY_DELAY', 100),
+
+        'sync' => [
+            'enabled' => env('REKAZ_SYNC_ENABLED', true),
+            'on_create' => env('REKAZ_SYNC_ON_CREATE', true),
+            'on_update' => env('REKAZ_SYNC_ON_UPDATE', true),
+            'on_cancel' => env('REKAZ_SYNC_ON_CANCEL', true),
+            'on_delete' => env('REKAZ_SYNC_ON_DELETE', true),
+            'delay_seconds' => env('REKAZ_SYNC_DELAY', 2),
+            'queue' => env('REKAZ_SYNC_QUEUE', 'rekaz-sync'),
+        ],
+
+        'webhook' => [
+            'secret' => env('REKAZ_WEBHOOK_SECRET'),
+            'enabled' => env('REKAZ_WEBHOOK_ENABLED', true),
+        ],
+    ],
+
 ];

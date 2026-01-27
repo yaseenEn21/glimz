@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\SyncableWithRekaz;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -10,7 +11,8 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 
 class Service extends Model implements HasMedia
 {
-    use SoftDeletes, InteractsWithMedia;
+    use SoftDeletes, InteractsWithMedia, SyncableWithRekaz;
+
 
     protected $fillable = [
         'service_category_id',

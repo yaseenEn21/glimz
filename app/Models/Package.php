@@ -4,6 +4,7 @@
 
 namespace App\Models;
 
+use App\Traits\SyncableWithRekaz;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\MediaLibrary\HasMedia;
@@ -11,7 +12,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 
 class Package extends Model implements HasMedia
 {
-    use SoftDeletes, InteractsWithMedia;
+    use SoftDeletes, InteractsWithMedia, SyncableWithRekaz;
 
     protected $fillable = [
         'name',

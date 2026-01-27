@@ -3,9 +3,12 @@
 namespace App\Observers;
 
 use App\Jobs\AwardBookingPointsJob;
+use App\Jobs\SyncBookingToRekazJob;
 use App\Models\Booking;
 use App\Models\User;
 use App\Services\NotificationService;
+use App\Services\RekazService;
+use Illuminate\Support\Facades\Log;
 
 class BookingObserver
 {
@@ -24,10 +27,15 @@ class BookingObserver
         // 1) إشعار الأدمن بوجود حجز جديد
         $this->notifyAdminsNewBooking($booking);
 
-        // 2) إشعار الزبون لو الحجز تم إنشاؤه بحالة pending (اختياري لكنه غالبًا مطلوب)
+        // 2) إشعار الزبون لو الحجز تم إنشاؤه بحالة pending
         if (($booking->status ?? null) === 'pending') {
             $this->notifyCustomerStatus($booking, 'pending');
         }
+
+        // ✅ 3) مزامنة مع ركاز (بعد الإنشاء الكامل)
+        // ملاحظة: هذا يتم dispatch من الـ Controller مباشرة
+        // لكن لو تريد أمان إضافي يمكن dispatch هنا أيضاً
+        // $this->syncToRekaz($booking, 'create');
     }
 
     /**
@@ -37,6 +45,10 @@ class BookingObserver
     {
         // فقط إذا status تغيّر
         if (!$booking->wasChanged('status')) {
+            // لكن تحقق من تغييرات أخرى قد تحتاج مزامنة مع ركاز
+            if ($this->hasRekazRelevantChanges($booking)) {
+                $this->syncToRekaz($booking, 'update');
+            }
             return;
         }
 
@@ -44,19 +56,179 @@ class BookingObserver
 
         $newStatus = (string) $booking->status;
 
-        // تحديث تواريخ حسب الحالة (اختياري)
+        // تحديث تواريخ حسب الحالة
         $this->syncStatusTimestamps($booking, $newStatus);
 
         // إشعار الزبون بالحالة الجديدة
         $this->notifyCustomerStatus($booking, $newStatus);
 
-        // ✅ هنا الإضافة
+        // ✅ منح النقاط عند الإكمال
         if ($newStatus === 'completed') {
             $actorId = $booking->updated_by ?? auth()->id();
             AwardBookingPointsJob::dispatch((int) $booking->id, $actorId)->afterCommit();
         }
+
+        // ✅ مزامنة مع ركاز
+        $this->syncToRekaz($booking, $newStatus === 'cancelled' ? 'cancel' : 'update');
     }
 
+    /**
+     * عند حذف الحجز نهائياً
+     */
+    public function deleted(Booking $booking): void
+    {
+        // عند حذف الحجز نهائياً، نحذفه من ركاز
+        $this->syncToRekaz($booking, 'delete');
+    }
+
+    /**
+     * مزامنة مع ركاز
+     */
+    private function syncToRekaz(Booking $booking, string $action): void
+    {
+        // التحقق من تفعيل المزامنة
+        if (!config('services.rekaz.sync.enabled', true)) {
+            return;
+        }
+
+        // التحقق من تفعيل المزامنة حسب نوع الإجراء
+        $syncConfigKey = match($action) {
+            'create' => 'on_create',
+            'update' => 'on_update',
+            'cancel' => 'on_cancel',
+            'delete' => 'on_delete',
+            default => null,
+        };
+
+        if ($syncConfigKey && !config("services.rekaz.sync.{$syncConfigKey}", true)) {
+            return;
+        }
+
+        try {
+            // للإنشاء: لا نزامن إذا لم يكن له ID في ركاز بعد
+            // (سيتم المزامنة من الـ Controller)
+            if ($action === 'create') {
+                $meta = $booking->meta ?? [];
+                if (isset($meta['rekaz_booking_id'])) {
+                    // تم إنشاؤه مسبقاً، لا حاجة للمزامنة مرة أخرى
+                    return;
+                }
+            }
+
+            // للتحديث/الإلغاء: نتحقق من وجود ID في ركاز
+            if (in_array($action, ['update', 'cancel'])) {
+                $meta = $booking->meta ?? [];
+                $rekazBookingId = $meta['rekaz_booking_id'] ?? null;
+
+                // إذا لم يكن له ID في ركاز، لا داعي للمزامنة
+                if (!$rekazBookingId) {
+                    Log::debug('Rekaz sync skipped - no rekaz_booking_id', [
+                        'booking_id' => $booking->id,
+                        'action' => $action,
+                    ]);
+                    return;
+                }
+            }
+
+            // تحديد البيانات المحدثة فقط إذا كان تحديث
+            $updateData = null;
+            if ($action === 'update') {
+                $updateData = $this->getRekazUpdatedFields($booking);
+            }
+
+            // dispatch الـ Job
+            $delay = config('services.rekaz.sync.delay_seconds', 2);
+            $queue = config('services.rekaz.sync.queue', 'rekaz-sync');
+
+            SyncBookingToRekazJob::dispatch($booking, $action, $updateData)
+                ->onQueue($queue)
+                ->delay(now()->addSeconds($delay));
+
+            Log::info('Rekaz sync job dispatched from observer', [
+                'booking_id' => $booking->id,
+                'action' => $action,
+                'dirty' => array_keys($booking->getDirty()),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to dispatch Rekaz sync job from observer', [
+                'booking_id' => $booking->id,
+                'action' => $action,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * التحقق من وجود تغييرات تحتاج مزامنة مع ركاز
+     */
+    private function hasRekazRelevantChanges(Booking $booking): bool
+    {
+        // الحقول المهمة التي تحتاج مزامنة
+        $importantFields = [
+            'booking_date',
+            'start_time',
+            'end_time',
+            'employee_id',
+            'service_id',
+            'address_id',
+            'rating',
+            'rating_comment',
+        ];
+
+        foreach ($importantFields as $field) {
+            if ($booking->wasChanged($field)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * جلب الحقول المحدثة فقط لإرسالها لركاز
+     */
+    private function getRekazUpdatedFields(Booking $booking): array
+    {
+        $updateData = [];
+        $changes = $booking->getChanges();
+
+        // تعيين الحقول المحدثة
+        if (isset($changes['status'])) {
+            $updateData['status'] = app(RekazService::class)->mapStatusToRekaz($booking->status);
+        }
+
+        if (isset($changes['booking_date'])) {
+            $updateData['date'] = $booking->booking_date;
+        }
+
+        if (isset($changes['start_time'])) {
+            $updateData['start_time'] = $booking->start_time;
+        }
+
+        if (isset($changes['end_time'])) {
+            $updateData['end_time'] = $booking->end_time;
+        }
+
+        if (isset($changes['employee_id'])) {
+            $updateData['employee_id'] = $booking->employee_id ? (string) $booking->employee_id : null;
+        }
+
+        if (isset($changes['rating'])) {
+            $updateData['rating'] = $booking->rating;
+            $updateData['rating_comment'] = $booking->rating_comment;
+        }
+
+        // إذا لم يكن هناك تحديثات محددة، أرسل كامل البيانات
+        if (empty($updateData)) {
+            return app(\App\Services\RekazService::class)->transformBookingData($booking);
+        }
+
+        return $updateData;
+    }
+
+    /**
+     * إشعار الزبون بحالة الحجز
+     */
     private function notifyCustomerStatus(Booking $booking, string $status): void
     {
         $user = $booking->user;
@@ -70,7 +242,7 @@ class BookingObserver
             return;
         }
 
-        $locale = $user->locale ?? 'ar'; // عدّل حسب حقلك (إن وجد)
+        $locale = $user->locale ?? 'ar';
 
         $templateData = [
             'booking_id' => $booking->id,
@@ -98,13 +270,12 @@ class BookingObserver
         );
     }
 
+    /**
+     * إشعار الأدمنز بحجز جديد
+     */
     private function notifyAdminsNewBooking(Booking $booking): void
     {
-        // ✅ اختَر أدمنز حسب نظامك:
-        // إذا عندك Spatie:
-        // $admins = User::role('admin')->where('is_active', 1)->where('notification', 1)->get();
-
-        // خيار عام (لو عندك حقل is_admin):
+        // اختر أدمنز حسب نظامك
         $admins = User::query()
             ->where('is_active', 1)
             ->where('notification', 1)
@@ -144,6 +315,9 @@ class BookingObserver
         }
     }
 
+    /**
+     * الحصول على template key حسب الحالة
+     */
     private function customerTemplateKeyForStatus(string $status): ?string
     {
         return match ($status) {
@@ -157,6 +331,9 @@ class BookingObserver
         };
     }
 
+    /**
+     * تحديث timestamps حسب الحالة
+     */
     private function syncStatusTimestamps(Booking $booking, string $status): void
     {
         // مهم: لا تعمل save داخل observer بدون حماية لتفادي loop
@@ -170,21 +347,28 @@ class BookingObserver
         }
     }
 
+    /**
+     * تنسيق التاريخ
+     */
     private function formatDate(Booking $booking): string
     {
-        // booking_date casted date:Y-m-d عندك، فممتاز
         return $booking->booking_date?->format('Y-m-d') ?? '';
     }
 
+    /**
+     * تنسيق الوقت
+     */
     private function formatTime(Booking $booking): string
     {
-        // start_time غالبًا string (HH:MM:SS أو HH:MM)
         $t = (string) ($booking->start_time ?? '');
         if ($t === '')
             return '';
         return substr($t, 0, 5);
     }
 
+    /**
+     * الحصول على اسم الخدمة بأمان
+     */
     private function safeServiceName(Booking $booking, string $locale): string
     {
         $service = $booking->service;
@@ -196,6 +380,9 @@ class BookingObserver
         return is_string($name) ? $name : (string) ($service->name ?? '');
     }
 
+    /**
+     * الحصول على اسم الموظف بأمان
+     */
     private function safeEmployeeName(Booking $booking): string
     {
         $emp = $booking->employee;

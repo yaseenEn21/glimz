@@ -24,8 +24,8 @@ class AddressTestSeeder extends Seeder
                 'building_name' => 'لا يوجد',
                 'building_number' => '15',
                 'landmark' => 'تموينات العزيزية',
-                'lat' => 21.5433333,
-                'lng' => 39.2405556,
+                'lat' => 26.4207,
+                'lng' => 50.0888,
                 'is_default' => true,
             ]);
 

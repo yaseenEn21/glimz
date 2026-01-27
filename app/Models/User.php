@@ -86,4 +86,14 @@ class User extends Authenticatable implements HasMedia
         return $this->hasMany(Address::class);
     }
 
+    public function employee()
+    {
+        return $this->hasOne(Employee::class);
+    }
+
+    public function isEmployee(): bool
+    {
+        return $this->user_type === 'biker' && $this->employee !== null;
+    }
+
 }

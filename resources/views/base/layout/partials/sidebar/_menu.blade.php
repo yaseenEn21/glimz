@@ -226,14 +226,14 @@
                         <span class="menu-heading fw-bold text-uppercase fs-7">{{ __('sidebar.sections.settings') }}</span>
                     </div>
 
-                    @can('zones.view')
+                    @can('branches.view')
                         <div class="menu-item">
-                            <a class="menu-link {{ $is('dashboard.zones.*') ? 'active' : '' }}"
-                                href="{{ route('dashboard.zones.index') }}">
+                            <a class="menu-link {{ $is('dashboard.branches.*') ? 'active' : '' }}"
+                                href="{{ route('dashboard.branches.index') }}">
                                 <span class="menu-icon">
                                     <i class="fas fa-map-marked-alt fs-2"></i>
                                 </span>
-                                <span class="menu-title">{{ t(key: 'zones.title') }}</span>
+                                <span class="menu-title">{{ t(key: 'branches.title') }}</span>
                             </a>
                         </div>
                     @endcan

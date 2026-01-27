@@ -19,7 +19,11 @@ class ProductResource extends JsonResource
     public function toArray(Request $request): array
     {
         $price = (float) $this->price;
-        $disc = $this->discounted_price !== null ? (float) $this->discounted_price : null;
+        if ($this->price !== $this->discounted_price) {
+            $disc = $this->discounted_price !== null ? (float) $this->discounted_price : null;
+        }else{
+            $disc = null;
+        }
 
         return [
             'id' => $this->id,

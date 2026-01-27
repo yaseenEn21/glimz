@@ -18,10 +18,10 @@ class MoyasarWebhookController extends Controller
         $secret = config('services.moyasar.webhook_secret');
 
         // Moyasar webhook payload includes secret_token :contentReference[oaicite:6]{index=6}
-        // if ($secret && $request->input('secret_token') !== $secret) {
-        //     \Log::error('Invalid Moyasar webhook token');
-        //     return response()->json(['success' => false, 'message' => 'Invalid webhook token'], 403);
-        // }
+        if ($secret && $request->input('secret_token') !== $secret) {
+            \Log::error('Invalid Moyasar webhook token');
+            return response()->json(['success' => false, 'message' => 'Invalid webhook token'], 403);
+        }
 
         $type = $request->input('type'); // e.g payment_paid
         $data = $request->input('data', []);

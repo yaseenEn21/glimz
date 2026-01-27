@@ -80,6 +80,12 @@ return new class extends Migration {
 
             $table->json('meta')->nullable();
 
+            $table->string('rekaz_booking_id')
+                ->nullable()
+                ->storedAs("JSON_UNQUOTE(JSON_EXTRACT(meta, '$.rekaz_booking_id'))");
+
+            $table->index('rekaz_booking_id');
+
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
 

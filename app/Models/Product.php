@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\SyncableWithRekaz;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
@@ -9,7 +10,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Product extends Model implements HasMedia
 {
-    use SoftDeletes, InteractsWithMedia;
+    use SoftDeletes, InteractsWithMedia, SyncableWithRekaz;
 
     protected $fillable = [
         'product_category_id',
