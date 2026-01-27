@@ -65,7 +65,6 @@ class InvoicePaymentController extends Controller
                 'status' => $method === 'wallet' ? 'paid' : 'pending',
                 'paid_at' => $method === 'wallet' ? now() : null,
 
-                // payable اختياري (نحط invoiceable لو موجود)
                 'payable_type' => $invoice->resolvePayableType(),
                 'payable_id' => $invoice->resolvePayableId(),
 
@@ -73,20 +72,26 @@ class InvoicePaymentController extends Controller
                 'updated_by' => $user->id,
             ]);
 
+            \Log::info('💳 Payment created', [
+                'payment_id' => $p->id,
+                'invoice_id' => $invoice->id,
+                'amount' => $remaining,
+                'method' => $method,
+            ]);
+
             // ✅ لو Wallet → خصم + إقفال الفاتورة
             if ($method === 'wallet') {
                 $walletService->debit(
                     $user,
                     $remaining,
-                    'booking_charge', // لاحقاً بنقرر حسب invoiceable (حجز/باقة/متجر)
+                    'booking_charge',
                     ['ar' => 'سداد فاتورة', 'en' => 'Invoice payment'],
-                    $invoice->invoiceable, // reference
+                    $invoice->invoiceable,
                     $p->id,
                     $user->id,
                     ['invoice_id' => $invoice->id, 'invoice_number' => $invoice->number]
                 );
 
-                // حدّث الفاتورة
                 $invoice->update([
                     'status' => 'paid',
                     'paid_at' => now(),
@@ -105,7 +110,7 @@ class InvoicePaymentController extends Controller
                 }
 
             } else {
-                // بوابة الدفع (Moyasar) -> رجّع رابط الدفع
+                // بوابة الدفع (Moyasar)
                 $p->update([
                     'gateway' => 'moyasar',
                     'meta' => array_merge($p->meta ?? [], [
@@ -114,36 +119,79 @@ class InvoicePaymentController extends Controller
                     ]),
                 ]);
 
-                // create moyasar invoice url
-                $amountHalala = (int) round($remaining * 100);
-
-                $moyasarInvoice = app(MoyasarService::class)->createInvoice([
-                    'amount' => $amountHalala,
-                    'currency' => $invoice->currency,
-                    'description' => "Invoice {$invoice->number}",
-                    'callback_url' => config('services.moyasar.callback_url'),
-                    'success_url' => config('services.moyasar.success_url'),
-                    'back_url' => config('services.moyasar.back_url'),
-                    'metadata' => [
-                        'local_payment_id' => (string) $p->id,
-                        'invoice_id' => (string) $invoice->id,
-                        'user_id' => (string) $user->id,
-                        'purpose' => data_get($invoice->meta, 'purpose'),
-                    ],
+                \Log::info('🔗 Creating Moyasar invoice', [
+                    'payment_id' => $p->id,
+                    'amount' => $remaining,
                 ]);
 
-                $p->update([
-                    'gateway_invoice_id' => $moyasarInvoice['id'] ?? null,
-                    'gateway_transaction_url' => $moyasarInvoice['url'] ?? null,
-                    'gateway_status' => $moyasarInvoice['status'] ?? null,
-                    'gateway_raw' => $moyasarInvoice,
-                ]);
+                try {
+                    $amountHalala = (int) round($remaining * 100);
+
+                    $moyasarInvoice = app(MoyasarService::class)->createInvoice([
+                        'amount' => $amountHalala,
+                        'currency' => $invoice->currency,
+                        'description' => "Invoice {$invoice->number}",
+                        'callback_url' => config('services.moyasar.callback_url'),
+                        'success_url' => config('services.moyasar.success_url'),
+                        'back_url' => config('services.moyasar.back_url'),
+                        'metadata' => [
+                            'local_payment_id' => (string) $p->id,
+                            'invoice_id' => (string) $invoice->id,
+                            'user_id' => (string) $user->id,
+                            'purpose' => data_get($invoice->meta, 'purpose'),
+                        ],
+                    ]);
+
+                    \Log::info('✅ Moyasar invoice created', [
+                        'payment_id' => $p->id,
+                        'moyasar_invoice_id' => $moyasarInvoice['id'] ?? 'N/A',
+                        'moyasar_url' => $moyasarInvoice['url'] ?? 'N/A',
+                        'moyasar_status' => $moyasarInvoice['status'] ?? 'N/A',
+                        'full_response' => $moyasarInvoice,
+                    ]);
+
+                    $updateData = [
+                        'gateway_invoice_id' => $moyasarInvoice['id'] ?? null,
+                        'gateway_transaction_url' => $moyasarInvoice['url'] ?? null,
+                        'gateway_status' => $moyasarInvoice['status'] ?? null,
+                        'gateway_raw' => $moyasarInvoice,
+                    ];
+
+                    \Log::info('📝 Updating payment with Moyasar data', [
+                        'payment_id' => $p->id,
+                        'update_data' => $updateData,
+                    ]);
+
+                    $p->update($updateData);
+
+                    // تحقق من التحديث
+                    $p->refresh();
+                    \Log::info('🔍 Payment after update', [
+                        'payment_id' => $p->id,
+                        'gateway_invoice_id' => $p->gateway_invoice_id,
+                        'gateway_transaction_url' => $p->gateway_transaction_url,
+                    ]);
+
+                    if (!$p->gateway_invoice_id) {
+                        \Log::error('⚠️ WARNING: gateway_invoice_id is still null after update!', [
+                            'payment_id' => $p->id,
+                            'moyasar_response' => $moyasarInvoice,
+                        ]);
+                    }
+
+                } catch (\Exception $e) {
+                    \Log::error('❌ Moyasar invoice creation failed', [
+                        'payment_id' => $p->id,
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString(),
+                    ]);
+                    throw $e;
+                }
             }
 
             return $p->load(['invoice:id,number,type,status,total']);
         });
 
-        // لو رجعت api_error من جوة transaction
         if ($payment instanceof \Illuminate\Http\JsonResponse) {
             return $payment;
         }

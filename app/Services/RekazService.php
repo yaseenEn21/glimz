@@ -900,14 +900,14 @@ class RekazService
                     'from' => $from,
                     'to' => $to,
                     'providerIds' => $providerIds,
-                    'customFields' => $this->buildCustomFields($booking),
+                    'customFields' => (object) [],  // ✅ تأكد من هذا السطر
                     'discount' => [
                         'type' => 'percentage',
                         'value' => 0,
                     ],
                 ],
             ],
-            'input' => (object) [], // ✅ إضافة input كـ object فاضي
+            'input' => (object) [],  // ✅ وهذا السطر
         ];
 
         // استخدم customerId إذا موجود، وإلا customerDetails
