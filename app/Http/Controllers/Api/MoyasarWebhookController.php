@@ -18,7 +18,7 @@ class MoyasarWebhookController extends Controller
         $secret = config('services.moyasar.webhook_secret');
 
         if ($secret && $request->input('secret_token') !== $secret) {
-            \Log::error('Invalid Moyasar webhook token');
+            \Log::error('❌ Invalid Moyasar webhook token');
             return response()->json(['success' => false, 'message' => 'Invalid webhook token'], 403);
         }
 
@@ -26,58 +26,117 @@ class MoyasarWebhookController extends Controller
         $data = $request->input('data', []);
 
         if (!is_array($data)) {
+            \Log::error('❌ Invalid webhook payload - data is not array');
             return response()->json(['success' => false, 'message' => 'Invalid payload'], 400);
         }
 
         $gatewayPaymentId = $data['id'] ?? null;
         $gatewayInvoiceId = $data['invoice_id'] ?? null;
 
-        \Log::info('Moyasar webhook', [
+        \Log::info('🔔 Moyasar Webhook Received', [
             'type' => $type,
-            'data' => $data,
             'gateway_payment_id' => $gatewayPaymentId,
             'gateway_invoice_id' => $gatewayInvoiceId,
+            'amount' => $data['amount'] ?? null,
+            'currency' => $data['currency'] ?? null,
+            'status' => $data['status'] ?? null,
+            'source_type' => $data['source']['type'] ?? null,
+            'metadata' => $data['metadata'] ?? [],
         ]);
 
-        // محاولة إيجاد Payment موجود
+        // استخراج البيانات من metadata
         $localPaymentId = $data['metadata']['local_payment_id'] ?? null;
         $localInvoiceId = $data['metadata']['invoice_id'] ?? null;
         $bookingId = $data['metadata']['booking_id'] ?? null;
 
+        \Log::info('📋 Extracted Metadata', [
+            'local_payment_id' => $localPaymentId,
+            'local_invoice_id' => $localInvoiceId,
+            'booking_id' => $bookingId,
+        ]);
+
         /** @var Payment|null $payment */
         $payment = null;
 
+        // محاولة 1: البحث بـ local_payment_id
         if ($localPaymentId) {
-            $payment = Payment::query()->where('id', (int) $localPaymentId)->where('gateway', 'moyasar')->first();
+            \Log::info('🔍 Searching payment by local_payment_id', ['id' => $localPaymentId]);
+            $payment = Payment::query()
+                ->where('id', (int) $localPaymentId)
+                ->where('gateway', 'moyasar')
+                ->first();
+
+            if ($payment) {
+                \Log::info('✅ Payment found by local_payment_id', ['payment_id' => $payment->id]);
+            } else {
+                \Log::info('⚠️ Payment NOT found by local_payment_id');
+            }
         }
 
+        // محاولة 2: البحث بـ gateway_invoice_id
         if (!$payment && $gatewayInvoiceId) {
+            \Log::info('🔍 Searching payment by gateway_invoice_id', ['gateway_invoice_id' => $gatewayInvoiceId]);
             $payment = Payment::query()
                 ->where('gateway', 'moyasar')
                 ->where('gateway_invoice_id', $gatewayInvoiceId)
                 ->first();
+
+            if ($payment) {
+                \Log::info('✅ Payment found by gateway_invoice_id', ['payment_id' => $payment->id]);
+            } else {
+                \Log::info('⚠️ Payment NOT found by gateway_invoice_id');
+            }
         }
 
-        // 🔥 جديد: إذا ما لقينا payment ونوع الدفع paid، ننشئ واحد جديد
-        if (!$payment && $type === 'payment_paid' && $localInvoiceId) {
+        // 🔥 محاولة 3: إنشاء payment جديد إذا لم يُعثر عليه
+        if (!$payment && $type === 'payment_paid') {
+            \Log::info('🆕 Payment not found, attempting to create new one');
 
+            if (!$localInvoiceId) {
+                \Log::error('❌ Cannot create payment: invoice_id missing from metadata');
+                return response()->json(['success' => true, 'message' => 'Invoice ID missing'], 200);
+            }
+
+            \Log::info('🔍 Searching for invoice', ['invoice_id' => $localInvoiceId]);
             $invoice = Invoice::find((int) $localInvoiceId);
 
-            if ($invoice) {
-                // تحديد نوع الدفع من source
-                $paymentMethod = 'credit_card'; // default
-                $sourceType = strtolower($data['source']['type'] ?? '');
+            if (!$invoice) {
+                \Log::error('❌ Invoice not found', ['invoice_id' => $localInvoiceId]);
+                return response()->json(['success' => true, 'message' => 'Invoice not found'], 200);
+            }
 
-                if ($sourceType === 'applepay') {
-                    $paymentMethod = 'apple_pay';
-                } elseif ($sourceType === 'googlepay') {
-                    $paymentMethod = 'google_pay';
-                } elseif (in_array($sourceType, ['creditcard', 'credit_card'])) {
-                    $paymentMethod = 'credit_card';
-                }
+            \Log::info('✅ Invoice found', [
+                'invoice_id' => $invoice->id,
+                'invoice_number' => $invoice->invoice_number,
+                'invoice_status' => $invoice->status,
+                'invoice_total' => $invoice->total,
+                'user_id' => $invoice->user_id,
+                'purpose' => $invoice->meta['purpose'] ?? null,
+            ]);
 
-                $amountPaid = ((int) ($data['amount'] ?? 0)) / 100;
+            // تحديد نوع الدفع من source
+            $paymentMethod = 'credit_card'; // default
+            $sourceType = strtolower($data['source']['type'] ?? '');
 
+            if ($sourceType === 'applepay') {
+                $paymentMethod = 'apple_pay';
+            } elseif ($sourceType === 'googlepay') {
+                $paymentMethod = 'google_pay';
+            } elseif (in_array($sourceType, ['creditcard', 'credit_card'])) {
+                $paymentMethod = 'credit_card';
+            }
+
+            $amountPaid = ((int) ($data['amount'] ?? 0)) / 100;
+
+            \Log::info('💳 Creating new payment', [
+                'amount' => $amountPaid,
+                'method' => $paymentMethod,
+                'source_type' => $sourceType,
+                'user_id' => $invoice->user_id,
+                'invoice_id' => $invoice->id,
+            ]);
+
+            try {
                 // إنشاء Payment جديد
                 $payment = Payment::create([
                     'user_id' => $invoice->user_id,
@@ -87,7 +146,7 @@ class MoyasarWebhookController extends Controller
                     'amount' => $amountPaid,
                     'currency' => $data['currency'] ?? 'SAR',
                     'method' => $paymentMethod,
-                    'status' => 'pending', // سنحدثه لاحقاً
+                    'status' => 'pending', // سنحدثه لاحقاً في transaction
                     'gateway' => 'moyasar',
                     'gateway_payment_id' => $gatewayPaymentId,
                     'gateway_invoice_id' => $gatewayInvoiceId,
@@ -96,139 +155,244 @@ class MoyasarWebhookController extends Controller
                     'meta' => [
                         'auto_created_from_webhook' => true,
                         'source_type' => $sourceType,
+                        'webhook_received_at' => now()->toIso8601String(),
                     ],
                     'created_by' => $invoice->user_id,
                     'updated_by' => $invoice->user_id,
                 ]);
 
-                \Log::info('Payment auto-created from webhook', [
+                \Log::info('✅ Payment created successfully', [
                     'payment_id' => $payment->id,
-                    'invoice_id' => $invoice->id,
-                    'gateway_payment_id' => $gatewayPaymentId,
+                    'payment_status' => $payment->status,
+                    'payment_amount' => $payment->amount,
                 ]);
-            } else {
-                \Log::warning('Invoice not found for webhook', ['invoice_id' => $localInvoiceId]);
-                return response()->json(['success' => true, 'message' => 'Invoice not found'], 200);
+
+            } catch (\Exception $e) {
+                \Log::error('❌ Failed to create payment', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                return response()->json(['success' => false, 'message' => 'Payment creation failed'], 500);
             }
         }
 
         if (!$payment) {
-            // مش خطأ قاتل: ممكن webhook لحاجة مش من نظامنا
+            \Log::warning('⚠️ No payment found or created - ignoring webhook');
             return response()->json(['success' => true, 'message' => 'Ignored'], 200);
         }
 
+        \Log::info('📌 Payment to process', [
+            'payment_id' => $payment->id,
+            'current_status' => $payment->status,
+            'amount' => $payment->amount,
+            'invoice_id' => $payment->invoice_id,
+        ]);
+
         // منع التكرار
         if (in_array($payment->status, ['paid', 'refunded', 'cancelled'], true)) {
+            \Log::info('⏭️ Payment already processed - skipping', [
+                'payment_id' => $payment->id,
+                'status' => $payment->status,
+            ]);
             return response()->json(['success' => true, 'message' => 'Already processed'], 200);
         }
 
         if ($type === 'payment_paid') {
-            DB::transaction(function () use ($payment, $data, $gatewayPaymentId, $svc) {
+            \Log::info('💰 Processing payment_paid event');
 
-                $amountPaid = ((int) ($data['amount'] ?? 0)) / 100;
+            try {
+                DB::transaction(function () use ($payment, $data, $gatewayPaymentId, $svc) {
 
-                if ($amountPaid == $payment->amount) {
+                    $amountPaid = ((int) ($data['amount'] ?? 0)) / 100;
 
-                    $payment->update([
-                        'status' => 'paid',
-                        'gateway_payment_id' => $gatewayPaymentId,
-                        'gateway_status' => $data['status'] ?? 'paid',
-                        'paid_at' => now(),
-                        'gateway_raw' => $data,
+                    \Log::info('💵 Amount comparison', [
+                        'amount_from_webhook' => $amountPaid,
+                        'amount_in_payment' => $payment->amount,
+                        'match' => $amountPaid == $payment->amount,
                     ]);
 
-                    if ($payment->invoice_id) {
+                    if ($amountPaid == $payment->amount) {
 
-                        $invoice = Invoice::query()
-                            ->where('id', $payment->invoice_id)
-                            ->lockForUpdate()
-                            ->first();
+                        \Log::info('✅ Amount matches - updating payment to paid');
 
-                        if ($invoice && $invoice->status !== 'paid') {
+                        $payment->update([
+                            'status' => 'paid',
+                            'gateway_payment_id' => $gatewayPaymentId,
+                            'gateway_status' => $data['status'] ?? 'paid',
+                            'paid_at' => now(),
+                            'gateway_raw' => $data,
+                        ]);
 
-                            $paidAmount = (float) Payment::query()
-                                ->where('invoice_id', $invoice->id)
-                                ->where('status', 'paid')
-                                ->sum('amount');
+                        \Log::info('✅ Payment updated to paid', ['payment_id' => $payment->id]);
 
-                            $remaining = max(0, (float) $invoice->total - $paidAmount);
+                        if ($payment->invoice_id) {
 
-                            if ($remaining <= 0.0) {
-                                $invoice->update([
-                                    'status' => 'paid',
-                                    'paid_at' => now(),
-                                    'is_locked' => true,
-                                    'updated_by' => $payment->user_id,
+                            \Log::info('📄 Processing invoice', ['invoice_id' => $payment->invoice_id]);
+
+                            $invoice = Invoice::query()
+                                ->where('id', $payment->invoice_id)
+                                ->lockForUpdate()
+                                ->first();
+
+                            if (!$invoice) {
+                                \Log::error('❌ Invoice not found for update', ['invoice_id' => $payment->invoice_id]);
+                                return;
+                            }
+
+                            \Log::info('📄 Invoice loaded', [
+                                'invoice_id' => $invoice->id,
+                                'invoice_status' => $invoice->status,
+                                'invoice_total' => $invoice->total,
+                            ]);
+
+                            if ($invoice->status !== 'paid') {
+
+                                $paidAmount = (float) Payment::query()
+                                    ->where('invoice_id', $invoice->id)
+                                    ->where('status', 'paid')
+                                    ->sum('amount');
+
+                                $remaining = max(0, (float) $invoice->total - $paidAmount);
+
+                                \Log::info('💰 Invoice payment calculation', [
+                                    'invoice_total' => $invoice->total,
+                                    'paid_amount' => $paidAmount,
+                                    'remaining' => $remaining,
                                 ]);
 
-                                // تنفيذ الإجراءات بناءً على نوع الفاتورة
-                                if (data_get($invoice->meta, 'purpose') === 'package_purchase') {
-                                    $svc->fulfillPaidInvoice($invoice->fresh(), $payment->user_id);
-                                }
+                                if ($remaining <= 0.0) {
+                                    \Log::info('✅ Invoice fully paid - updating status');
 
-                                if (data_get($invoice->meta, 'purpose') === 'booking_invoice') {
-                                    app(\App\Services\BookingFulfillmentService::class)
-                                        ->fulfillPaidInvoice($invoice->fresh(), $payment->user_id);
+                                    $invoice->update([
+                                        'status' => 'paid',
+                                        'paid_at' => now(),
+                                        'is_locked' => true,
+                                        'updated_by' => $payment->user_id,
+                                    ]);
+
+                                    \Log::info('✅ Invoice updated to paid');
+
+                                    // تنفيذ الإجراءات بناءً على نوع الفاتورة
+                                    $purpose = data_get($invoice->meta, 'purpose');
+                                    \Log::info('🎯 Invoice purpose', ['purpose' => $purpose]);
+
+                                    if ($purpose === 'package_purchase') {
+                                        \Log::info('📦 Fulfilling package purchase');
+                                        try {
+                                            $svc->fulfillPaidInvoice($invoice->fresh(), $payment->user_id);
+                                            \Log::info('✅ Package purchase fulfilled');
+                                        } catch (\Exception $e) {
+                                            \Log::error('❌ Package fulfillment failed', [
+                                                'error' => $e->getMessage(),
+                                                'trace' => $e->getTraceAsString(),
+                                            ]);
+                                        }
+                                    }
+
+                                    if ($purpose === 'booking_invoice') {
+                                        \Log::info('📅 Fulfilling booking');
+                                        try {
+                                            app(\App\Services\BookingFulfillmentService::class)
+                                                ->fulfillPaidInvoice($invoice->fresh(), $payment->user_id);
+                                            \Log::info('✅ Booking fulfilled');
+                                        } catch (\Exception $e) {
+                                            \Log::error('❌ Booking fulfillment failed', [
+                                                'error' => $e->getMessage(),
+                                                'trace' => $e->getTraceAsString(),
+                                            ]);
+                                        }
+                                    }
+                                } else {
+                                    \Log::info('⚠️ Invoice not fully paid yet', ['remaining' => $remaining]);
                                 }
+                            } else {
+                                \Log::info('⏭️ Invoice already paid - skipping');
                             }
+                        } else {
+                            \Log::info('ℹ️ Payment has no invoice_id');
                         }
-                    }
 
-                    // شحن محفظة
-                    if ($payment->payable_type === 'wallet_topup') {
+                        // شحن محفظة
+                        if ($payment->payable_type === 'wallet_topup') {
+                            \Log::info('💳 Processing wallet topup');
 
-                        $wallet = Wallet::query()->where('user_id', $payment->user_id)->lockForUpdate()->first();
-                        if (!$wallet) {
-                            $wallet = Wallet::create([
-                                'user_id' => $payment->user_id,
-                                'balance' => 0,
+                            $wallet = Wallet::query()->where('user_id', $payment->user_id)->lockForUpdate()->first();
+                            if (!$wallet) {
+                                \Log::info('🆕 Creating new wallet for user', ['user_id' => $payment->user_id]);
+                                $wallet = Wallet::create([
+                                    'user_id' => $payment->user_id,
+                                    'balance' => 0,
+                                ]);
+                                $wallet->refresh();
+                            }
+
+                            $before = (float) $wallet->balance;
+                            $after = $before + (float) $amountPaid;
+
+                            \Log::info('💰 Updating wallet balance', [
+                                'before' => $before,
+                                'amount' => $amountPaid,
+                                'after' => $after,
                             ]);
-                            $wallet->refresh();
+
+                            $wallet->update(['balance' => $after]);
+
+                            WalletTransaction::create([
+                                'wallet_id' => $wallet->id,
+                                'user_id' => $payment->user_id,
+                                'direction' => 'credit',
+                                'type' => 'topup',
+                                'amount' => $amountPaid,
+                                'balance_before' => $before,
+                                'balance_after' => $after,
+                                'description' => [
+                                    'ar' => 'شحن محفظة',
+                                    'en' => 'Wallet topup',
+                                ],
+                                'meta' => [
+                                    'gateway' => 'moyasar',
+                                    'gateway_payment_id' => $gatewayPaymentId,
+                                    'gateway_invoice_id' => $payment->gateway_invoice_id,
+                                ],
+                                'payment_id' => $payment->id,
+                                'created_by' => $payment->user_id,
+                                'updated_by' => $payment->user_id,
+                            ]);
+
+                            \Log::info('✅ Wallet transaction created');
                         }
 
-                        $before = (float) $wallet->balance;
-                        $after = $before + (float) $amountPaid;
+                    } else {
+                        \Log::warning('⚠️ Amount mismatch - marking payment as failed', [
+                            'expected' => $payment->amount,
+                            'received' => $amountPaid,
+                        ]);
 
-                        $wallet->update(['balance' => $after]);
-
-                        WalletTransaction::create([
-                            'wallet_id' => $wallet->id,
-                            'user_id' => $payment->user_id,
-                            'direction' => 'credit',
-                            'type' => 'topup',
-                            'amount' => $amountPaid,
-                            'balance_before' => $before,
-                            'balance_after' => $after,
-                            'description' => [
-                                'ar' => 'شحن محفظة',
-                                'en' => 'Wallet topup',
-                            ],
-                            'meta' => [
-                                'gateway' => 'moyasar',
-                                'gateway_payment_id' => $gatewayPaymentId,
-                                'gateway_invoice_id' => $payment->gateway_invoice_id,
-                            ],
-                            'payment_id' => $payment->id,
-                            'created_by' => $payment->user_id,
-                            'updated_by' => $payment->user_id,
+                        $payment->update([
+                            'status' => 'failed',
+                            'gateway_payment_id' => $gatewayPaymentId,
+                            'gateway_status' => $data['status'] ?? 'failed',
+                            'gateway_raw' => $data,
                         ]);
                     }
 
-                } else {
-                    $payment->update([
-                        'status' => 'failed',
-                        'gateway_payment_id' => $gatewayPaymentId,
-                        'gateway_status' => $data['status'] ?? 'failed',
-                        'gateway_raw' => $data,
-                    ]);
-                }
+                });
 
-            });
+                \Log::info('✅ Transaction completed successfully');
+                return response()->json(['success' => true], 200);
 
-            return response()->json(['success' => true], 200);
+            } catch (\Exception $e) {
+                \Log::error('❌ Transaction failed', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+                return response()->json(['success' => false, 'message' => 'Processing failed'], 500);
+            }
         }
 
         if (in_array($type, ['payment_failed', 'payment_voided', 'payment_canceled'], true)) {
+            \Log::info('❌ Processing failed/voided/canceled payment');
+
             $payment->update([
                 'status' => 'failed',
                 'gateway_payment_id' => $gatewayPaymentId,
@@ -236,9 +400,11 @@ class MoyasarWebhookController extends Controller
                 'gateway_raw' => $data,
             ]);
 
+            \Log::info('✅ Payment marked as failed');
             return response()->json(['success' => true], 200);
         }
 
+        \Log::info('⚠️ Unhandled event type', ['type' => $type]);
         return response()->json(['success' => true, 'message' => 'Unhandled event'], 200);
     }
 
