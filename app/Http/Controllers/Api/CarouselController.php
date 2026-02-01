@@ -28,7 +28,7 @@ class CarouselController extends Controller
                 'is_active',
                 'starts_at',
                 'ends_at',
-                'type',
+                'display_type',
             ])
             ->where('display_type', 'slider')
             ->active()

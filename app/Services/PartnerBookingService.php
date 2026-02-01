@@ -8,6 +8,8 @@ use App\Models\Car;
 use App\Models\Partner;
 use App\Models\Service;
 use App\Models\User;
+use App\Models\VehicleMake;
+use App\Models\VehicleModel;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -92,7 +94,7 @@ class PartnerBookingService
                 $booking = Booking::create([
                     'partner_id' => $partner->id,
                     'external_id' => $data['external_id'],
-                    
+
                     'user_id' => $customer->id,
                     'car_id' => $car->id,
                     'address_id' => $address->id,
@@ -349,28 +351,212 @@ class PartnerBookingService
      */
     protected function createOrUpdateCar(User $user, array $data): Car
     {
-        $plateNumber = $data['plate_number'];
+        // 1. فصل plate_number و plate_letters
+        $plateParts = $this->parsePlateNumber($data['plate_number']);
 
+        // 2. البحث عن vehicle_make_id و vehicle_model_id
+        $vehicleIds = $this->resolveVehicleIds($data['model'] ?? null);
+
+        // 3. البحث عن السيارة الموجودة
         $car = Car::query()
             ->where('user_id', $user->id)
-            ->where('plate_number', $plateNumber)
+            ->where('plate_number', $plateParts['number'])
+            ->where('plate_letters', $plateParts['letters'])
             ->first();
 
         if ($car) {
+            // تحديث السيارة الموجودة
             $car->update([
                 'color' => $data['color'] ?? $car->color,
-                'model' => $data['model'] ?? $car->model,
+                'vehicle_make_id' => $vehicleIds['make_id'] ?? $car->vehicle_make_id,
+                'vehicle_model_id' => $vehicleIds['model_id'] ?? $car->vehicle_model_id,
             ]);
         } else {
+            // إنشاء سيارة جديدة
             $car = Car::create([
                 'user_id' => $user->id,
-                'plate_number' => $plateNumber,
+                'vehicle_make_id' => $vehicleIds['make_id'],
+                'vehicle_model_id' => $vehicleIds['model_id'],
                 'color' => $data['color'] ?? null,
-                'model' => $data['model'] ?? null,
+                'plate_number' => $plateParts['number'],
+                'plate_letters' => $plateParts['letters'],
+                'plate_letters_ar' => $plateParts['letters_ar'],
+                'is_default' => false,
             ]);
         }
 
         return $car;
+    }
+
+    /**
+     * فصل رقم اللوحة إلى أرقام وحروف
+     */
+    protected function parsePlateNumber(string $plateNumber): array
+    {
+        // إزالة المسافات الزائدة
+        $plateNumber = trim($plateNumber);
+
+        // فصل الحروف عن الأرقام
+        // مثال: "أ ب ج 1234" أو "ABC 1234"
+
+        // استخراج الأرقام
+        preg_match_all('/\d+/', $plateNumber, $numbersMatch);
+        $numbers = implode('', $numbersMatch[0] ?? []);
+
+        // استخراج الحروف (عربي وإنجليزي)
+        preg_match_all('/[\x{0600}-\x{06FF}a-zA-Z]+/u', $plateNumber, $lettersMatch);
+        $letters = implode(' ', $lettersMatch[0] ?? []);
+
+        // تحديد إذا كانت الحروف عربية
+        $isArabic = preg_match('/[\x{0600}-\x{06FF}]/u', $letters);
+
+        return [
+            'number' => $numbers ?: '0000',
+            'letters' => $letters ?: 'XXX',
+            'letters_ar' => $isArabic ? $letters : null,
+        ];
+    }
+
+    /**
+     * البحث عن vehicle_make_id و vehicle_model_id
+     */
+    protected function resolveVehicleIds(?string $modelString): array
+    {
+        if (!$modelString) {
+            return $this->getUnknownVehicleIds();
+        }
+
+        $model = VehicleModel::query()
+            ->where('is_active', true)
+            ->whereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(name, "$.ar"))) LIKE ?', ['%' . mb_strtolower($modelString) . '%'])
+            ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(name, "$.en"))) LIKE ?', ['%' . strtolower($modelString) . '%'])
+            ->first();
+
+        if ($model) {
+            return [
+                'make_id' => $model->vehicle_make_id,
+                'model_id' => $model->id,
+            ];
+        }
+
+        // استراتيجية 2: محاولة فصل Make و Model
+        // مثال: "تويوتا كامري" → make: "تويوتا", model: "كامري"
+        $parts = preg_split('/\s+/', trim($modelString), 2);
+
+        if (count($parts) >= 2) {
+            $makeName = $parts[0];
+            $modelName = $parts[1];
+
+            $make = VehicleMake::query()
+                ->where('is_active', true)
+                ->whereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(name, "$.ar"))) = ?', [mb_strtolower($makeName)])
+                ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(name, "$.en"))) = ?', [strtolower($makeName)])
+                ->first();
+
+            if ($make) {
+                $model = VehicleModel::query()
+                    ->where('vehicle_make_id', $make->id)
+                    ->where('is_active', true)
+                    ->whereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(name, "$.ar"))) LIKE ?', ['%' . mb_strtolower($modelName) . '%'])
+                    ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(name, "$.en"))) LIKE ?', ['%' . strtolower($modelName) . '%'])
+                    ->first();
+
+                if ($model) {
+                    return [
+                        'make_id' => $make->id,
+                        'model_id' => $model->id,
+                    ];
+                }
+
+                // لو لقينا Make بس، نستخدم أول موديل منه
+                $firstModel = VehicleModel::query()
+                    ->where('vehicle_make_id', $make->id)
+                    ->where('is_active', true)
+                    ->orderBy('sort_order')
+                    ->first();
+
+                if ($firstModel) {
+                    return [
+                        'make_id' => $make->id,
+                        'model_id' => $firstModel->id,
+                    ];
+                }
+            }
+        }
+
+        // استراتيجية 3: البحث عن Make فقط
+        $make = VehicleMake::query()
+            ->where('is_active', true)
+            ->whereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(name, "$.ar"))) LIKE ?', ['%' . mb_strtolower($modelString) . '%'])
+            ->orWhereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(name, "$.en"))) LIKE ?', ['%' . strtolower($modelString) . '%'])
+            ->first();
+
+        if ($make) {
+            $firstModel = VehicleModel::query()
+                ->where('vehicle_make_id', $make->id)
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->first();
+
+            if ($firstModel) {
+                return [
+                    'make_id' => $make->id,
+                    'model_id' => $firstModel->id,
+                ];
+            }
+        }
+
+        // إذا ما لقينا: استخدام Unknown
+        return $this->getUnknownVehicleIds();
+    }
+
+    /**
+     * الحصول على Unknown vehicle make/model
+     */
+    protected function getUnknownVehicleIds(): array
+    {
+        static $unknownMake = null;
+        static $unknownModel = null;
+
+        if ($unknownMake === null) {
+            // البحث أو إنشاء "Unknown" make
+            $unknownMake = VehicleMake::query()
+                ->whereRaw('JSON_UNQUOTE(JSON_EXTRACT(name, "$.en")) = ?', ['Unknown'])
+                ->first();
+
+            if (!$unknownMake) {
+                $unknownMake = VehicleMake::create([
+                    'external_id' => 99999,
+                    'name' => ['ar' => 'غير محدد', 'en' => 'Unknown'],
+                    'is_active' => true,
+                    'sort_order' => 9999,
+                ]);
+            }
+        }
+
+        if ($unknownModel === null) {
+
+            $unknownModel = VehicleModel::query()
+                ->where('vehicle_make_id', $unknownMake->id)
+                ->whereRaw('JSON_UNQUOTE(JSON_EXTRACT(name, "$.en")) = ?', ['Unknown'])
+                ->first();
+
+            if (!$unknownModel) {
+                $unknownModel = VehicleModel::create([
+                    'vehicle_make_id' => $unknownMake->id,
+                    'external_id' => 99999,
+                    'name' => ['ar' => 'غير محدد', 'en' => 'Unknown'],
+                    'is_active' => true,
+                    'sort_order' => 9999,
+                ]);
+            }
+
+        }
+
+        return [
+            'make_id' => $unknownMake->id,
+            'model_id' => $unknownModel->id,
+        ];
     }
 
     /**
