@@ -106,8 +106,6 @@ class SlotService
             ])
             ->get();
 
-            // dd($employees);
-
         if ($employees->isEmpty()) {
             return [
                 'items' => [],
@@ -229,6 +227,233 @@ class SlotService
             'lat' => (string) $lat,
             'lng' => (string) $lng,
             'employees_considered' => $candidates->count(),
+        ];
+
+        if (empty($items)) {
+            if ($noWorkCount === $candidates->count()) {
+                $meta['error_code'] = 'NO_WORKING_HOURS';
+                $meta['error'] = 'No employees have working hours on this day';
+            } else {
+                $meta['error_code'] = 'NO_SLOTS_AVAILABLE';
+                $meta['error'] = 'No slots available after breaks/blocks/bookings';
+            }
+        }
+
+        return [
+            'items' => $items,
+            'meta' => $meta,
+        ];
+    }
+
+    public function getPartnerSlots(string $date, int $serviceId, float $lat, float $lng, ?int $stepMinutes = null, string $mode = 'blocks', ?int $excludeBookingId = null, ?int $partnerId = null): array
+    {
+        $tz = config('app.timezone', 'UTC');
+        $day = Carbon::createFromFormat('d-m-Y', $date, $tz);
+        $dbDate = $day->toDateString();
+
+        $service = Service::query()
+            ->where('id', $serviceId)
+            ->where('is_active', true)
+            ->whereHas('category', fn($q) => $q->where('is_active', true))
+            ->first();
+
+        if (!$service) {
+            return [
+                'items' => [],
+                'meta' => [
+                    'date' => $date,
+                    'service_id' => $serviceId,
+                    'error_code' => 'SERVICE_NOT_FOUND',
+                    'error' => 'Service not found',
+                ],
+            ];
+        }
+
+        $duration = (int) $service->duration_minutes;
+        $step = $stepMinutes ?? (int) config('booking.slot_step_minutes', 60);
+        $weekday = $this->carbonToDayEnum($day);
+
+        $now = Carbon::now($tz)->startOfMinute();
+
+        // ✅ 1) تاريخ بالماضي؟ ممنوع
+        if ($day->lt($now->copy()->startOfDay())) {
+            return [
+                'items' => [],
+                'meta' => [
+                    'date' => $date,
+                    'service_id' => $serviceId,
+                    'error_code' => 'DATE_IN_PAST',
+                    'error' => 'Date is in the past',
+                ],
+            ];
+        }
+
+        // ✅ 2) لو اليوم نفسه: اعمل cutoff للآن (مع تقريب للـ step)
+        $cutoffMinutes = null;
+        if ($day->isSameDay($now)) {
+            $nowMinutes = ($now->hour * 60) + $now->minute;
+
+            // اختياري: مهلة قبل الحجز (مثلاً 10 دقائق)
+            $lead = (int) config('booking.min_lead_minutes', 0);
+            $nowMinutes += $lead;
+
+            // قرّب لبداية السلووت التالي حسب step
+            $cutoffMinutes = (int) (ceil($nowMinutes / $step) * $step);
+        }
+
+        // ✅ base query (بدون bbox/polygon)
+        $baseQuery = Employee::query()
+            ->where('is_active', true)
+            ->whereHas('user', fn($q) => $q->where('is_active', true)->where('user_type', 'biker'))
+            ->whereHas('services', function ($q) use ($serviceId) {
+                $q->where('services.id', $serviceId)
+                    ->where('employee_services.is_active', 1);
+            });
+
+        // ✅ فلتر الشريك: فقط الموظفين المخصصين له
+        if ($partnerId) {
+            $baseQuery->whereHas('partnerAssignments', function ($q) use ($partnerId, $serviceId) {
+                $q->where('partner_id', $partnerId)
+                    ->where('service_id', $serviceId);
+            });
+        }
+
+        $employeesForServiceCount = (clone $baseQuery)->count();
+        
+        // ✅ bbox filter
+        $employees = (clone $baseQuery)
+            ->whereHas('workArea', function ($q) use ($lat, $lng) {
+                $q->where('is_active', true)
+                    ->where('min_lat', '<=', $lat)
+                    ->where('max_lat', '>=', $lat)
+                    ->where('min_lng', '<=', $lng)
+                    ->where('max_lng', '>=', $lng);
+            })
+            ->with([
+                'user:id,name',
+                'workArea:id,employee_id,polygon,min_lat,max_lat,min_lng,max_lng',
+                'weeklyIntervals' => function ($q) use ($weekday) {
+                    $q->where('day', $weekday)->where('is_active', true);
+                },
+                'timeBlocks' => function ($q) use ($dbDate) {
+                    $q->where('date', $dbDate)->where('is_active', true);
+                },
+            ])
+            ->get();
+
+        if ($employees->isEmpty()) {
+            return [
+                'items' => [],
+                'meta' => [
+                    'date' => $date,
+                    'day' => $weekday,
+                    'service_id' => $serviceId,
+                    'lat' => (string) $lat,
+                    'lng' => (string) $lng,
+                    'employees_for_service' => $employeesForServiceCount,
+                    'employees_in_bbox' => 0,
+                    'employees_in_polygon' => 0,
+                    'error_code' => 'OUT_OF_COVERAGE',
+                    'error' => 'Address is outside service coverage area (bbox)',
+                ],
+            ];
+        }
+
+        // ✅ polygon filter
+        $candidates = $employees->filter(function ($emp) use ($lat, $lng) {
+            $poly = $emp->workArea?->polygon ?? [];
+            return $this->pointInPolygon($lat, $lng, $poly);
+        })->values();
+
+        if ($candidates->isEmpty()) {
+            return [
+                'items' => [],
+                'meta' => [
+                    'date' => $date,
+                    'day' => $weekday,
+                    'service_id' => $serviceId,
+                    'lat' => (string) $lat,
+                    'lng' => (string) $lng,
+                    'employees_for_service' => $employeesForServiceCount,
+                    'employees_in_bbox' => $employees->count(),
+                    'employees_in_polygon' => 0,
+                    'error_code' => 'OUT_OF_COVERAGE',
+                    'error' => 'Address is outside service coverage area (polygon)',
+                ],
+            ];
+        }
+
+        $grouped = [];
+        $noWorkCount = 0;
+        $totalGeneratedSlots = 0;
+
+        foreach ($candidates as $emp) {
+            $work = $emp->weeklyIntervals->where('type', 'work')->values();
+            $breaks = $emp->weeklyIntervals->where('type', 'break')->values();
+
+            if ($work->isEmpty()) {
+                $noWorkCount++;
+                continue;
+            }
+
+            $workIntervals = $work->map(fn($i) => [$this->timeToMinutes($i->start_time), $this->timeToMinutes($i->end_time)])->all();
+            $breakIntervals = $breaks->map(fn($i) => [$this->timeToMinutes($i->start_time), $this->timeToMinutes($i->end_time)])->all();
+
+            $blockIntervals = $emp->timeBlocks->map(fn($b) => [$this->timeToMinutes($b->start_time), $this->timeToMinutes($b->end_time)])->all();
+
+            $available = $this->subtractIntervals($workIntervals, $breakIntervals);
+            $available = $this->subtractIntervals($available, $blockIntervals);
+
+            if ($cutoffMinutes !== null) {
+                $available = $this->subtractIntervals($available, [[0, $cutoffMinutes]]);
+            }
+
+            $bookingIntervals = Booking::query()
+                ->where('employee_id', $emp->id)
+                ->where('booking_date', $dbDate)
+                ->whereNotIn('status', ['cancelled'])
+                ->when($excludeBookingId, fn($q) => $q->where('id', '!=', (int) $excludeBookingId))
+                ->get(['start_time', 'end_time'])
+                ->map(fn($b) => [$this->timeToMinutes($b->start_time), $this->timeToMinutes($b->end_time)])
+                ->all();
+
+            $available = $this->subtractIntervals($available, $bookingIntervals);
+
+            $slots = $this->generateSlots($available, $duration, $step, $mode);
+
+            foreach ($slots as $s) {
+
+                // ✅ فلترة السلووتات القديمة لليوم الحالي
+                if ($cutoffMinutes !== null) {
+                    $startMin = $this->timeToMinutes($s['start_time']);
+                    if ($startMin < $cutoffMinutes) {
+                        continue;
+                    }
+                }
+
+                $totalGeneratedSlots++;
+                $key = $s['start_time'] . '|' . $s['end_time'];
+                if (!isset($grouped[$key])) {
+                    $grouped[$key] = [
+                        'start_time' => $s['start_time'],
+                    ];
+                }
+            }
+        }
+
+        $items = array_values($grouped);
+        usort($items, fn($a, $b) => strcmp($a['start_time'], $b['start_time']));
+
+        // ✅ لو ما طلع ولا slot: حدّد السبب
+        $meta = [
+            'date' => $date,
+            'day' => $weekday,
+            'service_id' => $serviceId,
+            'duration_minutes' => $duration,
+            // 'step_minutes' => $step,
+            'lat' => (string) $lat,
+            'lng' => (string) $lng,
+            // 'employees_considered' => $candidates->count(),
         ];
 
         if (empty($items)) {

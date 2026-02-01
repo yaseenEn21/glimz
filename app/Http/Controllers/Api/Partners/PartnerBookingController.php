@@ -15,7 +15,8 @@ class PartnerBookingController extends Controller
     public function __construct(
         protected PartnerBookingService $partnerBookingService,
         protected SlotService $slotService
-    ) {}
+    ) {
+    }
 
     /**
      * GET /api/partners/v1/slots
@@ -56,7 +57,7 @@ class PartnerBookingController extends Controller
             ], 403);
         }
 
-        $slots = $this->slotService->getSlots(
+        $slots = $this->slotService->getPartnerSlots(
             $data['date'],
             (int) $data['service_id'],
             (float) $data['lat'],
@@ -67,9 +68,11 @@ class PartnerBookingController extends Controller
             $partner->id // ✅ فلتر الشريك
         );
 
+        $times = collect($slots['items'])->pluck('start_time')->values()->toArray();
+
         return response()->json([
             'success' => true,
-            'data' => $slots['items'],
+            'data' => $times,
             'meta' => $slots['meta'],
         ]);
     }
@@ -88,22 +91,22 @@ class PartnerBookingController extends Controller
             'date' => 'required|date_format:d-m-Y',
             'start_time' => 'required|date_format:H:i',
             'employee_id' => 'nullable|integer|exists:employees,id',
-            
+
             'customer' => 'required|array',
             'customer.name' => 'required|string|max:255',
             'customer.mobile' => 'required|string',
             'customer.email' => 'nullable|email',
-            
+
             'address' => 'required|array',
             'address.address' => 'required|string',
             'address.lat' => 'required|numeric',
             'address.lng' => 'required|numeric',
-            
+
             'car' => 'required|array',
             'car.plate_number' => 'required|string|max:50',
             'car.color' => 'nullable|string|max:50',
             'car.model' => 'nullable|string|max:100',
-            
+
             'notes' => 'nullable|string|max:1000',
         ]);
 
@@ -184,8 +187,8 @@ class PartnerBookingController extends Controller
         }
 
         $result = $this->partnerBookingService->cancelBooking(
-            $partner, 
-            $externalId, 
+            $partner,
+            $externalId,
             $request->input('reason')
         );
 
@@ -298,35 +301,35 @@ class PartnerBookingController extends Controller
             'start_time' => substr($booking->start_time, 0, 5),
             'end_time' => substr($booking->end_time, 0, 5),
             'duration_minutes' => $booking->duration_minutes,
-            
+
             'service' => [
                 'id' => $booking->service->id,
                 'name' => $booking->service->name,
             ],
-            
+
             'employee' => $booking->employee ? [
                 'id' => $booking->employee->id,
                 'name' => $booking->employee->user->name ?? null,
             ] : null,
-            
+
             'customer' => [
                 'name' => $booking->user->name,
                 'mobile' => $booking->user->mobile,
                 'email' => $booking->user->email,
             ],
-            
+
             'car' => [
                 'plate_number' => $booking->car->plate_number,
                 'color' => $booking->car->color,
                 'model' => $booking->car->model,
             ],
-            
+
             'address' => [
                 'address' => $booking->address->address,
                 'lat' => (float) $booking->address->lat,
                 'lng' => (float) $booking->address->lng,
             ],
-            
+
             'created_at' => $booking->created_at->toDateTimeString(),
             'updated_at' => $booking->updated_at->toDateTimeString(),
         ];

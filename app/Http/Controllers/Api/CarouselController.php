@@ -30,7 +30,7 @@ class CarouselController extends Controller
                 'ends_at',
                 'type',
             ])
-            ->where('type', 'slider')
+            ->where('display_type', 'slider')
             ->active()
             ->with('media')
             ->orderBy('sort_order')
