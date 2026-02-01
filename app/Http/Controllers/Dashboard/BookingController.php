@@ -186,7 +186,7 @@ class BookingController extends Controller
                 return view('dashboard.bookings._status_control', ['booking' => $row])->render();
             })
             ->addColumn('total', function (Booking $row) {
-                return number_format((float) ($row->total_snapshot ?? 0), 2) . ' ' . e($row->currency ?? 'SAR');
+                return format_currency($row->total_snapshot, $row->currency);
             })
             ->addColumn('employee_label', function (Booking $row) {
                 return e($row->employee?->user?->name ?? '—');
@@ -194,7 +194,7 @@ class BookingController extends Controller
             ->addColumn('actions', function (Booking $row) {
                 return view('dashboard.bookings._actions', ['booking' => $row])->render();
             })
-            ->rawColumns(['customer', 'schedule', 'status_badge', 'status_control', 'actions'])
+            ->rawColumns(['customer', 'total', 'schedule', 'status_badge', 'status_control', 'actions'])
             ->make(true);
     }
 

@@ -26,9 +26,13 @@ class CarouselController extends Controller
                 'carouselable_id',
                 'sort_order',
                 'is_active',
+                'starts_at',
+                'ends_at',
+                'type',
             ])
-            ->where('is_active', true)
-            ->with('media') // لمنع N+1 للصور
+            ->where('type', 'slider')
+            ->active()
+            ->with('media')
             ->orderBy('sort_order')
             ->get();
 

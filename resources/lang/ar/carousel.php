@@ -31,6 +31,8 @@ return [
     ],
 
     'fields' => [
+        'display_type' => 'نوع العرض',
+
         'label' => 'Label (اختياري)',
         'title' => 'العنوان',
         'description' => 'الوصف',
@@ -90,4 +92,17 @@ return [
     'delete_confirm_text' => 'هل أنت متأكد من حذف هذا العنصر؟',
     'delete_confirm_yes' => 'نعم، احذف',
     'delete_confirm_no' => 'إلغاء',
+
+    'starts_at_hint' => 'اتركه فارغًا لا يوجد تاريخ بدء.',
+    'ends_at_hint' => 'اتركه فارغًا لا يوجد تاريخ نهاية.',
+
+    'display_duration' => 'فترة العرض',
+
+    'display_types' => [
+        'slider' => 'سلايدر فقط',
+        'popup' => 'نافذة منبثقة فقط',
+        'both' => 'سلايدر ونافذة منبثقة',
+    ],
+
+    'display_type_hint' => 'اختر أين سيتم عرض هذا العنصر',
 ];

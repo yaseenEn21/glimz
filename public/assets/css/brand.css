@@ -1513,3 +1513,9 @@ a:hover {
     align-items: center;
     gap: 0.75rem;
 }
+
+.currency-icon {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}

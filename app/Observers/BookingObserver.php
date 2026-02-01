@@ -3,6 +3,7 @@
 namespace App\Observers;
 
 use App\Jobs\AwardBookingPointsJob;
+use App\Jobs\SendPartnerWebhookJob;
 use App\Jobs\SyncBookingToRekazJob;
 use App\Models\Booking;
 use App\Models\User;
@@ -44,32 +45,49 @@ class BookingObserver
     public function updated(Booking $booking): void
     {
         // فقط إذا status تغيّر
-        if (!$booking->wasChanged('status')) {
-            // لكن تحقق من تغييرات أخرى قد تحتاج مزامنة مع ركاز
-            if ($this->hasRekazRelevantChanges($booking)) {
-                $this->syncToRekaz($booking, 'update');
+        if ($booking->wasChanged('status')) {
+            $booking->loadMissing(['user', 'service', 'employee']);
+
+            $newStatus = (string) $booking->status;
+
+            // تحديث تواريخ حسب الحالة
+            $this->syncStatusTimestamps($booking, $newStatus);
+
+            // إشعار الزبون بالحالة الجديدة
+            $this->notifyCustomerStatus($booking, $newStatus);
+
+            // ✅ منح النقاط عند الإكمال
+            if ($newStatus === 'completed') {
+                $actorId = $booking->updated_by ?? auth()->id();
+                AwardBookingPointsJob::dispatch((int) $booking->id, $actorId)->afterCommit();
             }
-            return;
+
+            // ✅ مزامنة مع ركاز حسب الحالة
+            $action = match ($newStatus) {
+                'confirmed' => 'confirm',
+                'cancelled' => 'cancel',
+                default => 'update',
+            };
+
+            $this->syncToRekaz($booking, $action);
+
+            return; // ✅ مهم: نرجع هنا عشان ما ندخل للـ if التالي
         }
 
-        $booking->loadMissing(['user', 'service', 'employee']);
+        // ✅ إذا ما تغير الـ status، بس تغيرت حقول تانية مهمة
+        if ($this->hasRekazRelevantChanges($booking)) {
+            Log::info('Rekaz relevant fields changed', [
+                'booking_id' => $booking->id,
+                'changed_fields' => array_keys($booking->getChanges()),
+            ]);
 
-        $newStatus = (string) $booking->status;
-
-        // تحديث تواريخ حسب الحالة
-        $this->syncStatusTimestamps($booking, $newStatus);
-
-        // إشعار الزبون بالحالة الجديدة
-        $this->notifyCustomerStatus($booking, $newStatus);
-
-        // ✅ منح النقاط عند الإكمال
-        if ($newStatus === 'completed') {
-            $actorId = $booking->updated_by ?? auth()->id();
-            AwardBookingPointsJob::dispatch((int) $booking->id, $actorId)->afterCommit();
+            $this->syncToRekaz($booking, 'update');
         }
 
-        // ✅ مزامنة مع ركاز
-        $this->syncToRekaz($booking, $newStatus === 'cancelled' ? 'cancel' : 'update');
+        // ✅ إرسال Webhook للشريك
+        if ($booking->partner_id && $booking->wasChanged('status')) {
+            $this->sendPartnerWebhook($booking);
+        }
     }
 
     /**
@@ -84,23 +102,19 @@ class BookingObserver
     /**
      * مزامنة مع ركاز
      */
+    /**
+     * مزامنة مع ركاز
+     */
     private function syncToRekaz(Booking $booking, string $action): void
     {
-        // التحقق من تفعيل المزامنة
-        if (!config('services.rekaz.sync.enabled', true)) {
-            return;
-        }
+        // استخدام الدالة الجديدة للتحقق من التفعيل
+        $rekazService = app(RekazService::class);
 
-        // التحقق من تفعيل المزامنة حسب نوع الإجراء
-        $syncConfigKey = match($action) {
-            'create' => 'on_create',
-            'update' => 'on_update',
-            'cancel' => 'on_cancel',
-            'delete' => 'on_delete',
-            default => null,
-        };
-
-        if ($syncConfigKey && !config("services.rekaz.sync.{$syncConfigKey}", true)) {
+        if (!$rekazService->isSyncEnabled($action)) {
+            Log::debug('Rekaz sync disabled for this action', [
+                'booking_id' => $booking->id,
+                'action' => $action,
+            ]);
             return;
         }
 
@@ -108,21 +122,23 @@ class BookingObserver
             // للإنشاء: لا نزامن إذا لم يكن له ID في ركاز بعد
             // (سيتم المزامنة من الـ Controller)
             if ($action === 'create') {
-                $meta = $booking->meta ?? [];
-                if (isset($meta['rekaz_booking_id'])) {
+                $mapping = $booking->rekazMapping;
+                if ($mapping && $mapping->rekaz_id) {
                     // تم إنشاؤه مسبقاً، لا حاجة للمزامنة مرة أخرى
+                    Log::debug('Rekaz sync skipped - already created', [
+                        'booking_id' => $booking->id,
+                    ]);
                     return;
                 }
             }
 
-            // للتحديث/الإلغاء: نتحقق من وجود ID في ركاز
-            if (in_array($action, ['update', 'cancel'])) {
-                $meta = $booking->meta ?? [];
-                $rekazBookingId = $meta['rekaz_booking_id'] ?? null;
+            // للتحديث/التأكيد/الإلغاء: نتحقق من وجود ID في ركاز
+            if (in_array($action, ['update', 'confirm', 'cancel'])) {
+                $mapping = $booking->rekazMapping;
 
                 // إذا لم يكن له ID في ركاز، لا داعي للمزامنة
-                if (!$rekazBookingId) {
-                    Log::debug('Rekaz sync skipped - no rekaz_booking_id', [
+                if (!$mapping || !$mapping->rekaz_id) {
+                    Log::debug('Rekaz sync skipped - no rekaz_id', [
                         'booking_id' => $booking->id,
                         'action' => $action,
                     ]);
@@ -147,7 +163,6 @@ class BookingObserver
             Log::info('Rekaz sync job dispatched from observer', [
                 'booking_id' => $booking->id,
                 'action' => $action,
-                'dirty' => array_keys($booking->getDirty()),
             ]);
         } catch (\Exception $e) {
             Log::error('Failed to dispatch Rekaz sync job from observer', [
@@ -165,14 +180,10 @@ class BookingObserver
     {
         // الحقول المهمة التي تحتاج مزامنة
         $importantFields = [
-            'booking_date',
-            'start_time',
-            'end_time',
-            'employee_id',
-            'service_id',
-            'address_id',
-            'rating',
-            'rating_comment',
+            'booking_date',   // ✅ تاريخ الحجز
+            'start_time',     // ✅ وقت البداية
+            'end_time',       // ✅ وقت النهاية
+            'employee_id',    // ✅ الموظف
         ];
 
         foreach ($importantFields as $field) {
@@ -390,4 +401,25 @@ class BookingObserver
             return '';
         return (string) ($emp->name ?? '');
     }
+
+    /**
+     * إرسال webhook للشريك
+     */
+    private function sendPartnerWebhook(Booking $booking): void
+    {
+        if (!in_array($booking->status, ['moving', 'arrived', 'completed', 'cancelled'])) {
+            return;
+        }
+
+        SendPartnerWebhookJob::dispatch($booking)
+            ->onQueue('webhooks')
+            ->delay(now()->addSeconds(2));
+
+        Log::info('Partner webhook job dispatched', [
+            'booking_id' => $booking->id,
+            'partner_id' => $booking->partner_id,
+            'status' => $booking->status,
+        ]);
+    }
+
 }

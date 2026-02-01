@@ -70,6 +70,10 @@ class SyncBookingToRekazJob implements ShouldQueue
                     $result = $this->handleUpdate($rekazService);
                     break;
 
+                case 'confirm':
+                    $result = $this->handleConfirm($rekazService);
+                    break;
+
                 case 'cancel':
                     $result = $this->handleCancel($rekazService);
                     break;
@@ -198,19 +202,34 @@ class SyncBookingToRekazJob implements ShouldQueue
                 'booking_id' => $this->booking->id,
             ]);
 
-            // إنشاء بدلاً من التحديث
+            // إذا مش موجود، جرب إنشاءه
             return $this->handleCreate($rekazService);
         }
 
-        // TODO: تنفيذ update logic إذا لزم
-        Log::info("Rekaz update not implemented yet", [
+        // ✅ تحويل البيانات المحدثة إلى صيغة ركاز
+        $updatePayload = $rekazService->transformBookingToRekazUpdatePayload($this->booking);
+
+        Log::info('Updating Rekaz reservation', [
             'booking_id' => $this->booking->id,
             'rekaz_id' => $mapping->rekaz_id,
+            'payload' => $updatePayload,
         ]);
 
-        return ['success' => true];
+        $result = $rekazService->updateReservation($mapping->rekaz_id, $updatePayload);
+
+        if ($result['success']) {
+            Log::info("Booking updated in Rekaz successfully", [
+                'booking_id' => $this->booking->id,
+                'rekaz_id' => $mapping->rekaz_id,
+            ]);
+        }
+
+        return $result;
     }
 
+    /**
+     * معالجة إلغاء حجز
+     */
     protected function handleCancel(RekazService $rekazService): array
     {
         $mapping = $this->booking->rekazMapping;
@@ -221,13 +240,23 @@ class SyncBookingToRekazJob implements ShouldQueue
             return ['success' => false, 'error' => 'No Rekaz booking ID found'];
         }
 
-        $reason = $this->booking->cancel_reason ?? null;
-        $result = $rekazService->cancelReservation($mapping->rekaz_id, $reason);
+        // استخراج سبب الإلغاء
+        $reason = $this->booking->cancel_reason
+            ?? $this->booking->meta['cancel_reason']
+            ?? $this->booking->meta['cancellation_reason']
+            ?? null;
+
+        $result = $rekazService->cancelReservationWithReason(
+            $mapping->rekaz_id,
+            $reason,
+            true // notify customer
+        );
 
         if ($result['success']) {
             Log::info("Booking cancelled in Rekaz successfully", [
                 'booking_id' => $this->booking->id,
                 'rekaz_id' => $mapping->rekaz_id,
+                'reason' => $reason,
             ]);
         }
 
@@ -251,6 +280,33 @@ class SyncBookingToRekazJob implements ShouldQueue
             $mapping->delete();
 
             Log::info("Booking deleted from Rekaz successfully", [
+                'booking_id' => $this->booking->id,
+                'rekaz_id' => $mapping->rekaz_id,
+            ]);
+        }
+
+        return $result;
+    }
+
+    /**
+     * معالجة تأكيد حجز
+     */
+    protected function handleConfirm(RekazService $rekazService): array
+    {
+        $mapping = $this->booking->rekazMapping;
+        if (!$mapping || !$mapping->rekaz_id) {
+            Log::warning("Cannot confirm: booking not synced with Rekaz", [
+                'booking_id' => $this->booking->id,
+            ]);
+
+            // إذا مش موجود، جرب إنشاءه
+            return $this->handleCreate($rekazService);
+        }
+
+        $result = $rekazService->confirmReservation($mapping->rekaz_id);
+
+        if ($result['success']) {
+            Log::info("Booking confirmed in Rekaz successfully", [
                 'booking_id' => $this->booking->id,
                 'rekaz_id' => $mapping->rekaz_id,
             ]);

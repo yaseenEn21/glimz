@@ -106,4 +106,51 @@ return [
     'meta_title' => 'بيانات إضافية (Meta)',
     'Package'          => 'باقة',
     'Booking'          => 'حجز',
+
+    'manual_payment' => [
+        'pay_button' => 'تسديد الفاتورة',
+        'modal_title' => 'تسديد الفاتورة يدوياً',
+        'invoice_info' => 'معلومات الفاتورة',
+        'payment_method' => 'وسيلة الدفع',
+        'select_method' => 'اختر وسيلة الدفع',
+        'bank_details_title' => 'تفاصيل الحساب البنكي',
+        'reference_number' => 'رقم المرجع',
+        'reference_placeholder' => 'أدخل رقم المرجع أو التحويل',
+        'reference_hint' => 'رقم التحويل البنكي أو رقم الإيصال',
+        'attachment' => 'المرفق',
+        'attachment_hint' => 'صورة الإيصال أو إثبات الدفع (PDF, JPG, PNG - حتى 5MB)',
+        'notes' => 'ملاحظات',
+        'notes_placeholder' => 'أي ملاحظات إضافية عن عملية الدفع',
+        'cancel' => 'إلغاء',
+        'confirm' => 'تأكيد الدفع',
+        'processing' => 'جاري المعالجة...',
+        
+        'already_paid' => 'هذه الفاتورة مدفوعة بالفعل',
+        'success' => 'تم تسديد الفاتورة بنجاح',
+        'error' => 'حدث خطأ أثناء معالجة الدفع',
+        'fulfillment_failed' => 'تم الدفع ولكن فشل تنفيذ الطلب',
+        
+        'validation' => [
+            'method_required' => 'يجب اختيار وسيلة دفع',
+            'method_invalid' => 'وسيلة الدفع المختارة غير صالحة',
+            'file_too_large' => 'حجم الملف كبير جداً (الحد الأقصى 5MB)',
+        ],
+    ],
+
+    // External Payment Methods
+    'external_methods' => [
+        'name' => 'اسم وسيلة الدفع',
+        'description' => 'الوصف',
+        'code' => 'الرمز',
+        'active' => 'نشطة',
+        'inactive' => 'غير نشطة',
+        
+        'types' => [
+            'bank_transfer' => 'تحويل بنكي',
+            'cash' => 'نقدي',
+            'cheque' => 'شيك',
+            'pos' => 'نقطة بيع (POS)',
+            'mada' => 'مدى',
+        ],
+    ],
 ];

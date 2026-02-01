@@ -14,7 +14,10 @@ class Employee extends Model
 
     protected $casts = ['is_active' => 'boolean', 'polygon' => 'array'];
 
-    public function user() { return $this->belongsTo(User::class); }
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 
     public function weeklyIntervals()
     {
@@ -36,6 +39,11 @@ class Employee extends Model
     public function workArea()
     {
         return $this->hasOne(EmployeeWorkArea::class);
+    }
+
+    public function partnerAssignments()
+    {
+        return $this->hasMany(\App\Models\PartnerServiceEmployee::class);
     }
 
 }

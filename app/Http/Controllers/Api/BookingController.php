@@ -839,28 +839,28 @@ class BookingController extends Controller
         // نرسل Job للمزامنة مع ركاز بشكل asynchronous
         // الـ Observer لن يزامن في created() لأن الحجز ليس له rekaz_booking_id بعد
         // لذلك نحن نزامن هنا مباشرة بعد اكتمال الإنشاء
-        if (config('services.rekaz.sync.enabled', true) && config('services.rekaz.sync.on_create', true)) {
-            try {
-                $delay = config('services.rekaz.sync.delay_seconds', 2);
-                $queue = config('services.rekaz.sync.queue', 'rekaz-sync');
+        // if (config('services.rekaz.sync.enabled', true) && config('services.rekaz.sync.on_create', true)) {
+        //     try {
+        //         $delay = config('services.rekaz.sync.delay_seconds', 2);
+        //         $queue = config('services.rekaz.sync.queue', 'rekaz-sync');
 
-                SyncBookingToRekazJob::dispatch($booking, 'create')
-                    ->onQueue($queue)
-                    ->delay(now()->addSeconds($delay));
+        //         SyncBookingToRekazJob::dispatch($booking, 'create')
+        //             ->onQueue($queue)
+        //             ->delay(now()->addSeconds($delay));
 
-                Log::info('Rekaz sync job dispatched from controller', [
-                    'booking_id' => $booking->id,
-                    'action' => 'create',
-                ]);
-            } catch (\Exception $e) {
-                // لو فشل dispatch الـ job، نسجل الخطأ لكن ما نوقف الـ response
-                Log::error('Failed to dispatch Rekaz sync job from controller', [
-                    'booking_id' => $booking->id,
-                    'error' => $e->getMessage(),
-                    'trace' => $e->getTraceAsString(),
-                ]);
-            }
-        }
+        //         Log::info('Rekaz sync job dispatched from controller', [
+        //             'booking_id' => $booking->id,
+        //             'action' => 'create',
+        //         ]);
+        //     } catch (\Exception $e) {
+        //         // لو فشل dispatch الـ job، نسجل الخطأ لكن ما نوقف الـ response
+        //         Log::error('Failed to dispatch Rekaz sync job from controller', [
+        //             'booking_id' => $booking->id,
+        //             'error' => $e->getMessage(),
+        //             'trace' => $e->getTraceAsString(),
+        //         ]);
+        //     }
+        // }
 
         return api_success(new BookingResource($booking), 'Booking created', 201);
     }
@@ -1307,7 +1307,7 @@ class BookingController extends Controller
                 }
             }
 
-            return $b->fresh(['service', 'products.product', 'invoices', 'cars']);
+            return $b->fresh(['service', 'products.product', 'invoices', 'car']);
         });
 
         return api_success(new BookingResource($updated), 'Booking updated', 200);

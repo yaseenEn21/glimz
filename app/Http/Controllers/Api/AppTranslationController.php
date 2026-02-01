@@ -5,10 +5,15 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\AppTranslationUploadRequest;
 use App\Services\AppTranslationService;
+use App\Http\Controllers\Traits\ParsesTranslationFiles;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
 
 class AppTranslationController extends Controller
 {
+
+    use ParsesTranslationFiles;
+
     public function __construct(private AppTranslationService $svc)
     {
     }
@@ -39,94 +44,9 @@ class AppTranslationController extends Controller
             return api_error('Invalid translation PHP file structure', 422);
         }
 
-        // لو بدك ترجع nested كما هو: رجعه مباشرة
-        // لو بدك flatten dot keys: فعّل السطر التالي
-        // $arr = $this->flattenLangArray($arr);
-
         // رجّع key=>value
         return api_success((object) $arr, 'Success')
             ->header('ETag', $meta['etag'] ?? '');
-    }
-
-    /**
-     * Parsing آمن-ish: يمنع أي tokens خطيرة ويقبل فقط return + literals/arrays.
-     * ثم include داخل scope معزول ويرجع array.
-     */
-    private function parsePhpLangArray(string $raw): ?array
-    {
-        $raw = $this->stripBom($raw);
-
-        if (strpos($raw, '<?php') === false) {
-            return null;
-        }
-
-        $tokens = token_get_all($raw);
-
-        // نمنع أي شيء ممكن ينفّذ كود
-        $disallowed = [
-            T_VARIABLE,
-            T_FUNCTION,
-            T_CLASS,
-            T_TRAIT,
-            T_INTERFACE,
-            T_NEW,
-            T_INCLUDE,
-            T_INCLUDE_ONCE,
-            T_REQUIRE,
-            T_REQUIRE_ONCE,
-            T_EVAL,
-            T_EXIT,
-            T_GLOBAL,
-            T_STATIC,
-            T_NAMESPACE,
-            T_USE,
-            T_THROW,
-            T_TRY,
-            T_CATCH,
-            T_FINALLY,
-            T_IF,
-            T_ELSE,
-            T_ELSEIF,
-            T_FOR,
-            T_FOREACH,
-            T_WHILE,
-            T_DO,
-            T_SWITCH,
-            T_MATCH,
-            T_STRING, // يمنع استدعاءات دوال
-        ];
-
-        foreach ($tokens as $t) {
-            if (is_array($t) && in_array($t[0], $disallowed, true)) {
-                return null;
-            }
-        }
-
-        $tmpDir = storage_path('app/tmp-lang');
-        if (!is_dir($tmpDir)) {
-            @mkdir($tmpDir, 0775, true);
-        }
-
-        $tmpFile = $tmpDir . '/lang_' . uniqid('', true) . '.php';
-        file_put_contents($tmpFile, $raw);
-
-        try {
-            $data = (static function ($file) {
-                return include $file;
-            })($tmpFile);
-
-            return is_array($data) ? $data : null;
-        } finally {
-            @unlink($tmpFile);
-        }
-    }
-
-    private function stripBom(string $text): string
-    {
-        if (substr($text, 0, 3) === "\xEF\xBB\xBF") {
-            return substr($text, 3);
-        }
-        return $text;
     }
 
     public function upload(AppTranslationUploadRequest $request)
@@ -141,6 +61,8 @@ class AppTranslationController extends Controller
                 return response()->json(['success' => false, 'message' => "AR: {$res['message']}"], 422);
             }
 
+            Cache::forget('translations.ar'); // ✅ امسح الـ cache
+            Cache::forget('app_translation_raw.ar'); // ✅ من الـ service
             $done['ar'] = true;
         }
 
@@ -152,8 +74,12 @@ class AppTranslationController extends Controller
                 return response()->json(['success' => false, 'message' => "EN: {$res['message']}"], 422);
             }
 
+            Cache::forget('translations.en'); // ✅ امسح الـ cache
+            Cache::forget('app_translation_raw.en'); // ✅ من الـ service
             $done['en'] = true;
         }
+
+        Cache::put('translations.last_updated', now());
 
         return response()->json([
             'success' => true,
@@ -161,7 +87,6 @@ class AppTranslationController extends Controller
             'data' => $done,
         ]);
     }
-
 
     /**
      * يقرأ الملف (php/json/txt) ويحوّله إلى JSON ثم يمرره للسيرفس الحالية write().

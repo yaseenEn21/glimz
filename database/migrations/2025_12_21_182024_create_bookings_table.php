@@ -37,6 +37,9 @@ return new class extends Migration {
             // الموظف (بسبب التوفر)
             $table->foreignId('employee_id')->nullable()->constrained('employees')->nullOnDelete();
 
+            $table->foreignId('partner_id')->nullable()->constrained('partners')->nullOnDelete();
+            $table->string('external_id')->nullable()->unique();
+
             // في حال استخدم باقة
             $table->foreignId('package_subscription_id')
                 ->nullable()
@@ -95,6 +98,7 @@ return new class extends Migration {
             $table->index(['user_id', 'status', 'booking_date']);
             $table->index(['employee_id', 'booking_date', 'start_time']);
             $table->index(['zone_id', 'time_period']);
+            $table->index(['partner_id', 'external_id']);
         });
     }
 

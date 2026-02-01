@@ -108,10 +108,10 @@ class InvoiceController extends Controller
                     return '—';
                 return '<span class="badge badge-light-dark">' . e(__('invoices.locked')) . '</span>';
             })
-            ->editColumn('subtotal', fn(Invoice $row) => number_format((float) $row->subtotal, 2))
-            ->editColumn('discount', fn(Invoice $row) => number_format((float) $row->discount, 2))
-            ->editColumn('tax', fn(Invoice $row) => number_format((float) $row->tax, 2))
-            ->editColumn('total', fn(Invoice $row) => number_format((float) $row->total, 2))
+            ->editColumn('subtotal', fn(Invoice $row) => format_currency((float) $row->subtotal))
+            ->editColumn('discount', fn(Invoice $row) => format_currency((float) $row->discount))
+            ->editColumn('tax', fn(Invoice $row) => format_currency((float) $row->tax))
+            ->editColumn('total', fn(Invoice $row) => format_currency((float) $row->total))
             ->addColumn('issued_at_label', fn(Invoice $row) => $row->issued_at ? $row->issued_at->format('Y-m-d H:i') : '—')
             ->addColumn('paid_at_label', fn(Invoice $row) => $row->paid_at ? $row->paid_at->format('Y-m-d H:i') : '—')
             ->addColumn('invoiceable_label', function (Invoice $row) {
@@ -124,7 +124,7 @@ class InvoiceController extends Controller
             ->addColumn('actions', function (Invoice $row) {
                 return view('dashboard.invoices._actions', ['invoice' => $row])->render();
             })
-            ->rawColumns(['type_badge', 'status_badge', 'locked_badge', 'actions'])
+            ->rawColumns(['type_badge', 'status_badge', 'locked_badge', 'actions', 'total', 'subtotal', 'discount', 'tax'])
             ->make(true);
     }
 

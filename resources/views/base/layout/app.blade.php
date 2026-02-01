@@ -206,9 +206,14 @@
     <script src="/assets/js/custom/utilities/modals/create-app.js"></script>
     <script src="/assets/js/custom/utilities/modals/new-target.js"></script>
     <script src="/assets/js/custom/utilities/modals/users-search.js"></script>
-
+    <script>
+        window.appConfig = {
+            locale: '{{ app()->getLocale() }}',
+            csrfToken: '{{ csrf_token() }}',
+            baseUrl: '{{ url('/') }}'
+        };
+    </script>
     <script src="{{ asset('assets/js/custome-datatable.js') }}"></script>
-
 
     @include('base.partials.notifications.listener')
     @stack('custom-script')

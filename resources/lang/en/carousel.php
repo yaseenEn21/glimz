@@ -29,8 +29,18 @@ return [
         'ar' => 'Arabic',
         'en' => 'English',
     ],
+    
+    'display_types' => [
+        'slider' => 'Slider Only',
+        'popup' => 'Popup Only',
+        'both' => 'Slider & Popup',
+    ],
+
+    'display_type_hint' => 'Choose where this item will be displayed',
 
     'fields' => [
+        'display_type' => 'Display Type',
+
         'label' => 'Label (Optional)',
         'title' => 'Title',
         'description' => 'Description',
@@ -90,4 +100,9 @@ return [
     'delete_confirm_text' => 'Are you sure you want to delete this item?',
     'delete_confirm_yes' => 'Yes, delete',
     'delete_confirm_no' => 'Cancel',
+
+    'starts_at_hint' => 'Leave empty for no start date.',
+    'ends_at_hint' => 'Leave empty for no end date.',
+
+    'display_duration' => 'Display Duration',
 ];

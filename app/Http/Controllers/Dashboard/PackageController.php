@@ -63,10 +63,10 @@ class PackageController extends Controller
                     $name = $row->name[$locale] ?? reset($row->name ?? []) ?? '';
                     return e($name);
                 })
-                ->editColumn('price', fn(Package $row) => number_format($row->price, 2))
+                ->editColumn('price', fn(Package $row) => format_currency($row->price))
                 ->editColumn('discounted_price', function (Package $row) {
                     return $row->discounted_price !== null
-                        ? number_format($row->discounted_price, 2)
+                        ? format_currency($row->discounted_price)
                         : '—';
                 })
                 ->editColumn('validity_days', function (Package $row) {
@@ -88,7 +88,7 @@ class PackageController extends Controller
                         'package' => $row,
                     ])->render();
                 })
-                ->rawColumns(['is_active_badge', 'actions'])
+                ->rawColumns(['is_active_badge', 'price', 'discounted_price', 'actions'])
                 ->make(true);
         }
 

@@ -1,3 +1,5 @@
+{{-- The main design (SERVICES INDEX) --}}
+
 @extends('base.layout.app')
 
 @push('custom-style')

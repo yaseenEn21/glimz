@@ -11,6 +11,7 @@ return new class extends Migration {
             $table->id();
 
             // محتوى متعدد اللغات
+            $table->enum('display_type', ['slider', 'popup', 'both'])->default('slider');
             $table->json('label')->nullable();
             $table->json('title');
             $table->json('description')->nullable();
@@ -22,8 +23,8 @@ return new class extends Migration {
             $table->boolean('is_active')->default(true);
             $table->unsignedInteger('sort_order')->default(0);
 
-            // $table->timestamp('starts_at')->nullable();
-            // $table->timestamp('ends_at')->nullable();
+            $table->timestamp('starts_at')->nullable();
+            $table->timestamp('ends_at')->nullable();
 
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
@@ -32,7 +33,7 @@ return new class extends Migration {
             $table->softDeletes();
 
             $table->index(['is_active', 'sort_order']);
-            // $table->index(['starts_at', 'ends_at']);
+            $table->index(['starts_at', 'ends_at']);
         });
     }
 

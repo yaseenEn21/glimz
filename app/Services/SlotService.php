@@ -10,7 +10,7 @@ use Carbon\Carbon;
 class SlotService
 {
 
-    public function getSlots(string $date, int $serviceId, float $lat, float $lng, ?int $stepMinutes = null, string $mode = 'blocks', ?int $excludeBookingId = null): array
+    public function getSlots(string $date, int $serviceId, float $lat, float $lng, ?int $stepMinutes = null, string $mode = 'blocks', ?int $excludeBookingId = null, ?int $partnerId = null): array
     {
         $tz = config('app.timezone', 'UTC');
         $day = Carbon::createFromFormat('d-m-Y', $date, $tz);
@@ -75,8 +75,16 @@ class SlotService
                     ->where('employee_services.is_active', 1);
             });
 
-        $employeesForServiceCount = (clone $baseQuery)->count();
+        // ✅ فلتر الشريك: فقط الموظفين المخصصين له
+        if ($partnerId) {
+            $baseQuery->whereHas('partnerAssignments', function ($q) use ($partnerId, $serviceId) {
+                $q->where('partner_id', $partnerId)
+                    ->where('service_id', $serviceId);
+            });
+        }
 
+        $employeesForServiceCount = (clone $baseQuery)->count();
+        
         // ✅ bbox filter
         $employees = (clone $baseQuery)
             ->whereHas('workArea', function ($q) use ($lat, $lng) {
@@ -87,16 +95,18 @@ class SlotService
                     ->where('max_lng', '>=', $lng);
             })
             ->with([
-                    'user:id,name',
-                    'workArea:id,employee_id,polygon,min_lat,max_lat,min_lng,max_lng',
-                    'weeklyIntervals' => function ($q) use ($weekday) {
-                        $q->where('day', $weekday)->where('is_active', true);
-                    },
-                    'timeBlocks' => function ($q) use ($dbDate) {
-                        $q->where('date', $dbDate)->where('is_active', true);
-                    },
-                ])
+                'user:id,name',
+                'workArea:id,employee_id,polygon,min_lat,max_lat,min_lng,max_lng',
+                'weeklyIntervals' => function ($q) use ($weekday) {
+                    $q->where('day', $weekday)->where('is_active', true);
+                },
+                'timeBlocks' => function ($q) use ($dbDate) {
+                    $q->where('date', $dbDate)->where('is_active', true);
+                },
+            ])
             ->get();
+
+            // dd($employees);
 
         if ($employees->isEmpty()) {
             return [

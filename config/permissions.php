@@ -14,12 +14,14 @@ return [
   'wallets'   => ['create', 'edit', 'delete', 'view'],
   'promotions'   => ['create', 'edit', 'delete', 'view'],
   'promotion_coupons'   => ['create', 'edit', 'delete', 'view'],
-  'invoices'   => ['view'],
+  'invoices'   => ['view','pay_manually'],
   'payments'   => ['view'],
   'customer_groups'   => ['create', 'edit', 'delete', 'view'],
   'zones'   => ['create', 'edit', 'delete', 'view'],
   'branches'   => ['create', 'edit', 'delete', 'view'],
   'carousel_items'   => ['create', 'edit', 'delete', 'view'],
   'notifications'   => ['create', 'edit', 'delete', 'view'],
+  'partners'   => ['create', 'edit', 'delete', 'view', 'assign_services'],
+  'promotional_notifications'   => ['create', 'edit', 'delete', 'view', 'send'],
   'app_pages'   => ['create', 'edit', 'delete', 'view']
 ];

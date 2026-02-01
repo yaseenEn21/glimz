@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Models\CarouselItem;
 use App\Models\Notification;
+use App\Observers\CarouselItemObserver;
 use App\Repositories\AuthRepository\AuthRepository;
 use App\Repositories\AuthRepository\Interfaces\AuthRepositoryInterface;
 use App\Repositories\Contracts\UserRepositoryInterface;
@@ -45,6 +47,7 @@ class AppServiceProvider extends ServiceProvider
         // ]);
 
         Booking::observe(BookingObserver::class);
+        CarouselItem::observe(CarouselItemObserver::class);
 
         View::composer('base.layout.*', function ($view) {
             $user = auth()->user();

@@ -95,6 +95,7 @@ return [
             'on_create' => env('REKAZ_SYNC_ON_CREATE', true),
             'on_update' => env('REKAZ_SYNC_ON_UPDATE', true),
             'on_cancel' => env('REKAZ_SYNC_ON_CANCEL', true),
+            'on_confirm' => env('REKAZ_SYNC_ON_CONFIRM', true),  
             'on_delete' => env('REKAZ_SYNC_ON_DELETE', true),
             'delay_seconds' => env('REKAZ_SYNC_DELAY', 2),
             'queue' => env('REKAZ_SYNC_QUEUE', 'rekaz-sync'),

@@ -38,7 +38,8 @@
                         @php
                             $isBookingsCalendar = $is('dashboard.bookings.calendar');
                             $isBookingsCancelReasons = $is('dashboard.bookings.cancel-reasons.*');
-                            $isBookingsList = $is('dashboard.bookings.*') && !$isBookingsCalendar && !$isBookingsCancelReasons;
+                            $isBookingsList =
+                                $is('dashboard.bookings.*') && !$isBookingsCalendar && !$isBookingsCancelReasons;
                         @endphp
 
                         <div class="menu-item">
@@ -64,7 +65,8 @@
 
                     {{-- ===================== الكتالوج ===================== --}}
                     <div class="menu-content pt-6 pb-2">
-                        <span class="menu-heading fw-bold text-uppercase fs-7">{{ __('sidebar.sections.catalog') }}</span>
+                        <span
+                            class="menu-heading fw-bold text-uppercase fs-7">{{ __('sidebar.sections.catalog') }}</span>
                     </div>
 
                     @can('services.view')
@@ -129,7 +131,8 @@
 
                     {{-- ===================== الأشخاص ===================== --}}
                     <div class="menu-content pt-6 pb-2">
-                        <span class="menu-heading fw-bold text-uppercase fs-7">{{ __('sidebar.sections.people') }}</span>
+                        <span
+                            class="menu-heading fw-bold text-uppercase fs-7">{{ __('sidebar.sections.people') }}</span>
                     </div>
 
                     @can('customers.view')
@@ -170,7 +173,8 @@
 
                     {{-- ===================== المالية ===================== --}}
                     <div class="menu-content pt-6 pb-2">
-                        <span class="menu-heading fw-bold text-uppercase fs-7">{{ __('sidebar.sections.finance') }}</span>
+                        <span
+                            class="menu-heading fw-bold text-uppercase fs-7">{{ __('sidebar.sections.finance') }}</span>
                     </div>
 
                     @can('invoices.view')
@@ -223,7 +227,8 @@
 
                     {{-- ===================== الإعدادات ===================== --}}
                     <div class="menu-content pt-6 pb-2">
-                        <span class="menu-heading fw-bold text-uppercase fs-7">{{ __('sidebar.sections.settings') }}</span>
+                        <span
+                            class="menu-heading fw-bold text-uppercase fs-7">{{ __('sidebar.sections.settings') }}</span>
                     </div>
 
                     @can('branches.view')
@@ -282,6 +287,36 @@
                                     <i class="fas fa-file-alt fs-2"></i>
                                 </span>
                                 <span class="menu-title">{{ t(key: 'app-pages.title') }}</span>
+                            </a>
+                        </div>
+                    @endcan
+
+                    @can('partners.view')
+                        <div class="menu-item">
+                            <a class="menu-link {{ request()->routeIs('dashboard.partners.*') ? 'active' : '' }}"
+                                href="{{ route('dashboard.partners.index') }}">
+                                <span class="menu-icon">
+                                    <i class="ki-duotone ki-handshake fs-2">
+                                        <span class="path1"></span>
+                                        <span class="path2"></span>
+                                    </i>
+                                </span>
+                                <span class="menu-title">{{ __('partners.partners') }}</span>
+                            </a>
+                        </div>
+                    @endcan
+
+                    @can('promotional_notifications.view')
+                        <div class="menu-item">
+                            <a class="menu-link {{ $is('dashboard.promotional-notifications.*') ? 'active' : '' }}"
+                                href="{{ route('dashboard.promotional-notifications.index') }}">
+                                <span class="menu-icon">
+                                    <i class="ki-duotone ki-send fs-2">
+                                        <span class="path1"></span>
+                                        <span class="path2"></span>
+                                    </i>
+                                </span>
+                                <span class="menu-title">{{ t(key: 'promotional_notifications.title') }}</span>
                             </a>
                         </div>
                     @endcan

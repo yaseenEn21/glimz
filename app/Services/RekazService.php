@@ -134,20 +134,34 @@ class RekazService
      * @return array
      * @throws \Exception
      */
+    /**
+     * تحديث حجز في ركاز
+     * 
+     * @param string $rekazReservationId
+     * @param array $updateData - يجب أن يحتوي على: startDate, endDate (optional), providerIds (optional)
+     * @return array
+     * @throws \Exception
+     */
     public function updateReservation(string $rekazReservationId, array $updateData): array
     {
         try {
+            // ركاز يتطلب startDate دائماً بصيغة ISO 8601
+            if (!isset($updateData['startDate'])) {
+                throw new \Exception('startDate is required for Rekaz reservation update');
+            }
+
             $response = $this->client()
                 ->put("{$this->baseUrl}/reservations/{$rekazReservationId}", $updateData);
 
             if ($response->successful()) {
                 Log::info('Rekaz reservation updated successfully', [
                     'rekaz_id' => $rekazReservationId,
+                    'updated_fields' => array_keys($updateData),
                 ]);
 
                 return [
                     'success' => true,
-                    'data' => $response->json('data'),
+                    'data' => $response->json('data') ?? $response->json(),
                     'message' => 'Reservation updated successfully',
                 ];
             }
@@ -156,6 +170,7 @@ class RekazService
                 'rekaz_id' => $rekazReservationId,
                 'status' => $response->status(),
                 'response' => $response->json(),
+                'payload' => $updateData,
             ]);
 
             return [
@@ -172,6 +187,65 @@ class RekazService
 
             throw new \Exception('Failed to update reservation in Rekaz: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * تحويل بيانات الحجز المحدثة إلى صيغة ركاز للتحديث
+     * 
+     * @param \App\Models\Booking $booking
+     * @return array
+     */
+    public function transformBookingToRekazUpdatePayload($booking): array
+    {
+        $booking->loadMissing(['employee']);
+
+        // 1. ✅ تحويل التواريخ إلى UTC ISO 8601 (startDate مطلوب دائماً)
+        $bookingDate = $booking->booking_date;
+        if ($bookingDate instanceof \Carbon\Carbon) {
+            $bookingDate = $bookingDate->format('Y-m-d');
+        } elseif (is_string($bookingDate)) {
+            $bookingDate = substr($bookingDate, 0, 10);
+        }
+
+        $startTime = is_string($booking->start_time) ? substr($booking->start_time, 0, 5) : $booking->start_time;
+        $endTime = is_string($booking->end_time) ? substr($booking->end_time, 0, 5) : $booking->end_time;
+
+        $bookingDateTime = \Carbon\Carbon::createFromFormat(
+            'Y-m-d H:i',
+            $bookingDate . ' ' . $startTime,
+            'Asia/Riyadh'
+        );
+
+        $endDateTime = \Carbon\Carbon::createFromFormat(
+            'Y-m-d H:i',
+            $bookingDate . ' ' . $endTime,
+            'Asia/Riyadh'
+        );
+
+        $startDate = $bookingDateTime->utc()->format('Y-m-d\TH:i:s\Z');
+        $endDate = $endDateTime->utc()->format('Y-m-d\TH:i:s\Z');
+
+        // 2. ✅ الحصول على provider IDs (employees)
+        $providerIds = [];
+        if ($booking->employee_id) {
+            $employeeMapping = $booking->employee->rekazMapping ?? null;
+            if ($employeeMapping && $employeeMapping->rekaz_id) {
+                $providerIds[] = $employeeMapping->rekaz_id;
+            }
+        }
+
+        // 3. ✅ بناء الـ payload
+        $payload = [
+            'startDate' => $startDate, // مطلوب دائماً
+            'endDate' => $endDate,     // اختياري لكن نبعته
+        ];
+
+        // إضافة providerIds فقط إذا موجود
+        if (!empty($providerIds)) {
+            $payload['providerIds'] = $providerIds;
+        }
+
+        return $payload;
     }
 
     /**
@@ -1224,6 +1298,147 @@ class RekazService
                 'error' => $e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * تأكيد حجز في ركاز
+     * 
+     * @param string $rekazReservationId
+     * @return array
+     * @throws \Exception
+     */
+    public function confirmReservation(string $rekazReservationId): array
+    {
+        try {
+            $response = $this->client()
+                ->put("{$this->baseUrl}/reservations/{$rekazReservationId}/confirm");
+
+            if ($response->successful()) {
+                Log::info('Rekaz reservation confirmed successfully', [
+                    'rekaz_id' => $rekazReservationId,
+                ]);
+
+                return [
+                    'success' => true,
+                    'data' => $response->json('data') ?? $response->json(),
+                    'message' => 'Reservation confirmed successfully',
+                ];
+            }
+
+            Log::error('Rekaz reservation confirmation failed', [
+                'rekaz_id' => $rekazReservationId,
+                'status' => $response->status(),
+                'response' => $response->json(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $response->json('message', 'Failed to confirm reservation'),
+                'status_code' => $response->status(),
+            ];
+
+        } catch (RequestException $e) {
+            Log::error('Rekaz API confirm exception', [
+                'rekaz_id' => $rekazReservationId,
+                'message' => $e->getMessage(),
+            ]);
+
+            throw new \Exception('Failed to confirm reservation in Rekaz: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * إلغاء حجز في ركاز (باستخدام endpoint المخصص)
+     * 
+     * @param string $rekazReservationId
+     * @param string|null $reason
+     * @param bool $notifyCustomer
+     * @return array
+     * @throws \Exception
+     */
+    public function cancelReservationWithReason(string $rekazReservationId, ?string $reason = null, bool $notifyCustomer = true): array
+    {
+        try {
+            $payload = [];
+
+            if ($reason) {
+                $payload['cancellationReason'] = $reason;
+            }
+
+            $payload['notifyCustomer'] = $notifyCustomer;
+
+            $response = $this->client()
+                ->put("{$this->baseUrl}/reservations/{$rekazReservationId}/cancel", $payload);
+
+            if ($response->successful()) {
+                Log::info('Rekaz reservation cancelled successfully', [
+                    'rekaz_id' => $rekazReservationId,
+                    'reason' => $reason,
+                    'notify_customer' => $notifyCustomer,
+                ]);
+
+                return [
+                    'success' => true,
+                    'data' => $response->json('data') ?? $response->json(),
+                    'message' => 'Reservation cancelled successfully',
+                ];
+            }
+
+            Log::error('Rekaz reservation cancellation failed', [
+                'rekaz_id' => $rekazReservationId,
+                'status' => $response->status(),
+                'response' => $response->json(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $response->json('message', 'Failed to cancel reservation'),
+                'status_code' => $response->status(),
+            ];
+
+        } catch (RequestException $e) {
+            Log::error('Rekaz API cancel exception', [
+                'rekaz_id' => $rekazReservationId,
+                'message' => $e->getMessage(),
+            ]);
+
+            throw new \Exception('Failed to cancel reservation in Rekaz: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * التحقق من تفعيل مزامنة ركاز
+     * 
+     * @param string|null $action
+     * @return bool
+     */
+    public function isSyncEnabled(?string $action = null): bool
+    {
+        // التحقق من التفعيل العام
+        if (!config('services.rekaz.sync.enabled', true)) {
+            return false;
+        }
+
+        // إذا لم يتم تحديد action، نرجع true
+        if (!$action) {
+            return true;
+        }
+
+        // التحقق من التفعيل حسب نوع الإجراء
+        $configKey = match ($action) {
+            'create' => 'on_create',
+            'update' => 'on_update',
+            'confirm' => 'on_confirm',
+            'cancel' => 'on_cancel',
+            'delete' => 'on_delete',
+            default => null,
+        };
+
+        if (!$configKey) {
+            return true;
+        }
+
+        return config("services.rekaz.sync.{$configKey}", true);
     }
 
 }

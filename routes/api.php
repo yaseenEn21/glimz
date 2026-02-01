@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\CarouselController;
 use App\Http\Controllers\Api\BookingController;
 use App\Http\Controllers\Api\BookingPackageController;
 use App\Http\Controllers\Api\BookingRatingController;
+use App\Http\Controllers\Api\Partners\PartnerBookingController;
 use App\Http\Controllers\Api\PointController;
 use App\Http\Controllers\Api\ProfileController;
 use App\Http\Controllers\Api\ServiceCategoryController;
@@ -152,6 +153,8 @@ Route::prefix('v1')->middleware(['set.api.locale'])->group(function () {
     Route::get('vehicle-models', [VehicleModelController::class, 'index']); // ?vehicle_make_id=...
     Route::get('car-colors', [CarColorController::class, 'index']);
 
+    Route::get('settings', [SettingController::class, 'getSettings']);
+    Route::get('settings/clear-cache', [SettingController::class, 'clearCache']);
     Route::get('help-and-support/faqs', [SettingController::class, 'faqs']);
     Route::get('help-and-support/contact-info', [SettingController::class, 'contactInfo']);
     Route::get('settings/policies', [SettingController::class, 'policies']);
@@ -161,5 +164,23 @@ Route::prefix('v1')->middleware(['set.api.locale'])->group(function () {
     Route::get('app-translation', [AppTranslationController::class, 'show']);
     Route::post('app-translation', [AppTranslationController::class, 'upload'])
         ->middleware('app.translations.token');
+
+    // Partner API Routes
+    Route::prefix('partners/v1')->middleware(['partner.auth'])->group(function () {
+
+        // Slots (no limit check)
+        Route::get('slots', [PartnerBookingController::class, 'getSlots']);
+
+        // Bookings (with limit check)
+        Route::middleware('partner.limit')->group(function () {
+            Route::post('bookings', [PartnerBookingController::class, 'createBooking']);
+        });
+
+        // Other booking operations (no limit check)
+        Route::get('bookings', [PartnerBookingController::class, 'listBookings']);
+        Route::get('bookings/{external_id}', [PartnerBookingController::class, 'getBooking']);
+        Route::put('bookings/{external_id}/reschedule', [PartnerBookingController::class, 'rescheduleBooking']);
+        Route::post('bookings/{external_id}/cancel', [PartnerBookingController::class, 'cancelBooking']);
+    });
 
 });

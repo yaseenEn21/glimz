@@ -104,5 +104,52 @@ return [
 
     'relations_title' => 'Relations',
     'meta_title' => 'Meta',
-    'Booking'          => 'Booking',
+    'Booking' => 'Booking',
+
+    'manual_payment' => [
+        'pay_button' => 'Pay Invoice',
+        'modal_title' => 'Manual Invoice Payment',
+        'invoice_info' => 'Invoice Information',
+        'payment_method' => 'Payment Method',
+        'select_method' => 'Select payment method',
+        'bank_details_title' => 'Bank Account Details',
+        'reference_number' => 'Reference Number',
+        'reference_placeholder' => 'Enter reference or transaction number',
+        'reference_hint' => 'Bank transfer number or receipt number',
+        'attachment' => 'Attachment',
+        'attachment_hint' => 'Receipt image or payment proof (PDF, JPG, PNG - up to 5MB)',
+        'notes' => 'Notes',
+        'notes_placeholder' => 'Any additional notes about the payment',
+        'cancel' => 'Cancel',
+        'confirm' => 'Confirm Payment',
+        'processing' => 'Processing...',
+
+        'already_paid' => 'This invoice is already paid',
+        'success' => 'Invoice paid successfully',
+        'error' => 'An error occurred while processing payment',
+        'fulfillment_failed' => 'Payment received but order fulfillment failed',
+
+        'validation' => [
+            'method_required' => 'Payment method is required',
+            'method_invalid' => 'Selected payment method is invalid',
+            'file_too_large' => 'File size is too large (maximum 5MB)',
+        ],
+    ],
+
+    // External Payment Methods
+    'external_methods' => [
+        'name' => 'Payment Method Name',
+        'description' => 'Description',
+        'code' => 'Code',
+        'active' => 'Active',
+        'inactive' => 'Inactive',
+
+        'types' => [
+            'bank_transfer' => 'Bank Transfer',
+            'cash' => 'Cash',
+            'cheque' => 'Cheque',
+            'pos' => 'Point of Sale (POS)',
+            'mada' => 'Mada',
+        ],
+    ],
 ];

@@ -20,6 +20,11 @@ Artisan::command('inspire', function () {
 
 Schedule::command('reminders:check-expiring')
     ->dailyAt('00:10')
-    ->onOneServer()        
-    ->withoutOverlapping() 
-    ->runInBackground();   
+    ->onOneServer()
+    ->withoutOverlapping()
+    ->runInBackground();
+
+Schedule::command('promotional-notifications:send-scheduled')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->onOneServer();

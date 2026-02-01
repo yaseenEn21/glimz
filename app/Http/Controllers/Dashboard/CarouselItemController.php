@@ -14,9 +14,9 @@ class CarouselItemController extends Controller
     public function __construct()
     {
         // عدّل الصلاحيات حسب نظامك
-        $this->middleware('can:carousel_items.view')->only(['index','datatable','show']);
-        $this->middleware('can:carousel_items.create')->only(['create','store']);
-        $this->middleware('can:carousel_items.edit')->only(['edit','update']);
+        $this->middleware('can:carousel_items.view')->only(['index', 'datatable', 'show']);
+        $this->middleware('can:carousel_items.create')->only(['create', 'store']);
+        $this->middleware('can:carousel_items.edit')->only(['edit', 'update']);
         $this->middleware('can:carousel_items.delete')->only(['destroy']);
     }
 
@@ -34,12 +34,18 @@ class CarouselItemController extends Controller
     {
         $q = CarouselItem::query()
             ->select([
-                'id','title','label','is_active','sort_order',
-                'carouselable_type','carouselable_id','created_at'
+                'id',
+                'title',
+                'label',
+                'is_active',
+                'sort_order',
+                'carouselable_type',
+                'carouselable_id',
+                'created_at'
             ]);
 
         if ($request->filled('is_active')) {
-            $q->where('is_active', (int)$request->input('is_active') === 1);
+            $q->where('is_active', (int) $request->input('is_active') === 1);
         }
 
         return $datatable->eloquent($q)
@@ -52,13 +58,13 @@ class CarouselItemController extends Controller
             })
             ->addColumn('status_badge', function (CarouselItem $item) {
                 return $item->is_active
-                    ? '<span class="badge badge-light-success">'.__('carousel.active').'</span>'
-                    : '<span class="badge badge-light-danger">'.__('carousel.inactive').'</span>';
+                    ? '<span class="badge badge-light-success">' . __('carousel.active') . '</span>'
+                    : '<span class="badge badge-light-danger">' . __('carousel.inactive') . '</span>';
             })
             ->addColumn('actions', function (CarouselItem $item) {
                 return view('dashboard.carousel_items.partials.actions', compact('item'))->render();
             })
-            ->rawColumns(['image','status_badge','actions'])
+            ->rawColumns(['image', 'status_badge', 'actions'])
             ->toJson();
     }
 
@@ -89,8 +95,13 @@ class CarouselItemController extends Controller
         $item->carouselable_type = $type;
         $item->carouselable_id = $id;
 
-        $item->is_active = (bool)($data['is_active'] ?? false);
-        $item->sort_order = (int)($data['sort_order'] ?? 0);
+        $item->is_active = (bool) ($data['is_active'] ?? false);
+        $item->sort_order = (int) ($data['sort_order'] ?? 0);
+
+        // حقول التاريخ الجديدة
+        $item->starts_at = $data['starts_at'] ?? null;
+        $item->ends_at = $data['ends_at'] ?? null;
+        $item->display_type = $data['display_type'] ?? null;
 
         $item->save();
 
@@ -133,7 +144,10 @@ class CarouselItemController extends Controller
         // key reverse mapping
         $currentKey = null;
         foreach (config('carousel.carouselables', []) as $k => $class) {
-            if ($carouselItem->carouselable_type === $class) { $currentKey = $k; break; }
+            if ($carouselItem->carouselable_type === $class) {
+                $currentKey = $k;
+                break;
+            }
         }
 
         return view('dashboard.carousel_items.edit', compact('carouselItem', 'carouselableKeys', 'currentKey'));
@@ -154,8 +168,13 @@ class CarouselItemController extends Controller
         $carouselItem->carouselable_type = $type;
         $carouselItem->carouselable_id = $id;
 
-        $carouselItem->is_active = (bool)($data['is_active'] ?? false);
-        $carouselItem->sort_order = (int)($data['sort_order'] ?? 0);
+        $carouselItem->is_active = (bool) ($data['is_active'] ?? false);
+        $carouselItem->sort_order = (int) ($data['sort_order'] ?? 0);
+
+        // حقول التاريخ الجديدة
+        $carouselItem->starts_at = $data['starts_at'] ?? null;
+        $carouselItem->ends_at = $data['ends_at'] ?? null;
+        $carouselItem->display_type = $data['display_type'] ?? null;
 
         $carouselItem->save();
 
@@ -191,8 +210,8 @@ class CarouselItemController extends Controller
     // ---------------------------
     public function carouselablesLookup(Request $request)
     {
-        $key = (string)$request->input('key');
-        $qText = trim((string)$request->input('q', ''));
+        $key = (string) $request->input('key');
+        $qText = trim((string) $request->input('q', ''));
 
         $map = config('carousel.carouselables', []);
         if (!isset($map[$key])) {
@@ -206,9 +225,9 @@ class CarouselItemController extends Controller
         if ($qText !== '') {
             $query->where(function ($x) use ($qText) {
                 $x->where('name', 'like', "%{$qText}%")
-                  ->orWhere('title', 'like', "%{$qText}%")
-                  ->orWhere('name->ar', 'like', "%{$qText}%")
-                  ->orWhere('name->en', 'like', "%{$qText}%");
+                    ->orWhere('title', 'like', "%{$qText}%")
+                    ->orWhere('name->ar', 'like', "%{$qText}%")
+                    ->orWhere('name->en', 'like', "%{$qText}%");
             });
         }
 
@@ -217,11 +236,11 @@ class CarouselItemController extends Controller
         $results = $items->map(function ($m) {
             $label = '';
             if (isset($m->name)) {
-                $label = is_array($m->name) ? (function_exists('i18n') ? i18n($m->name) : ($m->name[app()->getLocale()] ?? ($m->name['ar'] ?? ''))) : (string)$m->name;
+                $label = is_array($m->name) ? (function_exists('i18n') ? i18n($m->name) : ($m->name[app()->getLocale()] ?? ($m->name['ar'] ?? ''))) : (string) $m->name;
             } elseif (isset($m->title)) {
-                $label = is_array($m->title) ? (function_exists('i18n') ? i18n($m->title) : ($m->title[app()->getLocale()] ?? ($m->title['ar'] ?? ''))) : (string)$m->title;
+                $label = is_array($m->title) ? (function_exists('i18n') ? i18n($m->title) : ($m->title[app()->getLocale()] ?? ($m->title['ar'] ?? ''))) : (string) $m->title;
             } else {
-                $label = class_basename($m).': '.$m->id;
+                $label = class_basename($m) . ': ' . $m->id;
             }
 
             return ['id' => $m->id, 'text' => $label];
@@ -232,11 +251,13 @@ class CarouselItemController extends Controller
 
     private function resolveCarouselable(?string $key, $id): array
     {
-        if (!$key || !$id) return [null, null];
+        if (!$key || !$id)
+            return [null, null];
 
         $map = config('carousel.carouselables', []);
-        if (!isset($map[$key])) return [null, null];
+        if (!isset($map[$key]))
+            return [null, null];
 
-        return [$map[$key], (int)$id];
+        return [$map[$key], (int) $id];
     }
 }

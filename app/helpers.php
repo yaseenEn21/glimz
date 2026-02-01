@@ -218,7 +218,7 @@ if (!function_exists('extract_lat_lng_from_maps_link')) {
         if ($pair = _maps_extract_from_html($url, $timeout)) {
             return ['lat' => $pair['lat'], 'lng' => $pair['lng'], 'source' => $pair['source'] ?? 'html'];
         }
-        
+
         return null;
     }
 
@@ -396,6 +396,38 @@ if (!function_exists('extract_lat_lng_from_maps_link')) {
             return _maps_validate_pair((float) $loc['lat'], (float) $loc['lng'], 'geocode_address');
         } catch (\Throwable $e) {
             return null;
+        }
+    }
+
+
+    if (!function_exists('format_currency')) {
+        function format_currency(float $amount, ?string $currency = null): string
+        {
+            $currency = $currency ?? config('currency.default');
+
+            $formattedAmount = number_format($amount, 2);
+
+            return match ($currency) {
+                'SAR' => '<span class="currency-icon">' . $formattedAmount . ' ' . sar_svg() . '</span>',
+                'USD' => '<span class="currency-icon">$' . $formattedAmount . '</span>',
+                default => $formattedAmount,
+            };
+        }
+    }
+
+    if (!function_exists('sar_svg')) {
+        function sar_svg(): string
+        {
+            return <<<SVG
+<svg class="currency-symbol" width="14" height="14" viewBox="0 0 20 21" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+<path d="M11.1387 5.19542C11.7013 4.56387 12.0471 4.28034 12.7262 3.92188V14.4382L11.1387 14.7663V5.19542Z"/>
+<path d="M16.2105 10.4816C16.5396 9.78697 16.5784 9.47822 16.6665 8.76562L4.49817 11.4079C4.20962 12.0506 4.11674 12.4099 4.07227 13.0481L16.2105 10.4816Z"/>
+<path d="M16.211 13.7043C16.54 13.0097 16.5788 12.7009 16.6669 11.9883L11.1969 13.146C11.1582 13.7829 11.2026 14.1095 11.1582 14.7476L16.211 13.7043Z"/>
+<path d="M16.211 16.923C16.54 16.2284 16.5788 15.9196 16.6669 15.207L11.6809 16.2894C11.4292 16.6367 11.2743 17.2156 11.1582 17.9664L16.211 16.923Z"/>
+<path d="M8.29247 15.8275C8.77642 15.2294 9.27976 14.4768 9.62826 13.8594L3.75892 15.1315C3.47036 15.7743 3.37747 16.1336 3.33301 16.7717L8.29247 15.8275Z"/>
+<path d="M8.04102 4.3087C8.60364 3.67716 8.94939 3.39362 9.62847 3.03516V13.8988L8.04102 14.2268V4.3087Z"/>
+</svg>
+SVG;
         }
     }
 }

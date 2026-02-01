@@ -138,13 +138,13 @@ class PaymentController extends Controller
             ->addColumn('gateway_label', function (Payment $row) {
                 return $row->gateway ? e($row->gateway) : '—';
             })
-            ->editColumn('amount', fn(Payment $row) => number_format((float) $row->amount, 2))
+            ->editColumn('amount', fn (Payment $row) => format_currency((float) $row->amount))
             ->addColumn('paid_at_label', fn(Payment $row) => $row->paid_at ? $row->paid_at->format('Y-m-d H:i') : '—')
             ->addColumn('created_at_label', fn(Payment $row) => $row->created_at ? $row->created_at->format('Y-m-d H:i') : '—')
             ->addColumn('actions', function (Payment $row) {
                 return view('dashboard.payments._actions', ['payment' => $row])->render();
             })
-            ->rawColumns(['method_badge', 'status_badge', 'actions'])
+            ->rawColumns(['method_badge', 'amount', 'status_badge', 'actions'])
             ->make(true);
     }
 

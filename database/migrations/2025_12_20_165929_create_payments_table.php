@@ -23,7 +23,8 @@ return new class extends Migration {
             $table->decimal('amount', 12, 2);
             $table->char('currency', 3)->default('SAR');
 
-            $table->enum('method', ['wallet', 'credit_card', 'apple_pay', 'google_pay', 'cash', 'visa', 'stc']);
+            // $table->enum('method', ['wallet', 'credit_card', 'apple_pay', 'google_pay', 'cash', 'visa', 'stc']);
+            $table->string('method')->nullable();
             $table->enum('status', ['pending', 'paid', 'failed', 'cancelled', 'refunded'])->default('pending');
 
             $table->string('gateway')->nullable(); // moyasar

@@ -86,10 +86,10 @@ class ServiceController extends Controller
                     $label = __('services.inactive');
                     return '<span class="badge badge-light-danger">' . $label . '</span>';
                 })
-                ->editColumn('price', fn(Service $row) => number_format($row->price, 2))
+                ->editColumn('price', fn(Service $row) => format_currency($row->price))
                 ->editColumn('discounted_price', function (Service $row) {
                     return $row->discounted_price !== null
-                        ? number_format($row->discounted_price, 2)
+                        ? format_currency($row->discounted_price)
                         : '—';
                 })
                 ->editColumn('duration_minutes', function (Service $row) {
@@ -101,7 +101,7 @@ class ServiceController extends Controller
                 ->addColumn('actions', function (Service $row) {
                     return view('dashboard.services._actions', ['service' => $row])->render();
                 })
-                ->rawColumns(['is_active_badge', 'actions'])
+                ->rawColumns(['is_active_badge', 'price', 'discounted_price', 'actions'])
                 ->make(true);
         }
 

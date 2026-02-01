@@ -35,6 +35,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
             'PDF' => Mccarlosen\LaravelMpdf\Facades\LaravelMpdf::class,
+            'partner.auth' => \App\Http\Middleware\PartnerApiAuth::class,
+            'partner.limit' => \App\Http\Middleware\PartnerDailyLimitCheck::class,
         ]);
     })
     ->withProviders([

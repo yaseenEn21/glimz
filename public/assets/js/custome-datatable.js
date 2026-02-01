@@ -1,5 +1,9 @@
 window.KH = window.KH || {};
 
+const locale = window.appConfig.locale;
+const dtLangUrl = locale === 'ar' ?
+    'https://cdn.datatables.net/plug-ins/1.13.6/i18n/ar.json' :
+    'https://cdn.datatables.net/plug-ins/1.13.6/i18n/en-GB.json';
 
 /**
  * تشغيل/إيقاف حالة التحميل لفورم:

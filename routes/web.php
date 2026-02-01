@@ -5,6 +5,9 @@ use App\Http\Controllers\Dashboard\EmployeeController;
 use App\Http\Controllers\Dashboard\HomeController;
 use App\Http\Controllers\Dashboard\CarouselItemController;
 use App\Http\Controllers\Dashboard\CustomerController;
+use App\Http\Controllers\Dashboard\InvoicePaymentController;
+use App\Http\Controllers\Dashboard\PartnerController;
+use App\Http\Controllers\Dashboard\PromotionalNotificationController;
 use App\Http\Controllers\Dashboard\RoleController;
 use App\Http\Controllers\Dashboard\UserController;
 use App\Http\Controllers\Dashboard\ServiceController;
@@ -207,6 +210,17 @@ Route::middleware(['auth'])->group(function () {
         Route::get('promotions/{promotion}/coupons/{coupon}/redemptions/datatable', [PromotionCouponController::class, 'redemptionsDatatable'])
             ->name('promotions.coupons.redemptions.datatable');
 
+        // Manual Payment Routes
+        Route::prefix('invoices/{invoice}')->name('invoices.')->group(function () {
+            Route::get('manual-payment', [InvoicePaymentController::class, 'showManualPaymentForm'])
+                ->name('manual-payment.show');
+            // ->middleware('can:invoices.pay_manually');
+
+            Route::post('manual-payment', [InvoicePaymentController::class, 'processManualPayment'])
+                ->name('manual-payment.process');
+            // ->middleware('can:invoices.pay_manually');
+        });
+
         Route::get('invoices/datatable', [InvoiceController::class, 'datatable'])->name('invoices.datatable');
         Route::resource('invoices', InvoiceController::class)->only(['index', 'show']);
 
@@ -305,6 +319,85 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/{customer}/datatable/package-subscriptions', [CustomerController::class, 'packageSubscriptionsDatatable'])->name('datatable.package_subscriptions');
             Route::get('/{customer}/datatable/cars', [CustomerController::class, 'carsDatatable'])->name('datatable.cars');
             Route::get('/{customer}/datatable/addresses', [CustomerController::class, 'addressesDatatable'])->name('datatable.addresses');
+        });
+
+        Route::prefix('promotional-notifications')->name('promotional-notifications.')->group(function () {
+
+            // List
+            Route::get('/', [PromotionalNotificationController::class, 'index'])
+                ->name('index')
+                ->middleware('can:promotional_notifications.send');
+
+            // Create
+            Route::get('/create', [PromotionalNotificationController::class, 'create'])
+                ->name('create')
+                ->middleware('can:promotional_notifications.send');
+
+            // Store
+            Route::post('/', [PromotionalNotificationController::class, 'store'])
+                ->name('store')
+                ->middleware('can:promotional_notifications.send');
+
+            // Show
+            Route::get('/{promotional_notification}', [PromotionalNotificationController::class, 'show'])
+                ->name('show')
+                ->middleware('can:promotional_notifications.send');
+
+            // Edit
+            Route::get('/{promotional_notification}/edit', [PromotionalNotificationController::class, 'edit'])
+                ->name('edit')
+                ->middleware('can:promotional_notifications.send');
+
+            // Update
+            Route::put('/{promotional_notification}', [PromotionalNotificationController::class, 'update'])
+                ->name('update')
+                ->middleware('can:promotional_notifications.send');
+
+            // Delete
+            Route::delete('/{promotional_notification}', [PromotionalNotificationController::class, 'destroy'])
+                ->name('destroy')
+                ->middleware('can:promotional_notifications.send');
+
+            // Send manually
+            Route::post('/{promotional_notification}/send', [PromotionalNotificationController::class, 'send'])
+                ->name('send')
+                ->middleware('can:promotional_notifications.send');
+
+            // Cancel scheduled
+            Route::post('/{promotional_notification}/cancel', [PromotionalNotificationController::class, 'cancel'])
+                ->name('cancel')
+                ->middleware('can:promotional_notifications.send');
+
+            // AJAX - Preview recipients count
+            Route::post('/preview-recipients', [PromotionalNotificationController::class, 'previewRecipients'])
+                ->name('preview-recipients')
+                ->middleware('can:promotional_notifications.send');
+
+            // AJAX - Search users for Select2
+            Route::get('/search-users', [PromotionalNotificationController::class, 'searchUsers'])
+                ->name('search-users')
+                ->middleware('can:promotional_notifications.send');
+        });
+
+        // Partners Routes
+        Route::prefix('partners')->name('partners.')->group(function () {
+            Route::get('/', [PartnerController::class, 'index'])->name('index');
+            Route::get('create', [PartnerController::class, 'create'])->name('create');
+            Route::post('/', [PartnerController::class, 'store'])->name('store');
+            Route::get('{partner}', [PartnerController::class, 'show'])->name('show');
+            Route::get('{partner}/edit', [PartnerController::class, 'edit'])->name('edit');
+            Route::put('{partner}', [PartnerController::class, 'update'])->name('update');
+            Route::delete('{partner}', [PartnerController::class, 'destroy'])->name('destroy');
+
+            // Token Management
+            Route::post('{partner}/regenerate-token', [PartnerController::class, 'regenerateToken'])
+                ->name('regenerate-token');
+
+            // Service-Employee Assignment
+            Route::get('{partner}/assign-services', [PartnerController::class, 'assignServices'])
+                ->name('assign-services');
+            Route::post('{partner}/store-assignments', [PartnerController::class, 'storeAssignments'])
+                ->name('store-assignments');
         });
 
     });

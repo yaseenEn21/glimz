@@ -12,7 +12,7 @@
 <div class="card mb-5">
     <div class="card-body">
         {{-- Filters --}}
-        <div class="row g-4">
+        <div class="row g-4 align-items-center">
             <div class="col-lg-4">
                 <input type="text" id="search_custom" class="form-control"
                     placeholder="{{ __('bookings.filters.search_placeholder') }}">
@@ -70,10 +70,8 @@
             </div> --}}
 
             <div class="col-lg-1">
-                <button type="button" id="reset_filters" class="btn btn-light w-100">
-                    <i class="ki-duotone ki-arrows-circle fs-2">
-                        <span class="path1"></span><span class="path2"></span>
-                    </i>
+                <button type="button" id="reset_filters" class="btn btn-light-primary action-button">
+                    <i class="fa-solid fa-rotate-right p-0"></i>
                 </button>
             </div>
         </div>
@@ -110,74 +108,74 @@
 <script>
     (function() {
 
-        const table = $('#bookings_table').DataTable({
-            processing: true,
-            serverSide: true,
-            ajax: {
-                url: "{{ route('dashboard.bookings.datatable') }}",
-                data: function(d) {
-                    d.search_custom = $('#search_custom').val();
-                    d.status = $('#status').val();
-                    d.time_period = $('#time_period').val();
-                    d.from = $('#from').val();
-                    d.to = $('#to').val();
-                    d.service_id = $('#service_id').val();
-                    d.employee_id = $('#employee_id').val();
-                    d.zone_id = $('#zone_id').val();
-                }
-            },
-            order: [
-                [0, 'desc']
-            ],
+        const table = window.KH.initAjaxDatatable({
+            tableId: 'bookings_table',
+            ajaxUrl: '{{ route('dashboard.bookings.datatable') }}',
+            languageUrl: dtLangUrl,
+            searchInputId: 'search_custom',
             columns: [{
                     data: 'id',
-                    name: 'id'
+                    name: 'id',
+                    title: "{{ t('datatable.lbl_id') }}"
                 },
                 {
                     data: 'customer',
                     name: 'user_id',
+                    title: "{{ __('bookings.columns.customer') }}", // ✅ غيّر هون
                     orderable: false,
                     searchable: false
                 },
                 {
                     data: 'service_name',
                     name: 'service_id',
+                    title: "{{ __('bookings.columns.service') }}", // ✅ غيّر هون
                     orderable: false,
                     searchable: false
                 },
                 {
                     data: 'schedule',
                     name: 'booking_date',
+                    title: "{{ __('bookings.columns.schedule') }}", // ✅ غيّر هون
                     orderable: true,
                     searchable: false
                 },
                 {
                     data: 'employee_label',
                     name: 'employee_id',
+                    title: "{{ __('bookings.columns.employee') }}", // ✅ غيّر هون
                     orderable: false,
                     searchable: false
                 },
                 {
                     data: 'total',
                     name: 'total_snapshot',
+                    title: "{{ __('bookings.columns.total') }}", // ✅ غيّر هون
                     searchable: false
                 },
                 {
                     data: 'status_control',
                     name: 'status',
+                    title: "{{ __('bookings.columns.status_control') }}", // ✅ غيّر هون
                     orderable: false,
                     searchable: false
                 },
                 {
                     data: 'actions',
                     name: 'actions',
+                    className: 'text-end',
+                    title: '{{ t('datatable.lbl_actions') }}',
                     orderable: false,
-                    searchable: false,
-                    className: 'text-end'
-                },
+                    searchable: false
+                }
             ],
-            drawCallback: function() {
-                $('[data-bs-toggle="tooltip"]').tooltip();
+            extraData: function(d) {
+                d.status = $('#status').val();
+                d.time_period = $('#time_period').val();
+                d.from = $('#from').val();
+                d.to = $('#to').val();
+                d.service_id = $('#service_id').val();
+                d.employee_id = $('#employee_id').val();
+                d.zone_id = $('#zone_id').val();
             }
         });
 
@@ -256,7 +254,7 @@
                         _token: "{{ csrf_token() }}"
                     },
                     success: function(res) {
-                        
+
                         if (window.toastr) toastr.success(res.message);
 
                         if (typeof table !== 'undefined' && table?.ajax) {

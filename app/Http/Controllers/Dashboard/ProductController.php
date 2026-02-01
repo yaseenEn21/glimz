@@ -78,16 +78,16 @@ class ProductController extends Controller
                     }
                     return '<span class="badge badge-light-danger">' . e(__('products.inactive')) . '</span>';
                 })
-                ->editColumn('price', fn(Product $row) => number_format((float) $row->price, 2))
+                ->editColumn('price', fn(Product $row) => format_currency((float) $row->price))
                 ->editColumn('discounted_price', function (Product $row) {
-                    return $row->discounted_price !== null ? number_format((float) $row->discounted_price, 2) : '—';
+                    return $row->discounted_price !== null ? format_currency((float) $row->discounted_price) : '—';
                 })
                 ->editColumn('max_qty_per_booking', fn(Product $row) => $row->max_qty_per_booking ?? '—')
                 ->editColumn('created_at', fn(Product $row) => optional($row->created_at)->format('Y-m-d'))
                 ->addColumn('actions', function (Product $row) {
                     return view('dashboard.products._actions', ['product' => $row])->render();
                 })
-                ->rawColumns(['is_active_badge', 'actions'])
+                ->rawColumns(['is_active_badge', 'actions', 'price', 'discounted_price'])
                 ->make(true);
         }
 
