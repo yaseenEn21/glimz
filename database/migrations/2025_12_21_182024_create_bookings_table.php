@@ -38,7 +38,7 @@ return new class extends Migration {
             $table->foreignId('employee_id')->nullable()->constrained('employees')->nullOnDelete();
 
             $table->foreignId('partner_id')->nullable()->constrained('partners')->nullOnDelete();
-            $table->string('external_id')->nullable()->unique();
+            $table->string('external_id')->nullable();
 
             // في حال استخدم باقة
             $table->foreignId('package_subscription_id')

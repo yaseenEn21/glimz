@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Api\Partners;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Partner;
+use App\Models\Service;
 use App\Services\PartnerBookingService;
 use App\Services\SlotService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class PartnerBookingController extends Controller
 {
@@ -16,6 +18,44 @@ class PartnerBookingController extends Controller
         protected PartnerBookingService $partnerBookingService,
         protected SlotService $slotService
     ) {
+    }
+
+    /**
+     * GET /api/partners/v1/services
+     * جلب جميع الخدمات المخصصة للشريك
+     */
+    public function getServices(Request $request)
+    {
+        $partner = $request->input('partner');
+
+        // ✅ جلب الخدمات الفريدة المخصصة للشريك
+        $services = Service::query()
+            ->whereHas('partnerAssignments', function ($q) use ($partner) {
+                $q->where('partner_id', $partner->id);
+            })
+            ->where('is_active', true)
+            ->whereHas('category', fn($q) => $q->where('is_active', true))
+            ->distinct()
+            ->orderBy('id')
+            ->get(['id', 'name', 'duration_minutes']);
+
+        $data = $services->map(function ($service) {
+            // ✅ استخراج الاسم العربي
+            $nameAr = is_array($service->name)
+                ? ($service->name['ar'] ?? $service->name['en'] ?? '')
+                : $service->name;
+
+            return [
+                'id' => $service->id,
+                'name' => $nameAr,
+                'duration_minutes' => $service->duration_minutes,
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $data,
+        ]);
     }
 
     /**
@@ -27,10 +67,10 @@ class PartnerBookingController extends Controller
         $partner = $request->input('partner');
 
         $validator = Validator::make($request->all(), [
-            'date' => 'required|date_format:d-m-Y',
+            'date' => 'required|date_format:Y-m-d|after_or_equal:today', // ✅ نفس صيغة الحجز + منع الماضي
             'service_id' => 'required|integer|exists:services,id',
-            'lat' => 'required|numeric',
-            'lng' => 'required|numeric',
+            'lat' => 'required|numeric|between:-90,90', // ✅ تغيير الاسم
+            'lng' => 'required|numeric|between:-180,180', // ✅ تغيير الاسم
             'step_minutes' => 'nullable|integer|min:5|max:120',
         ]);
 
@@ -57,15 +97,18 @@ class PartnerBookingController extends Controller
             ], 403);
         }
 
+        // ✅ تحويل التاريخ من Y-m-d إلى d-m-Y للـ SlotService
+        $dateFormatted = \Carbon\Carbon::parse($data['date'])->format('d-m-Y');
+
         $slots = $this->slotService->getPartnerSlots(
-            $data['date'],
+            $dateFormatted, // ✅ التاريخ بصيغة d-m-Y
             (int) $data['service_id'],
             (float) $data['lat'],
             (float) $data['lng'],
             $data['step_minutes'] ?? null,
             'blocks',
             null,
-            $partner->id // ✅ فلتر الشريك
+            $partner->id
         );
 
         $times = collect($slots['items'])->pluck('start_time')->values()->toArray();
@@ -86,27 +129,35 @@ class PartnerBookingController extends Controller
         $partner = $request->input('partner');
 
         $validator = Validator::make($request->all(), [
-            'external_id' => 'required|string|max:255|unique:bookings,external_id',
+            'external_booking_id' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('bookings', 'external_id')->where(function ($query) {
+                    return $query->where('status', '!=', 'cancelled')
+                        ->whereNull('deleted_at'); // تجاهل المحذوفات soft delete
+                }),
+            ],
             'service_id' => 'required|integer|exists:services,id',
-            'date' => 'required|date_format:d-m-Y',
-            'start_time' => 'required|date_format:H:i',
-            'employee_id' => 'nullable|integer|exists:employees,id',
+            'start_date_time' => 'required|date_format:Y-m-d H:i:s|after:now', // ✅ منع التاريخ القديم
 
-            'customer' => 'required|array',
-            'customer.name' => 'required|string|max:255',
-            'customer.mobile' => 'required|string',
-            'customer.email' => 'nullable|email',
+            // Customer
+            'customer_name' => 'required|string|max:255',
+            'customer_mobile' => 'required|string',
+            'customer_email' => 'nullable|email',
 
-            'address' => 'required|array',
-            'address.address' => 'required|string',
-            'address.lat' => 'required|numeric',
-            'address.lng' => 'required|numeric',
+            // Location
+            'location_name' => 'required|string|max:500',
+            'location_latitude' => 'required|numeric|between:-90,90',
+            'location_longitude' => 'required|numeric|between:-180,180',
 
-            'car' => 'required|array',
-            'car.plate_number' => 'required|string|max:50',
-            'car.color' => 'nullable|string|max:50',
-            'car.model' => 'nullable|string|max:100',
+            // Car
+            'plate_number' => 'required|string|max:50',
+            'car_color' => 'nullable|string|max:50',
+            'car_brand' => 'nullable|string|max:100',
+            'car_model' => 'nullable|string|max:100',
 
+            // Optional
             'notes' => 'nullable|string|max:1000',
         ]);
 
@@ -118,7 +169,10 @@ class PartnerBookingController extends Controller
             ], 422);
         }
 
-        $result = $this->partnerBookingService->createBooking($partner, $validator->validated());
+        // ✅ تحويل البيانات للـ format القديم
+        $transformed = $this->transformCreateRequest($validator->validated());
+
+        $result = $this->partnerBookingService->createBooking($partner, $transformed);
 
         if (!$result['success']) {
             return response()->json($result, 422);
@@ -132,17 +186,64 @@ class PartnerBookingController extends Controller
     }
 
     /**
-     * PUT /api/partners/v1/bookings/{external_id}/reschedule
+     * تحويل Request المبسط إلى Format القديم
+     */
+    protected function transformCreateRequest(array $data): array
+    {
+        // ✅ فصل التاريخ والوقت
+        $dateTime = \Carbon\Carbon::parse($data['start_date_time']);
+
+        return [
+            'external_id' => $data['external_booking_id'],
+            'service_id' => $data['service_id'],
+            'date' => $dateTime->format('d-m-Y'),
+            'start_time' => $dateTime->format('H:i'),
+            // 'employee_id' => $data['employee_id'] ?? null,
+
+            'customer' => [
+                'name' => $data['customer_name'],
+                'mobile' => $data['customer_mobile'],
+                'email' => $data['customer_email'] ?? null,
+            ],
+
+            'address' => [
+                'address' => $data['location_name'],
+                'lat' => $data['location_latitude'],
+                'lng' => $data['location_longitude'],
+            ],
+
+            'car' => [
+                'plate_number' => $data['plate_number'],
+                'color' => $data['car_color'] ?? null,
+                'model' => $this->combineBrandModel($data['car_brand'] ?? null, $data['car_model'] ?? null),
+            ],
+
+            'notes' => $data['notes'] ?? null,
+        ];
+    }
+
+    /**
+     * دمج Brand و Model
+     */
+    protected function combineBrandModel(?string $brand, ?string $model): ?string
+    {
+        if ($brand && $model) {
+            return trim($brand . ' ' . $model);
+        }
+
+        return $model ?? $brand ?? null;
+    }
+
+    /**
+     * PUT /api/partners/v1/bookings/{external_booking_id}/reschedule
      * تعديل وقت الحجز
      */
-    public function rescheduleBooking(Request $request, string $externalId)
+    public function rescheduleBooking(Request $request, string $externalBookingId)
     {
         $partner = $request->input('partner');
 
         $validator = Validator::make($request->all(), [
-            'date' => 'required|date_format:d-m-Y',
-            'start_time' => 'required|date_format:H:i',
-            'employee_id' => 'nullable|integer|exists:employees,id',
+            'start_date_time' => 'required|date_format:Y-m-d H:i:s|after:now', // ✅ منع التاريخ القديم
         ]);
 
         if ($validator->fails()) {
@@ -153,7 +254,16 @@ class PartnerBookingController extends Controller
             ], 422);
         }
 
-        $result = $this->partnerBookingService->rescheduleBooking($partner, $externalId, $validator->validated());
+        // ✅ تحويل البيانات
+        $dateTime = \Carbon\Carbon::parse($validator->validated()['start_date_time']);
+
+        $transformed = [
+            'date' => $dateTime->format('d-m-Y'),
+            'start_time' => $dateTime->format('H:i'),
+            'employee_id' => $validator->validated()['employee_id'] ?? null,
+        ];
+
+        $result = $this->partnerBookingService->rescheduleBooking($partner, $externalBookingId, $transformed);
 
         if (!$result['success']) {
             return response()->json($result, $result['error_code'] === 'BOOKING_NOT_FOUND' ? 404 : 422);
@@ -167,15 +277,15 @@ class PartnerBookingController extends Controller
     }
 
     /**
-     * POST /api/partners/v1/bookings/{external_id}/cancel
+     * POST /api/partners/v1/bookings/{external_booking_id}/cancel
      * إلغاء الحجز
      */
-    public function cancelBooking(Request $request, string $externalId)
+    public function cancelBooking(Request $request, string $externalBookingId)
     {
         $partner = $request->input('partner');
 
         $validator = Validator::make($request->all(), [
-            'reason' => 'nullable|string|max:500',
+            'cancel_reason' => 'nullable|string|max:500',
         ]);
 
         if ($validator->fails()) {
@@ -188,8 +298,8 @@ class PartnerBookingController extends Controller
 
         $result = $this->partnerBookingService->cancelBooking(
             $partner,
-            $externalId,
-            $request->input('reason')
+            $externalBookingId,
+            $request->input('cancel_reason')
         );
 
         if (!$result['success']) {
@@ -261,18 +371,32 @@ class PartnerBookingController extends Controller
     }
 
     /**
-     * GET /api/partners/v1/bookings/{external_id}
+     * GET /api/partners/v1/bookings/{external_booking_id}
      * جلب حجز معين
      */
-    public function getBooking(Request $request, string $externalId)
+    public function getBooking(Request $request, string $externalBookingId)
     {
         $partner = $request->input('partner');
 
+        // ✅ أولاً: حاول تجيب الحجز النشط (غير ملغي)
         $booking = Booking::query()
             ->where('partner_id', $partner->id)
-            ->where('external_id', $externalId)
-            ->with(['service', 'employee.user', 'car', 'address'])
+            ->where('external_id', $externalBookingId)
+            ->where('status', '!=', 'cancelled')
+            ->with(['service', 'employee.user', 'car.make', 'car.model', 'address', 'user'])
+            ->orderBy('id', 'desc')
             ->first();
+
+        // ✅ إذا ما لقيت، جيب الملغي
+        if (!$booking) {
+            $booking = Booking::query()
+                ->where('partner_id', $partner->id)
+                ->where('external_id', $externalBookingId)
+                ->where('status', 'cancelled')
+                ->with(['service', 'employee.user', 'car.make', 'car.model', 'address', 'user'])
+                ->orderBy('id', 'desc')
+                ->first();
+        }
 
         if (!$booking) {
             return response()->json([
@@ -293,43 +417,47 @@ class PartnerBookingController extends Controller
      */
     protected function transformBooking(Booking $booking): array
     {
+        // دمج Brand + Model
+        $carBrand = $booking->car->make->name ?? null;
+        $carModel = $booking->car->model->name ?? null;
+
+        // استخراج النص حسب اللغة
+        $locale = app()->getLocale();
+        $brandName = is_array($carBrand) ? ($carBrand[$locale] ?? $carBrand['en'] ?? '') : $carBrand;
+        $modelName = is_array($carModel) ? ($carModel[$locale] ?? $carModel['en'] ?? '') : $carModel;
+
         return [
             'id' => $booking->id,
-            'external_id' => $booking->external_id,
+            'external_booking_id' => $booking->external_id,
+            'service_id' => $booking->service_id,
             'status' => $booking->status,
-            'booking_date' => $booking->booking_date->format('Y-m-d'),
-            'start_time' => substr($booking->start_time, 0, 5),
-            'end_time' => substr($booking->end_time, 0, 5),
+
+            // ✅ دمج التاريخ والوقت
+            'start_date_time' => $booking->booking_date->format('Y-m-d') . ' ' . substr($booking->start_time, 0, 5) . ':00',
             'duration_minutes' => $booking->duration_minutes,
 
-            'service' => [
-                'id' => $booking->service->id,
-                'name' => $booking->service->name,
-            ],
+            // Customer
+            'customer_name' => $booking->user->name,
+            'customer_mobile' => $booking->user->mobile,
+            'customer_email' => $booking->user->email,
 
-            'employee' => $booking->employee ? [
-                'id' => $booking->employee->id,
-                'name' => $booking->employee->user->name ?? null,
-            ] : null,
+            // Location
+            'location_name' => $booking->address->address_line,
+            'location_latitude' => (float) $booking->address->lat,
+            'location_longitude' => (float) $booking->address->lng,
 
-            'customer' => [
-                'name' => $booking->user->name,
-                'mobile' => $booking->user->mobile,
-                'email' => $booking->user->email,
-            ],
+            // Car
+            'plate_number' => $booking->car->plate_number . ' ' . $booking->car->plate_letters,
+            'car_color' => $booking->car->color,
+            'car_brand' => $brandName,
+            'car_model' => $modelName,
 
-            'car' => [
-                'plate_number' => $booking->car->plate_number,
-                'color' => $booking->car->color,
-                'model' => $booking->car->model,
-            ],
+            // Employee
+            'employee_id' => $booking->employee_id,
+            'employee_name' => $booking->employee?->user?->name,
 
-            'address' => [
-                'address' => $booking->address->address,
-                'lat' => (float) $booking->address->lat,
-                'lng' => (float) $booking->address->lng,
-            ],
-
+            // Metadata
+            'notes' => $booking->meta['customer_notes'] ?? null,
             'created_at' => $booking->created_at->toDateTimeString(),
             'updated_at' => $booking->updated_at->toDateTimeString(),
         ];

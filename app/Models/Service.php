@@ -93,4 +93,9 @@ class Service extends Model implements HasMedia
         return $this->hasMany(\App\Models\ServiceZonePrice::class, 'service_id');
     }
 
+    public function partnerAssignments()
+    {
+        return $this->hasMany(\App\Models\PartnerServiceEmployee::class);
+    }
+
 }

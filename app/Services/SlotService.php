@@ -84,7 +84,7 @@ class SlotService
         }
 
         $employeesForServiceCount = (clone $baseQuery)->count();
-        
+
         // ✅ bbox filter
         $employees = (clone $baseQuery)
             ->whereHas('workArea', function ($q) use ($lat, $lng) {
@@ -247,9 +247,9 @@ class SlotService
 
     public function getPartnerSlots(string $date, int $serviceId, float $lat, float $lng, ?int $stepMinutes = null, string $mode = 'blocks', ?int $excludeBookingId = null, ?int $partnerId = null): array
     {
-        $tz = config('app.timezone', 'UTC');
+        $tz = config('app.timezone', 'Asia/Riyadh');
         $day = Carbon::createFromFormat('d-m-Y', $date, $tz);
-        $dbDate = $day->toDateString();
+        $dbDate = $day->toDateString(); 
 
         $service = Service::query()
             ->where('id', $serviceId)
@@ -261,7 +261,7 @@ class SlotService
             return [
                 'items' => [],
                 'meta' => [
-                    'date' => $date,
+                    'date' => $dbDate, // ✅ تغيير
                     'service_id' => $serviceId,
                     'error_code' => 'SERVICE_NOT_FOUND',
                     'error' => 'Service not found',
@@ -280,7 +280,7 @@ class SlotService
             return [
                 'items' => [],
                 'meta' => [
-                    'date' => $date,
+                    'date' => $dbDate, // ✅ تغيير
                     'service_id' => $serviceId,
                     'error_code' => 'DATE_IN_PAST',
                     'error' => 'Date is in the past',
@@ -319,7 +319,7 @@ class SlotService
         }
 
         $employeesForServiceCount = (clone $baseQuery)->count();
-        
+
         // ✅ bbox filter
         $employees = (clone $baseQuery)
             ->whereHas('workArea', function ($q) use ($lat, $lng) {
@@ -345,7 +345,7 @@ class SlotService
             return [
                 'items' => [],
                 'meta' => [
-                    'date' => $date,
+                    'date' => $dbDate, // ✅ تغيير
                     'day' => $weekday,
                     'service_id' => $serviceId,
                     'lat' => (string) $lat,
@@ -369,7 +369,7 @@ class SlotService
             return [
                 'items' => [],
                 'meta' => [
-                    'date' => $date,
+                    'date' => $dbDate, // ✅ تغيير
                     'day' => $weekday,
                     'service_id' => $serviceId,
                     'lat' => (string) $lat,
@@ -446,14 +446,12 @@ class SlotService
 
         // ✅ لو ما طلع ولا slot: حدّد السبب
         $meta = [
-            'date' => $date,
+            'date' => $dbDate, // ✅ تغيير
             'day' => $weekday,
             'service_id' => $serviceId,
             'duration_minutes' => $duration,
-            // 'step_minutes' => $step,
             'lat' => (string) $lat,
             'lng' => (string) $lng,
-            // 'employees_considered' => $candidates->count(),
         ];
 
         if (empty($items)) {
@@ -469,6 +467,177 @@ class SlotService
         return [
             'items' => $items,
             'meta' => $meta,
+        ];
+    }
+
+    /**
+     * جلب السلوتات مع تفاصيل الموظفين المتاحين
+     * (للاستخدام الداخلي)
+     */
+    public function getPartnerSlotsWithEmployees(
+        string $date,
+        int $serviceId,
+        float $lat,
+        float $lng,
+        ?int $partnerId = null
+    ): array {
+        $tz = config('app.timezone', 'Asia/Riyadh');
+        $day = Carbon::createFromFormat('d-m-Y', $date, $tz);
+        $dbDate = $day->toDateString();
+
+        $service = Service::query()
+            ->where('id', $serviceId)
+            ->where('is_active', true)
+            ->whereHas('category', fn($q) => $q->where('is_active', true))
+            ->first();
+
+        if (!$service) {
+            return [
+                'slots' => [],
+                'error_code' => 'SERVICE_NOT_FOUND',
+            ];
+        }
+
+        $duration = (int) $service->duration_minutes;
+        $weekday = $this->carbonToDayEnum($day);
+        $now = Carbon::now($tz)->startOfMinute();
+
+        // منع التاريخ القديم
+        if ($day->lt($now->copy()->startOfDay())) {
+            return [
+                'slots' => [],
+                'error_code' => 'DATE_IN_PAST',
+            ];
+        }
+
+        // Cutoff للوقت الحالي
+        $cutoffMinutes = null;
+        if ($day->isSameDay($now)) {
+            $nowMinutes = ($now->hour * 60) + $now->minute;
+            $lead = (int) config('booking.min_lead_minutes', 0);
+            $nowMinutes += $lead;
+            $cutoffMinutes = (int) (ceil($nowMinutes / 30) * 30); // تقريب لـ 30 دقيقة
+        }
+
+        // Base query
+        $baseQuery = Employee::query()
+            ->where('is_active', true)
+            ->whereHas('user', fn($q) => $q->where('is_active', true)->where('user_type', 'biker'))
+            ->whereHas('services', function ($q) use ($serviceId) {
+                $q->where('services.id', $serviceId)
+                    ->where('employee_services.is_active', 1);
+            });
+
+        // فلتر الشريك
+        if ($partnerId) {
+            $baseQuery->whereHas('partnerAssignments', function ($q) use ($partnerId, $serviceId) {
+                $q->where('partner_id', $partnerId)
+                    ->where('service_id', $serviceId);
+            });
+        }
+
+        // Bbox + Polygon filter
+        $employees = (clone $baseQuery)
+            ->whereHas('workArea', function ($q) use ($lat, $lng) {
+                $q->where('is_active', true)
+                    ->where('min_lat', '<=', $lat)
+                    ->where('max_lat', '>=', $lat)
+                    ->where('min_lng', '<=', $lng)
+                    ->where('max_lng', '>=', $lng);
+            })
+            ->with([
+                'user:id,name',
+                'workArea:id,employee_id,polygon,min_lat,max_lat,min_lng,max_lng',
+                'weeklyIntervals' => function ($q) use ($weekday) {
+                    $q->where('day', $weekday)->where('is_active', true);
+                },
+                'timeBlocks' => function ($q) use ($dbDate) {
+                    $q->where('date', $dbDate)->where('is_active', true);
+                },
+            ])
+            ->get();
+
+        if ($employees->isEmpty()) {
+            return [
+                'slots' => [],
+                'error_code' => 'OUT_OF_COVERAGE',
+            ];
+        }
+
+        $candidates = $employees->filter(function ($emp) use ($lat, $lng) {
+            $poly = $emp->workArea?->polygon ?? [];
+            return $this->pointInPolygon($lat, $lng, $poly);
+        })->values();
+
+        if ($candidates->isEmpty()) {
+            return [
+                'slots' => [],
+                'error_code' => 'OUT_OF_COVERAGE',
+            ];
+        }
+
+        // ✅ بناء السلوتات مع الموظفين
+        $slotsByTime = [];
+
+        foreach ($candidates as $emp) {
+            $work = $emp->weeklyIntervals->where('type', 'work')->values();
+            $breaks = $emp->weeklyIntervals->where('type', 'break')->values();
+
+            if ($work->isEmpty()) {
+                continue;
+            }
+
+            $workIntervals = $work->map(fn($i) => [$this->timeToMinutes($i->start_time), $this->timeToMinutes($i->end_time)])->all();
+            $breakIntervals = $breaks->map(fn($i) => [$this->timeToMinutes($i->start_time), $this->timeToMinutes($i->end_time)])->all();
+            $blockIntervals = $emp->timeBlocks->map(fn($b) => [$this->timeToMinutes($b->start_time), $this->timeToMinutes($b->end_time)])->all();
+
+            $available = $this->subtractIntervals($workIntervals, $breakIntervals);
+            $available = $this->subtractIntervals($available, $blockIntervals);
+
+            if ($cutoffMinutes !== null) {
+                $available = $this->subtractIntervals($available, [[0, $cutoffMinutes]]);
+            }
+
+            // ✅ جلب حجوزات الموظف
+            $bookingIntervals = Booking::query()
+                ->where('employee_id', $emp->id)
+                ->where('booking_date', $dbDate)
+                ->whereNotIn('status', ['cancelled'])
+                ->get(['start_time', 'end_time'])
+                ->map(fn($b) => [$this->timeToMinutes($b->start_time), $this->timeToMinutes($b->end_time)])
+                ->all();
+
+            $available = $this->subtractIntervals($available, $bookingIntervals);
+
+            // توليد السلوتات
+            foreach ($available as [$startMin, $endMin]) {
+                $slotStart = $startMin;
+                while ($slotStart + $duration <= $endMin) {
+                    $timeKey = $this->minutesToTime($slotStart);
+
+                    if (!isset($slotsByTime[$timeKey])) {
+                        $slotsByTime[$timeKey] = [
+                            'start_time' => $timeKey,
+                            'employees' => [],
+                        ];
+                    }
+
+                    $slotsByTime[$timeKey]['employees'][] = [
+                        'employee_id' => $emp->id,
+                        'employee_name' => $emp->user->name ?? null,
+                    ];
+
+                    $slotStart += 30; // Step 30 minutes
+                }
+            }
+        }
+
+        $slots = array_values($slotsByTime);
+        usort($slots, fn($a, $b) => strcmp($a['start_time'], $b['start_time']));
+
+        return [
+            'slots' => $slots,
+            'error_code' => empty($slots) ? 'NO_SLOTS_AVAILABLE' : null,
         ];
     }
 

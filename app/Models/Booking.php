@@ -49,6 +49,7 @@ class Booking extends Model
         'service_charge_amount_snapshot',
         'service_pricing_source',
         'service_pricing_meta',
+        'partner_id',
         'external_id'
     ];
 

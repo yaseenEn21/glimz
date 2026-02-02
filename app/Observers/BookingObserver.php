@@ -69,20 +69,20 @@ class BookingObserver
                 default => 'update',
             };
 
-            $this->syncToRekaz($booking, $action);
+            // $this->syncToRekaz($booking, $action);
 
             return; // ✅ مهم: نرجع هنا عشان ما ندخل للـ if التالي
         }
 
         // ✅ إذا ما تغير الـ status، بس تغيرت حقول تانية مهمة
-        if ($this->hasRekazRelevantChanges($booking)) {
-            Log::info('Rekaz relevant fields changed', [
-                'booking_id' => $booking->id,
-                'changed_fields' => array_keys($booking->getChanges()),
-            ]);
+        // if ($this->hasRekazRelevantChanges($booking)) {
+        //     Log::info('Rekaz relevant fields changed', [
+        //         'booking_id' => $booking->id,
+        //         'changed_fields' => array_keys($booking->getChanges()),
+        //     ]);
 
-            $this->syncToRekaz($booking, 'update');
-        }
+        //     $this->syncToRekaz($booking, 'update');
+        // }
 
         // ✅ إرسال Webhook للشريك
         if ($booking->partner_id && $booking->wasChanged('status')) {
@@ -96,7 +96,7 @@ class BookingObserver
     public function deleted(Booking $booking): void
     {
         // عند حذف الحجز نهائياً، نحذفه من ركاز
-        $this->syncToRekaz($booking, 'delete');
+        // $this->syncToRekaz($booking, 'delete');
     }
 
     /**

@@ -16,6 +16,10 @@ use Illuminate\Support\Facades\Log;
 
 class PartnerBookingService
 {
+    public function __construct(
+        protected SlotService $slotService
+    ) {}
+
     /**
      * إنشاء حجز جديد من الشريك
      */
@@ -50,32 +54,16 @@ class PartnerBookingService
                     ];
                 }
 
-                // 3. التحقق من الموظف
-                if (isset($data['employee_id'])) {
-                    $hasEmployee = $partner->serviceEmployeeAssignments()
-                        ->where('service_id', $service->id)
-                        ->where('employee_id', $data['employee_id'])
-                        ->exists();
-
-                    if (!$hasEmployee) {
-                        return [
-                            'success' => false,
-                            'error' => 'Employee not authorized for this service',
-                            'error_code' => 'EMPLOYEE_NOT_AUTHORIZED',
-                        ];
-                    }
-                }
-
-                // 4. إنشاء/تحديث العميل
+                // 3. إنشاء/تحديث العميل
                 $customer = $this->createOrUpdateCustomer($data['customer']);
 
-                // 5. إنشاء/تحديث السيارة
+                // 4. إنشاء/تحديث السيارة
                 $car = $this->createOrUpdateCar($customer, $data['car']);
 
-                // 6. إنشاء/تحديث العنوان
+                // 5. إنشاء/تحديث العنوان
                 $address = $this->createOrUpdateAddress($customer, $data['address']);
 
-                // 7. تحويل التاريخ والوقت
+                // 6. تحويل التاريخ والوقت
                 $day = Carbon::createFromFormat('d-m-Y', $data['date']);
                 $dbDate = $day->toDateString();
                 $startTime = $data['start_time'];
@@ -83,6 +71,25 @@ class PartnerBookingService
                 $endTime = Carbon::createFromFormat('Y-m-d H:i', $dbDate . ' ' . $startTime)
                     ->addMinutes($duration)
                     ->format('H:i');
+
+                // ✅ 7. اختيار الموظف المتاح تلقائياً
+                $employeeId = $this->findAvailableEmployee(
+                    $partner->id,
+                    $service->id,
+                    $data['date'],
+                    $startTime,
+                    (float) $address->lat,
+                    (float) $address->lng,
+                    $duration
+                );
+
+                if (!$employeeId) {
+                    return [
+                        'success' => false,
+                        'error' => 'No available employee for the selected time',
+                        'error_code' => 'NO_EMPLOYEE_AVAILABLE',
+                    ];
+                }
 
                 // 8. Pricing
                 $pricing = app(BookingPricingService::class)
@@ -99,7 +106,7 @@ class PartnerBookingService
                     'car_id' => $car->id,
                     'address_id' => $address->id,
                     'service_id' => $service->id,
-                    'employee_id' => $data['employee_id'] ?? null,
+                    'employee_id' => $employeeId, // ✅ تلقائي
 
                     'zone_id' => $pricing['zone_id'],
                     'time_period' => $pricing['time_period'],
@@ -117,7 +124,7 @@ class PartnerBookingService
                         'lng' => (float) $address->lng,
                     ],
 
-                    'status' => 'confirmed', // الشريك يؤكد مباشرة
+                    'status' => 'confirmed',
                     'confirmed_at' => now(),
 
                     'booking_date' => $dbDate,
@@ -135,6 +142,7 @@ class PartnerBookingService
                         'partner_booking' => true,
                         'partner_name' => $partner->name,
                         'customer_notes' => $data['notes'] ?? null,
+                        'auto_assigned_employee' => true,
                     ],
 
                     'created_by' => null,
@@ -145,15 +153,16 @@ class PartnerBookingService
                 $cacheKey = "partner_{$partner->id}_daily_bookings_" . now()->format('Y-m-d');
                 \Cache::forget($cacheKey);
 
-                Log::info('Partner booking created', [
+                Log::info('Partner booking created with auto-assigned employee', [
                     'partner_id' => $partner->id,
                     'booking_id' => $booking->id,
                     'external_id' => $data['external_id'],
+                    'employee_id' => $employeeId,
                 ]);
 
                 return [
                     'success' => true,
-                    'booking' => $booking->load(['service', 'employee.user', 'car', 'address']),
+                    'booking' => $booking->load(['service', 'employee.user', 'car', 'address', 'user']),
                 ];
             });
         } catch (\Exception $e) {
@@ -169,6 +178,105 @@ class PartnerBookingService
                 'error_code' => 'BOOKING_CREATE_FAILED',
             ];
         }
+    }
+
+    /**
+     * ✅ اختيار موظف متاح تلقائياً
+     */
+    protected function findAvailableEmployee(
+        int $partnerId,
+        int $serviceId,
+        string $date,
+        string $startTime,
+        float $lat,
+        float $lng,
+        int $duration
+    ): ?int {
+        // جلب السلوتات مع الموظفين
+        $slotsData = $this->slotService->getPartnerSlotsWithEmployees(
+            $date,
+            $serviceId,
+            $lat,
+            $lng,
+            $partnerId
+        );
+
+        if (empty($slotsData['slots'])) {
+            Log::warning('No slots available', [
+                'partner_id' => $partnerId,
+                'service_id' => $serviceId,
+                'date' => $date,
+                'start_time' => $startTime,
+            ]);
+            return null;
+        }
+
+        // البحث عن السلوت المطلوب
+        $targetSlot = collect($slotsData['slots'])->first(function ($slot) use ($startTime) {
+            return $slot['start_time'] === $startTime;
+        });
+
+        if (!$targetSlot || empty($targetSlot['employees'])) {
+            Log::warning('No employees available for requested time', [
+                'partner_id' => $partnerId,
+                'service_id' => $serviceId,
+                'date' => $date,
+                'start_time' => $startTime,
+            ]);
+            return null;
+        }
+
+        // ✅ Double-check: تأكد أن الموظف ما عنده حجز متزامن
+        $day = Carbon::createFromFormat('d-m-Y', $date);
+        $dbDate = $day->toDateString();
+        $endTime = Carbon::createFromFormat('Y-m-d H:i', $dbDate . ' ' . $startTime)
+            ->addMinutes($duration)
+            ->format('H:i');
+
+        foreach ($targetSlot['employees'] as $emp) {
+            $employeeId = $emp['employee_id'];
+
+            // تحقق من عدم وجود حجز متداخل
+            $hasConflict = Booking::query()
+                ->where('employee_id', $employeeId)
+                ->where('booking_date', $dbDate)
+                ->whereNotIn('status', ['cancelled'])
+                ->where(function ($q) use ($startTime, $endTime) {
+                    $q->where(function ($q2) use ($startTime, $endTime) {
+                        // الحجز الجديد يبدأ أثناء حجز موجود
+                        $q2->where('start_time', '<=', $startTime)
+                            ->where('end_time', '>', $startTime);
+                    })
+                    ->orWhere(function ($q2) use ($startTime, $endTime) {
+                        // الحجز الجديد ينتهي أثناء حجز موجود
+                        $q2->where('start_time', '<', $endTime)
+                            ->where('end_time', '>=', $endTime);
+                    })
+                    ->orWhere(function ($q2) use ($startTime, $endTime) {
+                        // الحجز الجديد يحيط بحجز موجود
+                        $q2->where('start_time', '>=', $startTime)
+                            ->where('end_time', '<=', $endTime);
+                    });
+                })
+                ->exists();
+
+            if (!$hasConflict) {
+                Log::info('Employee auto-assigned', [
+                    'employee_id' => $employeeId,
+                    'date' => $date,
+                    'start_time' => $startTime,
+                ]);
+                return $employeeId;
+            }
+        }
+
+        Log::warning('All employees have conflicting bookings', [
+            'partner_id' => $partnerId,
+            'date' => $date,
+            'start_time' => $startTime,
+        ]);
+
+        return null;
     }
 
     /**
@@ -566,7 +674,7 @@ class PartnerBookingService
     {
         $lat = (float) $data['lat'];
         $lng = (float) $data['lng'];
-
+   
         // البحث عن عنوان قريب جداً (نفس الإحداثيات تقريباً)
         $address = Address::query()
             ->where('user_id', $user->id)
@@ -576,12 +684,12 @@ class PartnerBookingService
 
         if ($address) {
             $address->update([
-                'address' => $data['address'] ?? $address->address,
+                'address_line' => $data['address'] ?? $address->address,
             ]);
         } else {
             $address = Address::create([
                 'user_id' => $user->id,
-                'address' => $data['address'] ?? 'Address',
+                'address_line' => $data['address'] ?? 'Address',
                 'lat' => $lat,
                 'lng' => $lng,
             ]);

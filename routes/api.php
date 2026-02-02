@@ -168,7 +168,7 @@ Route::prefix('v1')->middleware(['set.api.locale'])->group(function () {
     // Partner API Routes
     Route::prefix('partners/v1')->middleware(['partner.auth'])->group(function () {
 
-        // Slots (no limit check)
+        Route::get('services', [PartnerBookingController::class, 'getServices']);
         Route::get('slots', [PartnerBookingController::class, 'getSlots']);
 
         // Bookings (with limit check)
