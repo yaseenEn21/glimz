@@ -25,6 +25,7 @@ return new class extends Migration {
             $table->boolean('notification')->default(true);
             $table->date('birth_date')->nullable();
             $table->enum('gender', ['male', 'female'])->default('male');
+            $table->enum('lang', ['ar', 'en'])->default('ar');
 
             $table->foreignId('customer_group_id')
                 ->nullable()

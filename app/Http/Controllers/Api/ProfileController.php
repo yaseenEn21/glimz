@@ -121,6 +121,24 @@ class ProfileController extends Controller
 
     }
 
+    public function updateLanguage(Request $request){
+
+        $user = $request->user();
+
+        $data = $request->validate([
+            'lang' => [
+                'nullable',
+                Rule::in(['ar', 'en']),
+            ]
+        ]);
+
+        $user->update([
+            'lang' => $data['lang']
+        ]);
+
+        return api_success(new CustomerResource($user), 'Language data updated successfully');
+    }
+
     public function deleteAccount(Request $request)
     {
         $user = auth()->user();
