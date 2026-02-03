@@ -72,14 +72,15 @@ if (!function_exists('invoiceable_label')) {
         }
 
         if ($short === 'Booking') {
+            // ✅ استخدام الأعمدة الصحيحة فقط
             $booking = $invoiceable instanceof \App\Models\Booking
                 ? $invoiceable
-                : \App\Models\Booking::query()->select(['id', 'code', 'reference', 'booking_no'])->find($id);
+                : \App\Models\Booking::query()->select(['id', 'external_id'])->find($id);
 
-            $number = $booking?->code
-                ?? $booking?->reference
-                ?? $booking?->booking_no
-                ?? ('#' . $id);
+            // ✅ استخدام external_id إذا موجود، وإلا رقم الحجز
+            $number = $booking?->external_id
+                ? $booking->external_id
+                : '#' . $id;
 
             $label = __('invoices.Booking') . ' ' . $number;
 
