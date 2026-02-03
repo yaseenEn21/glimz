@@ -80,8 +80,7 @@ class BookingController extends Controller
             }
         }
 
-        $p = $q->orderByDesc('booking_date')
-            ->orderByDesc('id')
+        $p = $q->orderByDesc('id')
             ->paginate(20);
 
         $p->setCollection($p->getCollection()->map(fn($b) => new BookingResource($b)));
