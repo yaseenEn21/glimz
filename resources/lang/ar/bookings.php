@@ -7,6 +7,7 @@ return [
     'back_to_list' => 'الرجوع للقائمة',
     'edit' => 'تعديل',
     'save_changes' => 'حفظ التغييرات',
+    'copy_info' => 'نسخ المعلومات',
 
     'delete' => 'حذف',
     'delete_confirm_title' => 'تأكيد الحذف',
@@ -89,8 +90,15 @@ return [
         'status' => 'الحالة',
         'status_control' => 'الحالة',
         'actions' => 'إجراءات',
+        'source' => 'المصدر',
     ],
 
+    'payment_status' => [
+        'paid' => 'مدفوع',
+        'unpaid' => 'غير مسدد',
+        'partially_paid' => 'مدفوع جزئياً',
+    ],
+    
     'filters' => [
         'search_placeholder' => 'بحث: رقم الحجز / اسم العميل / رقم الجوال / اسم الخدمة...',
         'status_placeholder' => 'الحالة',

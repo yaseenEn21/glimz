@@ -389,6 +389,12 @@ Route::middleware(['auth'])->group(function () {
             Route::put('{partner}', [PartnerController::class, 'update'])->name('update');
             Route::delete('{partner}', [PartnerController::class, 'destroy'])->name('destroy');
 
+            Route::get('{partner}/bookings/datatable', [PartnerController::class, 'bookingsDatatable'])
+                ->name('bookings.datatable');
+
+            Route::get('{partner}/bookings/stats', [PartnerController::class, 'bookingsStats'])
+                ->name('bookings.stats');
+
             // Token Management
             Route::post('{partner}/regenerate-token', [PartnerController::class, 'regenerateToken'])
                 ->name('regenerate-token');

@@ -121,8 +121,8 @@ class ProfileController extends Controller
 
     }
 
-    public function updateLanguage(Request $request){
-
+    public function updateLanguage(Request $request)
+    {
         $user = $request->user();
 
         $data = $request->validate([
@@ -132,8 +132,22 @@ class ProfileController extends Controller
             ]
         ]);
 
+        $lang = $data['lang'] ?? null;
+
+        if (!$lang) {
+            $header = $request->header('Accept-Language', '');
+
+            if (str_contains(strtolower($header), 'en')) {
+                $lang = 'en';
+            } elseif (str_contains(strtolower($header), 'ar')) {
+                $lang = 'ar';
+            } else {
+                $lang = 'ar';
+            }
+        }
+
         $user->update([
-            'lang' => $data['lang']
+            'lang' => $lang
         ]);
 
         return api_success(new CustomerResource($user), 'Language data updated successfully');

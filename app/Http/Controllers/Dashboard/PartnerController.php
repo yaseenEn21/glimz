@@ -3,41 +3,43 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
+use App\Models\Booking;
 use App\Models\Partner;
 use App\Models\Service;
 use App\Models\Employee;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
+use Yajra\DataTables\DataTables;
 
 class PartnerController extends Controller
 {
     /**
- * Display a listing of partners
- */
-public function index(Request $request)
-{
-    Gate::authorize('partners.view');
+     * Display a listing of partners
+     */
+    public function index(Request $request)
+    {
+        Gate::authorize('partners.view');
 
-    // إذا كان طلب DataTables
-    if ($request->ajax()) {
-        $partners = Partner::query()
-            ->withCount(['services', 'employees'])
-            ->when($request->filled('status'), function ($q) use ($request) {
-                if ($request->status === 'active') {
-                    $q->where('is_active', true);
-                } elseif ($request->status === 'inactive') {
-                    $q->where('is_active', false);
-                }
-            })
-            ->latest();
+        // إذا كان طلب DataTables
+        if ($request->ajax()) {
+            $partners = Partner::query()
+                ->withCount(['services', 'employees'])
+                ->when($request->filled('status'), function ($q) use ($request) {
+                    if ($request->status === 'active') {
+                        $q->where('is_active', true);
+                    } elseif ($request->status === 'inactive') {
+                        $q->where('is_active', false);
+                    }
+                })
+                ->latest();
 
-        return datatables()->of($partners)
-            ->addColumn('name', function ($partner) {
-                $initial = strtoupper(substr($partner->name, 0, 2));
-                $mobile = $partner->mobile ? '<span class="text-muted fs-7">' . $partner->mobile . '</span>' : '';
-                
-                return '
+            return datatables()->of($partners)
+                ->addColumn('name', function ($partner) {
+                    $initial = strtoupper(substr($partner->name, 0, 2));
+                    $mobile = $partner->mobile ? '<span class="text-muted fs-7">' . $partner->mobile . '</span>' : '';
+
+                    return '
                     <div class="d-flex align-items-center">
                         <div class="symbol symbol-circle symbol-50px overflow-hidden me-3">
                             <div class="symbol-label bg-light-primary">
@@ -52,37 +54,42 @@ public function index(Request $request)
                         </div>
                     </div>
                 ';
-            })
-            ->addColumn('username', function ($partner) {
-                return '<span class="badge badge-light-info">' . $partner->username . '</span>';
-            })
-            ->addColumn('mobile', function ($partner) {
-                return $partner->mobile ?? '—';
-            })
-            ->addColumn('daily_booking_limit', function ($partner) {
-                return '<span class="badge badge-light-primary">' . number_format($partner->daily_booking_limit) . '</span>';
-            })
-            ->addColumn('services_count', function ($partner) {
-                return '<span class="badge badge-light-success">' . $partner->services_count . '</span>';
-            })
-            ->addColumn('is_active_badge', function ($partner) {
-                if ($partner->is_active) {
-                    return '<span class="badge badge-light-success">' . __('partners.active') . '</span>';
-                }
-                return '<span class="badge badge-light-danger">' . __('partners.inactive') . '</span>';
-            })
-            ->editColumn('created_at', function ($partner) {
-                return $partner->created_at->format('Y-m-d H:i');
-            })
-            ->addColumn('actions', function ($partner) {
-                return view('dashboard.partners._actions', compact('partner'))->render();
-            })
-            ->rawColumns(['name', 'username', 'daily_booking_limit', 'services_count', 'is_active_badge', 'actions'])
-            ->make(true);
-    }
+                })
+                ->addColumn('username', function ($partner) {
+                    return '<span class="badge badge-light-info">' . $partner->username . '</span>';
+                })
+                ->addColumn('mobile', function ($partner) {
+                    return $partner->mobile ?? '—';
+                })
+                ->addColumn('daily_booking_limit', function ($partner) {
+                    return '<span class="badge badge-light-primary">' . number_format($partner->daily_booking_limit) . '</span>';
+                })
+                ->addColumn('services_count', function ($partner) {
+                    return '<span class="badge badge-light-success">' . $partner->services_count . '</span>';
+                })
+                ->addColumn('is_active_badge', function ($partner) {
+                    if ($partner->is_active) {
+                        return '<span class="badge badge-light-success">' . __('partners.active') . '</span>';
+                    }
+                    return '<span class="badge badge-light-danger">' . __('partners.inactive') . '</span>';
+                })
+                ->editColumn('created_at', function ($partner) {
+                    return $partner->created_at->format('Y-m-d H:i');
+                })
+                ->addColumn('actions', function ($partner) {
+                    return view('dashboard.partners._actions', compact('partner'))->render();
+                })
+                ->rawColumns(['name', 'username', 'daily_booking_limit', 'services_count', 'is_active_badge', 'actions'])
+                ->make(true);
+        }
 
-    return view('dashboard.partners.index');
-}
+        view()->share([
+            'title' => __(key: 'partners.title'),
+            'page_title' => __('partners.title'),
+        ]);
+
+        return view('dashboard.partners.index');
+    }
 
     /**
      * Show the form for creating a new partner
@@ -90,6 +97,11 @@ public function index(Request $request)
     public function create()
     {
         Gate::authorize('partners.create');
+
+        view()->share([
+            'title' => __(key: 'partners.title'),
+            'page_title' => __('partners.title'),
+        ]);
 
         return view('dashboard.partners.create');
     }
@@ -145,7 +157,156 @@ public function index(Request $request)
                 ];
             });
 
-        return view('dashboard.partners.show', compact('partner', 'servicesWithEmployees'));
+        // ✅ إحصائيات الحجوزات
+        $bookingsStats = [
+            'total' => Booking::where('partner_id', $partner->id)->count(),
+            'pending' => Booking::where('partner_id', $partner->id)->where('status', 'pending')->count(),
+            'confirmed' => Booking::where('partner_id', $partner->id)->where('status', 'confirmed')->count(),
+            'completed' => Booking::where('partner_id', $partner->id)->where('status', 'completed')->count(),
+            'cancelled' => Booking::where('partner_id', $partner->id)->where('status', 'cancelled')->count(),
+        ];
+
+        view()->share([
+            'title' => __(key: 'partners.title'),
+            'page_title' => __('partners.title'),
+        ]);
+        
+        return view('dashboard.partners.show', compact('partner', 'servicesWithEmployees', 'bookingsStats'));
+    }
+
+    /**
+     * ✅ DataTable لحجوزات الشريك
+     */
+    public function bookingsDatatable(DataTables $datatable, Request $request, Partner $partner)
+    {
+        Gate::authorize('partners.view');
+
+        $query = Booking::query()
+            ->select('bookings.*')
+            ->where('partner_id', $partner->id)
+            ->with([
+                'user:id,name,mobile',
+                'service:id,name',
+                'employee:id,user_id',
+                'employee.user:id,name,mobile',
+            ])
+            ->latest('id');
+
+        // ✅ Filters
+        if ($status = $request->get('status')) {
+            if (in_array($status, ['pending', 'confirmed', 'moving', 'arrived', 'completed', 'cancelled'], true)) {
+                $query->where('status', $status);
+            }
+        }
+
+        if ($request->filled('from')) {
+            $query->whereDate('booking_date', '>=', $request->get('from'));
+        }
+
+        if ($request->filled('to')) {
+            $query->whereDate('booking_date', '<=', $request->get('to'));
+        }
+
+        if ($search = trim((string) $request->get('search_custom'))) {
+            $query->where(function ($q) use ($search) {
+                if (is_numeric($search)) {
+                    $q->orWhere('bookings.id', (int) $search);
+                    $q->orWhere('bookings.external_id', 'like', "%{$search}%");
+                }
+
+                $q->orWhereHas('user', function ($u) use ($search) {
+                    $u->where('name', 'like', "%{$search}%")
+                        ->orWhere('mobile', 'like', "%{$search}%");
+                });
+
+                $q->orWhereHas('service', function ($s) use ($search) {
+                    $s->where('name->ar', 'like', "%{$search}%")
+                        ->orWhere('name->en', 'like', "%{$search}%");
+                });
+            });
+        }
+
+        return $datatable->eloquent($query)
+            ->addColumn('customer', function (Booking $row) {
+                return view('dashboard.partials.user_cell', [
+                    'user' => $row->user,
+                ])->render();
+            })
+            ->addColumn('service_name', function (Booking $row) {
+                $name = is_array($row->service?->name)
+                    ? ($row->service->name[app()->getLocale()] ?? $row->service->name['ar'] ?? '')
+                    : $row->service?->name;
+                return e($name);
+            })
+            ->addColumn('schedule', function (Booking $row) {
+                $d = $row->booking_date ? \Carbon\Carbon::parse($row->booking_date)->format('Y-m-d') : '—';
+                $s = $row->start_time ? substr((string) $row->start_time, 0, 5) : '—';
+                return e($d) . '<br>' . e($s);
+            })
+            ->addColumn('external_id_display', function (Booking $row) {
+                return $row->external_id
+                    ? '<span class="badge badge-light-info">' . e($row->external_id) . '</span>'
+                    : '—';
+            })
+            ->addColumn('status_badge', function (Booking $row) {
+                $badges = [
+                    'pending' => 'warning',
+                    'confirmed' => 'primary',
+                    'moving' => 'info',
+                    'arrived' => 'info',
+                    'completed' => 'success',
+                    'cancelled' => 'danger',
+                ];
+                $color = $badges[$row->status] ?? 'secondary';
+                return '<span class="badge badge-light-' . $color . '">' . __('bookings.status.' . $row->status) . '</span>';
+            })
+            ->addColumn('total', function (Booking $row) {
+                return format_currency($row->total_snapshot, $row->currency);
+            })
+            ->addColumn('employee_label', function (Booking $row) {
+                return e($row->employee?->user?->name ?? '—');
+            })
+            ->addColumn('actions', function (Booking $row) {
+                return view('dashboard.bookings._actions', ['booking' => $row])->render();
+            })
+            ->rawColumns(['customer', 'total', 'schedule', 'external_id_display', 'status_badge', 'actions'])
+            ->make(true);
+    }
+
+    /**
+     * ✅ AJAX: إحصائيات الحجوزات (تتحدث مع الفلاتر)
+     */
+    public function bookingsStats(Request $request, Partner $partner)
+    {
+        Gate::authorize('partners.view');
+
+        $query = Booking::where('partner_id', $partner->id);
+
+        // نفس الفلاتر
+        if ($status = $request->get('status')) {
+            if (in_array($status, ['pending', 'confirmed', 'moving', 'arrived', 'completed', 'cancelled'], true)) {
+                $query->where('status', $status);
+            }
+        }
+
+        if ($request->filled('from')) {
+            $query->whereDate('booking_date', '>=', $request->get('from'));
+        }
+
+        if ($request->filled('to')) {
+            $query->whereDate('booking_date', '<=', $request->get('to'));
+        }
+
+        // حساب الإحصائيات
+        $baseQuery = clone $query;
+
+        return response()->json([
+            'total' => (clone $baseQuery)->count(),
+            'pending' => (clone $baseQuery)->where('status', 'pending')->count(),
+            'confirmed' => (clone $baseQuery)->where('status', 'confirmed')->count(),
+            'completed' => (clone $baseQuery)->where('status', 'completed')->count(),
+            'cancelled' => (clone $baseQuery)->where('status', 'cancelled')->count(),
+        ]);
     }
 
     /**
@@ -267,7 +428,7 @@ public function index(Request $request)
             // إضافة التخصيصات الجديدة
             foreach ($validated['assignments'] as $assignment) {
                 $serviceId = $assignment['service_id'];
-                
+
                 foreach ($assignment['employee_ids'] as $employeeId) {
                     $partner->serviceEmployeeAssignments()->create([
                         'service_id' => $serviceId,

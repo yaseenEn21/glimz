@@ -92,6 +92,7 @@
                         <th>{{ __('bookings.columns.service') }}</th>
                         <th>{{ __('bookings.columns.schedule') }}</th>
                         <th>{{ __('bookings.columns.employee') }}</th>
+                        <th>{{ __('bookings.columns.source') }}</th>
                         <th>{{ __('bookings.columns.total') }}</th>
                         <th>{{ __('bookings.columns.status_control') }}</th>
                         <th class="text-end">{{ __('bookings.columns.actions') }}</th>
@@ -143,6 +144,13 @@
                     data: 'employee_label',
                     name: 'employee_id',
                     title: "{{ __('bookings.columns.employee') }}", // ✅ غيّر هون
+                    orderable: false,
+                    searchable: false
+                },
+                {
+                    data: 'booking_source',
+                    name: 'partner_id',
+                    title: "{{ __('bookings.columns.source') }}",
                     orderable: false,
                     searchable: false
                 },
@@ -270,6 +278,93 @@
             });
         });
 
+
+        // ✅ نسخ معلومات الحجز
+        $(document).on('click', '.js-copy-booking-info', function() {
+            const btn = $(this);
+
+            const bookingId = btn.data('booking-id');
+            const serviceName = btn.data('service-name');
+            const bookingDate = btn.data('booking-date');
+            const startTime = btn.data('start-time');
+            const customerName = btn.data('customer-name');
+            const customerMobile = btn.data('customer-mobile');
+            const address = btn.data('address');
+            const lat = btn.data('lat');
+            const lng = btn.data('lng');
+            const plate = btn.data('plate');
+            const carColor = btn.data('car-color');
+            const carMake = btn.data('car-make');
+            const carModel = btn.data('car-model');
+            const products = btn.data('products');
+
+            // ✅ تنسيق بسيط ومرتب
+            let text = `📋 معلومات الحجز ( ${bookingId} )
+
+
+🧰 الخدمة: ${serviceName}
+📅 التاريخ: ${bookingDate}
+🕒 الوقت: ${startTime}
+
+👤 العميل: ${customerName}
+📱 الجوال: ${customerMobile}
+
+🚗 السيارة: ${carMake} ${carModel}
+🔢 اللوحة: ${plate}
+🎨 اللون: ${carColor}
+
+📍 العنوان: ${address}`;
+
+            if (lat && lng) {
+                text += `\n🗺 الخريطة: https://maps.google.com/?q=${lat},${lng}`;
+            }
+
+            if (products && products.trim() !== '') {
+                text += `\n\n📦 المنتجات: ${products}`;
+            } else {
+                text += `\n\n📦 المنتجات: لا توجد منتجات`;
+            }
+
+            // ✅ نسخ للحافظة
+            navigator.clipboard.writeText(text).then(function() {
+                const icon = btn.find('i');
+                const originalClass = icon.attr('class');
+
+                icon.removeClass('fa-copy text-primary')
+                    .addClass('fa-check text-success');
+
+                if (window.toastr) {
+                    toastr.success('تم نسخ المعلومات بنجاح');
+                }
+
+                setTimeout(() => {
+                    icon.attr('class', originalClass);
+                }, 2000);
+            }).catch(function(err) {
+                console.error('Failed to copy:', err);
+
+                // Fallback
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.style.position = 'fixed';
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+
+                try {
+                    document.execCommand('copy');
+                    if (window.toastr) {
+                        toastr.success('تم نسخ المعلومات بنجاح');
+                    }
+                } catch (e) {
+                    if (window.toastr) {
+                        toastr.error('فشل نسخ المعلومات');
+                    }
+                }
+
+                document.body.removeChild(textarea);
+            });
+        });
 
     })();
 </script>

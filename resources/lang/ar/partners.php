@@ -2,6 +2,7 @@
 
 return [
     // Page Titles
+    'title' => 'الشركاء',
     'partners' => 'الشركاء',
     'partner' => 'الشريك',
     'list' => 'قائمة الشركاء',
@@ -9,6 +10,10 @@ return [
     'edit' => 'تعديل الشريك',
     'show' => 'تفاصيل الشريك',
     'assign_services' => 'تخصيص الخدمات والموظفين',
+
+    'api_documentation' => 'توثيق API',
+    'api_documentation_desc' => 'اطّلع على التوثيق الكامل لـ API مع أمثلة وشرح مفصل',
+    'view_documentation' => 'عرض التوثيق',
 
     // Fields
     'fields' => [
@@ -97,4 +102,10 @@ return [
     ],
 
     'webhook_type_help' => 'حدد نوع الـ webhook حسب متطلبات الشريك',
+
+    'bookings_title' => 'حجوزات الشريك',
+    'external_id' => 'رقم الحجز الخارجي',
+    'stats' => [
+        'total_bookings' => 'إجمالي الحجوزات',
+    ],
 ];

@@ -91,6 +91,13 @@ class Booking extends Model
         return $this->hasMany(BookingProduct::class);
     }
 
+    public function productItems()
+    {
+        return $this->belongsToMany(Product::class, 'booking_products')
+            ->withPivot(['qty', 'unit_price_snapshot', 'title', 'line_total'])
+            ->withTimestamps();
+    }
+
     public function invoices()
     {
         return $this->morphMany(Invoice::class, 'invoiceable');
@@ -109,5 +116,10 @@ class Booking extends Model
     public function partner()
     {
         return $this->belongsTo(Partner::class, 'partner_id');
+    }
+
+    public function createdBy()
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

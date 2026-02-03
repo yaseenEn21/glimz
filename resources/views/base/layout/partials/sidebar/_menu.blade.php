@@ -296,10 +296,7 @@
                             <a class="menu-link {{ request()->routeIs('dashboard.partners.*') ? 'active' : '' }}"
                                 href="{{ route('dashboard.partners.index') }}">
                                 <span class="menu-icon">
-                                    <i class="ki-duotone ki-handshake fs-2">
-                                        <span class="path1"></span>
-                                        <span class="path2"></span>
-                                    </i>
+                                    <i class="fa-solid fa-handshake fs-2"></i>
                                 </span>
                                 <span class="menu-title">{{ __('partners.partners') }}</span>
                             </a>

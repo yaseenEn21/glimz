@@ -10,6 +10,10 @@ return [
     'show' => 'Partner Details',
     'assign_services' => 'Assign Services & Employees',
 
+    'api_documentation' => 'API Documentation',
+    'api_documentation_desc' => 'View complete API documentation with examples and detailed explanations',
+    'view_documentation' => 'View Documentation',
+
     // Fields
     'fields' => [
         'name' => 'Name',

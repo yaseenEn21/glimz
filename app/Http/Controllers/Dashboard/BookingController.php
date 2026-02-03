@@ -104,6 +104,8 @@ class BookingController extends Controller
                 'service:id,name',
                 'employee:id,user_id',
                 'employee.user:id,name,mobile',
+                'partner:id,name', // ✅ إضافة
+                'createdBy:id,name', // ✅ إضافة
             ])
             ->latest('id');
 
@@ -186,15 +188,65 @@ class BookingController extends Controller
                 return view('dashboard.bookings._status_control', ['booking' => $row])->render();
             })
             ->addColumn('total', function (Booking $row) {
-                return format_currency($row->total_snapshot, $row->currency);
+                $totalAmount = format_currency($row->total_snapshot, $row->currency);
+
+                // ✅ تحديد حالة الدفع
+                $invoices = $row->invoices;
+
+                if ($invoices->isEmpty()) {
+                    // لا توجد فواتير = غير مسدد
+                    $paymentStatus = '<span class="badge badge-light-danger fs-8 mt-1">' .
+                        __('bookings.payment_status.unpaid') .
+                        '</span>';
+                } else {
+                    // تحقق من وجود فاتورة واحدة على الأقل غير مدفوعة
+                    $hasUnpaid = $invoices->contains('status', 'unpaid');
+
+                    if ($hasUnpaid) {
+                        $paymentStatus = '<span class="badge badge-light-danger fs-8 mt-1">' .
+                            __('bookings.payment_status.unpaid') .
+                            '</span>';
+                    } else {
+                        // جميع الفواتير مدفوعة
+                        $paymentStatus = '<span class="badge badge-light-success fs-8 mt-1">' .
+                            __('bookings.payment_status.paid') .
+                            '</span>';
+                    }
+                }
+
+                return '<div class="d-flex flex-column align-items-center">
+                <span class="fw-bold">' . $totalAmount . '</span>
+                ' . $paymentStatus . '
+            </div>';
             })
             ->addColumn('employee_label', function (Booking $row) {
                 return e($row->employee?->user?->name ?? '—');
             })
+            // ✅ إضافة عمود مصدر الحجز
+            ->addColumn('booking_source', function (Booking $row) {
+                // الأولوية للـ partner
+                if ($row->partner_id && $row->partner) {
+                    return '<span class="badge badge-light-success">' .
+                        e($row->partner->name) .
+                        '</span>';
+                }
+
+                // ثانياً: created_by
+                if ($row->created_by && $row->createdBy) {
+                    return '<span class="badge badge-light-primary">' .
+                        e($row->createdBy->name) .
+                        '</span>';
+                }
+
+                // تطبيق الموبايل
+                return '<span class="badge badge-light-info">' .
+                    __('bookings.source.mobile_app') .
+                    '</span>';
+            })
             ->addColumn('actions', function (Booking $row) {
                 return view('dashboard.bookings._actions', ['booking' => $row])->render();
             })
-            ->rawColumns(['customer', 'total', 'schedule', 'status_badge', 'status_control', 'actions'])
+            ->rawColumns(['customer', 'total', 'schedule', 'status_badge', 'status_control', 'booking_source', 'actions'])
             ->make(true);
     }
 
@@ -419,7 +471,7 @@ class BookingController extends Controller
 
         $coords = extract_lat_lng_from_maps_link($link);
 
-        \Log::info('Coords :: ' , $coords);
+        \Log::info('Coords :: ', $coords);
 
         if (!$coords || empty($coords['lat']) || empty($coords['lng'])) {
             throw ValidationException::withMessages([

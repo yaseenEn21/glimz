@@ -7,6 +7,7 @@ return [
     'back_to_list' => 'Back to list',
     'edit' => 'Edit',
     'save_changes' => 'Save changes',
+    'copy_info' => 'Copy info',
 
     'create' => [
         'title' => 'Create Booking',
