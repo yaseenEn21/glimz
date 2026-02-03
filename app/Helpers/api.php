@@ -76,15 +76,36 @@ if (!function_exists('api_paginated')) {
     if (!function_exists('request_lang')) {
         function request_lang(array $allowed = ['ar', 'en'], string $default = 'ar'): string
         {
+            // 1. فحص query parameter
             $q = request()->query('lang');
-            if ($q && in_array($q, $allowed, true))
+            if ($q && in_array($q, $allowed, true)) {
                 return $q;
+            }
 
-            $header = request()->header('Accept-Language', '');
-            $lang = strtolower(trim(explode(',', $header)[0] ?? ''));
-            $lang = explode('-', $lang)[0] ?? $lang; // ar-SA => ar
+            // 2. فحص Content-Language header (أولوية أعلى من Accept-Language)
+            $contentLang = request()->header('Content-Language', '');
+            if ($contentLang) {
+                $lang = strtolower(trim(explode(',', $contentLang)[0] ?? ''));
+                $lang = explode('-', $lang)[0] ?? $lang; // ar-SA => ar
 
-            return in_array($lang, $allowed, true) ? $lang : $default;
+                if (in_array($lang, $allowed, true)) {
+                    return $lang;
+                }
+            }
+
+            // 3. فحص Accept-Language header
+            $acceptLang = request()->header('Accept-Language', '');
+            if ($acceptLang) {
+                $lang = strtolower(trim(explode(',', $acceptLang)[0] ?? ''));
+                $lang = explode('-', $lang)[0] ?? $lang; // ar-SA => ar
+
+                if (in_array($lang, $allowed, true)) {
+                    return $lang;
+                }
+            }
+
+            // 4. القيمة الافتراضية
+            return $default;
         }
     }
 

@@ -132,19 +132,8 @@ class ProfileController extends Controller
             ]
         ]);
 
-        $lang = $data['lang'] ?? null;
-
-        if (!$lang) {
-            $header = $request->header('Accept-Language', '');
-
-            if (str_contains(strtolower($header), 'en')) {
-                $lang = 'en';
-            } elseif (str_contains(strtolower($header), 'ar')) {
-                $lang = 'ar';
-            } else {
-                $lang = 'ar';
-            }
-        }
+        // ✅ استخدام request_lang() للحصول على اللغة
+        $lang = $data['lang'] ?? request_lang(['ar', 'en'], 'ar');
 
         $user->update([
             'lang' => $lang
