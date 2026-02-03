@@ -70,7 +70,6 @@ Route::prefix('v1')->middleware(['set.api.locale'])->group(function () {
 
         Route::get('bookings/package-eligibility', [BookingPackageController::class, 'eligibility']);
 
-
         Route::get('eligible-packages', [BookingController::class, 'eligiblePackages']);
         Route::get('settings/booking-cancel-reasons', [SettingController::class, 'bookingCancelReasons']);
         Route::post('bookings', [BookingController::class, 'store']);
@@ -167,7 +166,7 @@ Route::prefix('v1')->middleware(['set.api.locale'])->group(function () {
         ->middleware('app.translations.token');
 
     // Partner API Routes
-    Route::prefix('partners/v1')->middleware(['partner.auth'])->group(function () {
+    Route::prefix('partners')->middleware(['partner.auth'])->group(function () {
 
         Route::get('services', [PartnerBookingController::class, 'getServices']);
         Route::get('slots', [PartnerBookingController::class, 'getSlots']);
@@ -180,7 +179,7 @@ Route::prefix('v1')->middleware(['set.api.locale'])->group(function () {
         // Other booking operations (no limit check)
         Route::get('bookings', [PartnerBookingController::class, 'listBookings']);
         Route::get('bookings/{external_id}', [PartnerBookingController::class, 'getBooking']);
-        Route::put('bookings/{external_id}/reschedule', [PartnerBookingController::class, 'rescheduleBooking']);
+        Route::put('bookings/{external_id}/update', [PartnerBookingController::class, 'rescheduleBooking']);
         Route::post('bookings/{external_id}/cancel', [PartnerBookingController::class, 'cancelBooking']);
     });
 

@@ -62,14 +62,12 @@ class BookingObserver
                 AwardBookingPointsJob::dispatch((int) $booking->id, $actorId)->afterCommit();
             }
 
-            // ✅ مزامنة مع ركاز حسب الحالة
-            $action = match ($newStatus) {
-                'confirmed' => 'confirm',
-                'cancelled' => 'cancel',
-                default => 'update',
-            };
-
-            // $this->syncToRekaz($booking, $action);
+            // ✅ إرسال Webhook للشريك
+            Log::info('partner_id changed', ['booking_id' => $booking->id, 'partner_id' => $booking->partner_id]);
+            if ($booking->partner_id && $booking->wasChanged('status')) {
+                Log::info('Sending partner webhook', ['booking_id' => $booking->id, 'status' => $booking->status]);
+                $this->sendPartnerWebhook($booking);
+            }
 
             return; // ✅ مهم: نرجع هنا عشان ما ندخل للـ if التالي
         }
@@ -83,11 +81,6 @@ class BookingObserver
 
         //     $this->syncToRekaz($booking, 'update');
         // }
-
-        // ✅ إرسال Webhook للشريك
-        if ($booking->partner_id && $booking->wasChanged('status')) {
-            $this->sendPartnerWebhook($booking);
-        }
     }
 
     /**
@@ -407,6 +400,7 @@ class BookingObserver
      */
     private function sendPartnerWebhook(Booking $booking): void
     {
+        
         if (!in_array($booking->status, ['moving', 'arrived', 'completed', 'cancelled'])) {
             return;
         }

@@ -105,4 +105,9 @@ class Booking extends Model
     {
         return $this->hasMany(BookingStatusLog::class);
     }
+
+    public function partner()
+    {
+        return $this->belongsTo(Partner::class, 'partner_id');
+    }
 }

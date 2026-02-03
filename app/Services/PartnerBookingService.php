@@ -18,7 +18,8 @@ class PartnerBookingService
 {
     public function __construct(
         protected SlotService $slotService
-    ) {}
+    ) {
+    }
 
     /**
      * إنشاء حجز جديد من الشريك
@@ -190,7 +191,8 @@ class PartnerBookingService
         string $startTime,
         float $lat,
         float $lng,
-        int $duration
+        int $duration,
+        ?int $excludeBookingId = null // ✅ جديد
     ): ?int {
         // جلب السلوتات مع الموظفين
         $slotsData = $this->slotService->getPartnerSlotsWithEmployees(
@@ -198,7 +200,8 @@ class PartnerBookingService
             $serviceId,
             $lat,
             $lng,
-            $partnerId
+            $partnerId,
+            $excludeBookingId // ✅ تمرير excludeBookingId
         );
 
         if (empty($slotsData['slots'])) {
@@ -207,6 +210,7 @@ class PartnerBookingService
                 'service_id' => $serviceId,
                 'date' => $date,
                 'start_time' => $startTime,
+                'exclude_booking_id' => $excludeBookingId,
             ]);
             return null;
         }
@@ -222,6 +226,7 @@ class PartnerBookingService
                 'service_id' => $serviceId,
                 'date' => $date,
                 'start_time' => $startTime,
+                'exclude_booking_id' => $excludeBookingId,
             ]);
             return null;
         }
@@ -236,27 +241,25 @@ class PartnerBookingService
         foreach ($targetSlot['employees'] as $emp) {
             $employeeId = $emp['employee_id'];
 
-            // تحقق من عدم وجود حجز متداخل
+            // تحقق من عدم وجود حجز متداخل (مع استثناء الحجز الحالي)
             $hasConflict = Booking::query()
                 ->where('employee_id', $employeeId)
                 ->where('booking_date', $dbDate)
                 ->whereNotIn('status', ['cancelled'])
+                ->when($excludeBookingId, fn($q) => $q->where('id', '!=', (int) $excludeBookingId)) // ✅ استثناء
                 ->where(function ($q) use ($startTime, $endTime) {
                     $q->where(function ($q2) use ($startTime, $endTime) {
-                        // الحجز الجديد يبدأ أثناء حجز موجود
                         $q2->where('start_time', '<=', $startTime)
                             ->where('end_time', '>', $startTime);
                     })
-                    ->orWhere(function ($q2) use ($startTime, $endTime) {
-                        // الحجز الجديد ينتهي أثناء حجز موجود
-                        $q2->where('start_time', '<', $endTime)
-                            ->where('end_time', '>=', $endTime);
-                    })
-                    ->orWhere(function ($q2) use ($startTime, $endTime) {
-                        // الحجز الجديد يحيط بحجز موجود
-                        $q2->where('start_time', '>=', $startTime)
-                            ->where('end_time', '<=', $endTime);
-                    });
+                        ->orWhere(function ($q2) use ($startTime, $endTime) {
+                            $q2->where('start_time', '<', $endTime)
+                                ->where('end_time', '>=', $endTime);
+                        })
+                        ->orWhere(function ($q2) use ($startTime, $endTime) {
+                            $q2->where('start_time', '>=', $startTime)
+                                ->where('end_time', '<=', $endTime);
+                        });
                 })
                 ->exists();
 
@@ -265,6 +268,7 @@ class PartnerBookingService
                     'employee_id' => $employeeId,
                     'date' => $date,
                     'start_time' => $startTime,
+                    'exclude_booking_id' => $excludeBookingId,
                 ]);
                 return $employeeId;
             }
@@ -274,6 +278,7 @@ class PartnerBookingService
             'partner_id' => $partnerId,
             'date' => $date,
             'start_time' => $startTime,
+            'exclude_booking_id' => $excludeBookingId,
         ]);
 
         return null;
@@ -285,10 +290,20 @@ class PartnerBookingService
     public function rescheduleBooking(Partner $partner, string $externalId, array $data): array
     {
         try {
+            // 1. البحث عن الحجز
             $booking = Booking::query()
                 ->where('partner_id', $partner->id)
                 ->where('external_id', $externalId)
+                ->where('status', '!=', 'cancelled')
                 ->first();
+
+            if (!$booking) {
+                $booking = Booking::query()
+                    ->where('partner_id', $partner->id)
+                    ->where('external_id', $externalId)
+                    ->where('status', 'cancelled')
+                    ->first();
+            }
 
             if (!$booking) {
                 return [
@@ -298,6 +313,7 @@ class PartnerBookingService
                 ];
             }
 
+            // 2. التحقق من إمكانية التعديل
             if (in_array($booking->status, ['cancelled', 'completed'])) {
                 return [
                     'success' => false,
@@ -306,6 +322,7 @@ class PartnerBookingService
                 ];
             }
 
+            // 3. تحضير البيانات
             $day = Carbon::createFromFormat('d-m-Y', $data['date']);
             $dbDate = $day->toDateString();
             $startTime = $data['start_time'];
@@ -314,44 +331,59 @@ class PartnerBookingService
                 ->addMinutes($duration)
                 ->format('H:i');
 
-            // التحقق من الموظف إذا تم تغييره
-            if (isset($data['employee_id'])) {
-                $hasEmployee = $partner->serviceEmployeeAssignments()
-                    ->where('service_id', $booking->service_id)
-                    ->where('employee_id', $data['employee_id'])
-                    ->exists();
+            // 4. تحديد الموقع
+            $address = $booking->address;
 
-                if (!$hasEmployee) {
-                    return [
-                        'success' => false,
-                        'error' => 'Employee not authorized for this service',
-                        'error_code' => 'EMPLOYEE_NOT_AUTHORIZED',
-                    ];
-                }
+            if (isset($data['location'])) {
+                $address = $this->createOrUpdateAddress($booking->user, $data['location']);
             }
 
+            // 5. ✅ اختيار موظف متاح (مع استثناء الحجز الحالي)
+            $employeeId = $this->findAvailableEmployee(
+                $partner->id,
+                $booking->service_id,
+                $data['date'],
+                $startTime,
+                (float) $address->lat,
+                (float) $address->lng,
+                $duration,
+                $booking->id // ✅ استثناء الحجز الحالي
+            );
+
+            if (!$employeeId) {
+                return [
+                    'success' => false,
+                    'error' => 'No available employee for the selected time and location',
+                    'error_code' => 'NO_EMPLOYEE_AVAILABLE',
+                ];
+            }
+
+            // 6. التحديث
             $booking->update([
+                'address_id' => $address->id,
                 'booking_date' => $dbDate,
                 'start_time' => $startTime,
                 'end_time' => $endTime,
-                'employee_id' => $data['employee_id'] ?? $booking->employee_id,
+                'employee_id' => $employeeId,
             ]);
 
             Log::info('Partner booking rescheduled', [
                 'partner_id' => $partner->id,
                 'booking_id' => $booking->id,
                 'external_id' => $externalId,
+                'new_employee_id' => $employeeId,
             ]);
 
             return [
                 'success' => true,
-                'booking' => $booking->fresh(['service', 'employee.user', 'car', 'address']),
+                'booking' => $booking->fresh(['service', 'employee.user', 'car', 'address', 'user']),
             ];
         } catch (\Exception $e) {
             Log::error('Partner booking reschedule failed', [
                 'partner_id' => $partner->id,
                 'external_id' => $externalId,
                 'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return [
@@ -674,7 +706,7 @@ class PartnerBookingService
     {
         $lat = (float) $data['lat'];
         $lng = (float) $data['lng'];
-   
+
         // البحث عن عنوان قريب جداً (نفس الإحداثيات تقريباً)
         $address = Address::query()
             ->where('user_id', $user->id)
@@ -717,6 +749,6 @@ class PartnerBookingService
         }
 
         // إرجاع الرقم بصيغة دولية
-        return '+966' . $mobile;
+        return '0' . $mobile;
     }
 }

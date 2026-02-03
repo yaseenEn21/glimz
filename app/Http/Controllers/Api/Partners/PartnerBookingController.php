@@ -143,7 +143,7 @@ class PartnerBookingController extends Controller
 
             // Customer
             'customer_name' => 'required|string|max:255',
-            'customer_mobile' => 'required|string',
+            'customer_mobile' => ['required', 'regex:/^(05\d{8}|9665\d{8})$/'],
             'customer_email' => 'nullable|email',
 
             // Location
@@ -243,7 +243,12 @@ class PartnerBookingController extends Controller
         $partner = $request->input('partner');
 
         $validator = Validator::make($request->all(), [
-            'start_date_time' => 'required|date_format:Y-m-d H:i:s|after:now', // ✅ منع التاريخ القديم
+            'start_date_time' => 'required|date_format:Y-m-d H:i:s|after:now',
+
+            // ✅ تفاصيل الموقع (اختيارية - لو تغير الموقع)
+            'location_name' => 'nullable|string|max:500',
+            'location_latitude' => 'nullable|numeric|between:-90,90',
+            'location_longitude' => 'nullable|numeric|between:-180,180',
         ]);
 
         if ($validator->fails()) {
@@ -254,14 +259,24 @@ class PartnerBookingController extends Controller
             ], 422);
         }
 
-        // ✅ تحويل البيانات
         $dateTime = \Carbon\Carbon::parse($validator->validated()['start_date_time']);
 
         $transformed = [
             'date' => $dateTime->format('d-m-Y'),
             'start_time' => $dateTime->format('H:i'),
-            'employee_id' => $validator->validated()['employee_id'] ?? null,
+
+            // ✅ الموقع الجديد إذا تم إرساله
+            'location' => null,
         ];
+
+        // إذا تم إرسال تفاصيل موقع جديدة
+        if ($request->filled('location_latitude') && $request->filled('location_longitude')) {
+            $transformed['location'] = [
+                'address' => $request->input('location_name'),
+                'lat' => $request->input('location_latitude'),
+                'lng' => $request->input('location_longitude'),
+            ];
+        }
 
         $result = $this->partnerBookingService->rescheduleBooking($partner, $externalBookingId, $transformed);
 

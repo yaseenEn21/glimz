@@ -249,7 +249,7 @@ class SlotService
     {
         $tz = config('app.timezone', 'Asia/Riyadh');
         $day = Carbon::createFromFormat('d-m-Y', $date, $tz);
-        $dbDate = $day->toDateString(); 
+        $dbDate = $day->toDateString();
 
         $service = Service::query()
             ->where('id', $serviceId)
@@ -261,7 +261,7 @@ class SlotService
             return [
                 'items' => [],
                 'meta' => [
-                    'date' => $dbDate, // ✅ تغيير
+                    'date' => $dbDate,
                     'service_id' => $serviceId,
                     'error_code' => 'SERVICE_NOT_FOUND',
                     'error' => 'Service not found',
@@ -270,7 +270,7 @@ class SlotService
         }
 
         $duration = (int) $service->duration_minutes;
-        $step = $stepMinutes ?? (int) config('booking.slot_step_minutes', 60);
+        $step = $stepMinutes ?? $duration; // ✅ استخدام مدة الخدمة كـ step
         $weekday = $this->carbonToDayEnum($day);
 
         $now = Carbon::now($tz)->startOfMinute();
@@ -280,7 +280,7 @@ class SlotService
             return [
                 'items' => [],
                 'meta' => [
-                    'date' => $dbDate, // ✅ تغيير
+                    'date' => $dbDate,
                     'service_id' => $serviceId,
                     'error_code' => 'DATE_IN_PAST',
                     'error' => 'Date is in the past',
@@ -292,29 +292,27 @@ class SlotService
         $cutoffMinutes = null;
         if ($day->isSameDay($now)) {
             $nowMinutes = ($now->hour * 60) + $now->minute;
-
-            // اختياري: مهلة قبل الحجز (مثلاً 10 دقائق)
             $lead = (int) config('booking.min_lead_minutes', 0);
             $nowMinutes += $lead;
-
-            // قرّب لبداية السلووت التالي حسب step
             $cutoffMinutes = (int) (ceil($nowMinutes / $step) * $step);
         }
 
-        // ✅ base query (بدون bbox/polygon)
+        // ✅ base query - فقط الموظفين النشطين
         $baseQuery = Employee::query()
             ->where('is_active', true)
-            ->whereHas('user', fn($q) => $q->where('is_active', true)->where('user_type', 'biker'))
-            ->whereHas('services', function ($q) use ($serviceId) {
-                $q->where('services.id', $serviceId)
-                    ->where('employee_services.is_active', 1);
-            });
+            ->whereHas('user', fn($q) => $q->where('is_active', true)->where('user_type', 'biker'));
 
-        // ✅ فلتر الشريك: فقط الموظفين المخصصين له
+        // ✅ للشريك: فقط الموظفين المخصصين له في هذه الخدمة
         if ($partnerId) {
             $baseQuery->whereHas('partnerAssignments', function ($q) use ($partnerId, $serviceId) {
                 $q->where('partner_id', $partnerId)
                     ->where('service_id', $serviceId);
+            });
+        } else {
+            // ✅ للموبايل العادي: لازم الموظف عنده الخدمة
+            $baseQuery->whereHas('services', function ($q) use ($serviceId) {
+                $q->where('services.id', $serviceId)
+                    ->where('employee_services.is_active', 1);
             });
         }
 
@@ -345,7 +343,7 @@ class SlotService
             return [
                 'items' => [],
                 'meta' => [
-                    'date' => $dbDate, // ✅ تغيير
+                    'date' => $dbDate,
                     'day' => $weekday,
                     'service_id' => $serviceId,
                     'lat' => (string) $lat,
@@ -369,7 +367,7 @@ class SlotService
             return [
                 'items' => [],
                 'meta' => [
-                    'date' => $dbDate, // ✅ تغيير
+                    'date' => $dbDate,
                     'day' => $weekday,
                     'service_id' => $serviceId,
                     'lat' => (string) $lat,
@@ -398,7 +396,6 @@ class SlotService
 
             $workIntervals = $work->map(fn($i) => [$this->timeToMinutes($i->start_time), $this->timeToMinutes($i->end_time)])->all();
             $breakIntervals = $breaks->map(fn($i) => [$this->timeToMinutes($i->start_time), $this->timeToMinutes($i->end_time)])->all();
-
             $blockIntervals = $emp->timeBlocks->map(fn($b) => [$this->timeToMinutes($b->start_time), $this->timeToMinutes($b->end_time)])->all();
 
             $available = $this->subtractIntervals($workIntervals, $breakIntervals);
@@ -422,8 +419,6 @@ class SlotService
             $slots = $this->generateSlots($available, $duration, $step, $mode);
 
             foreach ($slots as $s) {
-
-                // ✅ فلترة السلووتات القديمة لليوم الحالي
                 if ($cutoffMinutes !== null) {
                     $startMin = $this->timeToMinutes($s['start_time']);
                     if ($startMin < $cutoffMinutes) {
@@ -444,9 +439,8 @@ class SlotService
         $items = array_values($grouped);
         usort($items, fn($a, $b) => strcmp($a['start_time'], $b['start_time']));
 
-        // ✅ لو ما طلع ولا slot: حدّد السبب
         $meta = [
-            'date' => $dbDate, // ✅ تغيير
+            'date' => $dbDate,
             'day' => $weekday,
             'service_id' => $serviceId,
             'duration_minutes' => $duration,
@@ -470,16 +464,13 @@ class SlotService
         ];
     }
 
-    /**
-     * جلب السلوتات مع تفاصيل الموظفين المتاحين
-     * (للاستخدام الداخلي)
-     */
     public function getPartnerSlotsWithEmployees(
         string $date,
         int $serviceId,
         float $lat,
         float $lng,
-        ?int $partnerId = null
+        ?int $partnerId = null,
+        ?int $excludeBookingId = null // ✅ جديد
     ): array {
         $tz = config('app.timezone', 'Asia/Riyadh');
         $day = Carbon::createFromFormat('d-m-Y', $date, $tz);
@@ -499,10 +490,10 @@ class SlotService
         }
 
         $duration = (int) $service->duration_minutes;
+        $step = $duration;
         $weekday = $this->carbonToDayEnum($day);
         $now = Carbon::now($tz)->startOfMinute();
 
-        // منع التاريخ القديم
         if ($day->lt($now->copy()->startOfDay())) {
             return [
                 'slots' => [],
@@ -510,33 +501,30 @@ class SlotService
             ];
         }
 
-        // Cutoff للوقت الحالي
         $cutoffMinutes = null;
         if ($day->isSameDay($now)) {
             $nowMinutes = ($now->hour * 60) + $now->minute;
             $lead = (int) config('booking.min_lead_minutes', 0);
             $nowMinutes += $lead;
-            $cutoffMinutes = (int) (ceil($nowMinutes / 30) * 30); // تقريب لـ 30 دقيقة
+            $cutoffMinutes = (int) (ceil($nowMinutes / $step) * $step);
         }
 
-        // Base query
         $baseQuery = Employee::query()
             ->where('is_active', true)
-            ->whereHas('user', fn($q) => $q->where('is_active', true)->where('user_type', 'biker'))
-            ->whereHas('services', function ($q) use ($serviceId) {
-                $q->where('services.id', $serviceId)
-                    ->where('employee_services.is_active', 1);
-            });
+            ->whereHas('user', fn($q) => $q->where('is_active', true)->where('user_type', 'biker'));
 
-        // فلتر الشريك
         if ($partnerId) {
             $baseQuery->whereHas('partnerAssignments', function ($q) use ($partnerId, $serviceId) {
                 $q->where('partner_id', $partnerId)
                     ->where('service_id', $serviceId);
             });
+        } else {
+            $baseQuery->whereHas('services', function ($q) use ($serviceId) {
+                $q->where('services.id', $serviceId)
+                    ->where('employee_services.is_active', 1);
+            });
         }
 
-        // Bbox + Polygon filter
         $employees = (clone $baseQuery)
             ->whereHas('workArea', function ($q) use ($lat, $lng) {
                 $q->where('is_active', true)
@@ -576,7 +564,6 @@ class SlotService
             ];
         }
 
-        // ✅ بناء السلوتات مع الموظفين
         $slotsByTime = [];
 
         foreach ($candidates as $emp) {
@@ -598,18 +585,18 @@ class SlotService
                 $available = $this->subtractIntervals($available, [[0, $cutoffMinutes]]);
             }
 
-            // ✅ جلب حجوزات الموظف
+            // ✅ جلب حجوزات الموظف (مع استثناء الحجز الحالي)
             $bookingIntervals = Booking::query()
                 ->where('employee_id', $emp->id)
                 ->where('booking_date', $dbDate)
                 ->whereNotIn('status', ['cancelled'])
+                ->when($excludeBookingId, fn($q) => $q->where('id', '!=', (int) $excludeBookingId)) // ✅ استثناء
                 ->get(['start_time', 'end_time'])
                 ->map(fn($b) => [$this->timeToMinutes($b->start_time), $this->timeToMinutes($b->end_time)])
                 ->all();
 
             $available = $this->subtractIntervals($available, $bookingIntervals);
 
-            // توليد السلوتات
             foreach ($available as [$startMin, $endMin]) {
                 $slotStart = $startMin;
                 while ($slotStart + $duration <= $endMin) {
@@ -627,7 +614,7 @@ class SlotService
                         'employee_name' => $emp->user->name ?? null,
                     ];
 
-                    $slotStart += 30; // Step 30 minutes
+                    $slotStart += $step;
                 }
             }
         }
