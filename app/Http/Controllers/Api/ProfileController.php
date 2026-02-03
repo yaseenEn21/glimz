@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\CustomerResource;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use App\Http\Controllers\Api\SettingController;
 
 class ProfileController extends Controller
 {
@@ -132,14 +133,16 @@ class ProfileController extends Controller
             ]
         ]);
 
-        // ✅ استخدام request_lang() للحصول على اللغة
         $lang = $data['lang'] ?? request_lang(['ar', 'en'], 'ar');
 
         $user->update([
             'lang' => $lang
         ]);
 
-        return api_success(new CustomerResource($user), 'Language data updated successfully');
+        $request->merge(['locale' => $lang]);
+
+        $settingController = app(SettingController::class);
+        return $settingController->getSettings($request);
     }
 
     public function deleteAccount(Request $request)
