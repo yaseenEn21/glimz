@@ -303,6 +303,18 @@
                         </div>
                     @endcan
 
+                    @can('faqs.view')
+                        <div class="menu-item">
+                            <a class="menu-link {{ request()->routeIs('dashboard.faqs.*') ? 'active' : '' }}"
+                                href="{{ route('dashboard.faqs.index') }}">
+                                <span class="menu-icon">
+                                    <i class="fa-solid fa-circle-question nav-icon"></i>
+                                </span>
+                                <span class="menu-title">{{ __('faqs.title') }}</span>
+                            </a>
+                        </div>
+                    @endcan
+
                     @can('promotional_notifications.view')
                         <div class="menu-item">
                             <a class="menu-link {{ $is('dashboard.promotional-notifications.*') ? 'active' : '' }}"

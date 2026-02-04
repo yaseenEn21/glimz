@@ -50,4 +50,7 @@ return [
     'deleted_successfully' => 'تم حذف الدور بنجاح',
     'delete_failed' => 'تعذر الحذف',
     'unexpected_error' => 'حدث خطأ غير متوقع',
+    'send' => 'ارسال',
+    'assign_services' => 'تعيين الخدمات والموظفين',
+    'pay_manually' => 'التسديد بشكل يدوي',
 ];

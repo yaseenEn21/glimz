@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Dashboard\BranchController;
 use App\Http\Controllers\Dashboard\EmployeeController;
+use App\Http\Controllers\Dashboard\FaqController;
 use App\Http\Controllers\Dashboard\HomeController;
 use App\Http\Controllers\Dashboard\CarouselItemController;
 use App\Http\Controllers\Dashboard\CustomerController;
@@ -377,6 +378,17 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/search-users', [PromotionalNotificationController::class, 'searchUsers'])
                 ->name('search-users')
                 ->middleware('can:promotional_notifications.send');
+        });
+
+        Route::prefix('faqs')->name('faqs.')->group(function () {
+            Route::get('/', [FaqController::class, 'index'])->name('index');
+            Route::get('/datatable', [FaqController::class, 'datatable'])->name('datatable');
+            Route::get('/create', [FaqController::class, 'create'])->name('create');
+            Route::post('/', [FaqController::class, 'store'])->name('store');
+            Route::get('/{faq}', [FaqController::class, 'show'])->name('show');
+            Route::get('/{faq}/edit', [FaqController::class, 'edit'])->name('edit');
+            Route::put('/{faq}', [FaqController::class, 'update'])->name('update');
+            Route::delete('/{faq}', [FaqController::class, 'destroy'])->name('destroy');
         });
 
         // Partners Routes

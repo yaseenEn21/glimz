@@ -24,4 +24,7 @@ return [
     'carousel_items' => 'عناصر السلايدر',
     'notifications' => 'الاشعارات',
     'app_pages' => 'صفحات التطبيق',
+    'partners' => 'الشركاء',
+    'faqs' => 'الاسئلة الشائعة',
+    'promotional_notifications' => 'الاشعارات الترويجية',
 ];
