@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\Api\FaqResource;
 use App\Models\User;
 use App\Models\Setting;
 use App\Models\FAQ;
@@ -382,15 +383,7 @@ class SettingController extends Controller
             ->orderBy('id')
             ->get();
 
-        $data = $faqs->map(function (FAQ $faq) {
-            return [
-                'id' => $faq->id,
-                'question' => $faq->question,
-                'answer' => $faq->answer,
-            ];
-        })->values();
-
-        return api_success($data, 'FAQs loaded successfully');
+        return api_success(FaqResource::collection($faqs), 'FAQs loaded successfully');
     }
 
     public function contactInfo(Request $request)

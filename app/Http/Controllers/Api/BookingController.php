@@ -75,7 +75,6 @@ class BookingController extends Controller
 
                 case 'all':
                 default:
-                    // لا نطبق أي فلتر، نعرض الكل
                     break;
             }
         }

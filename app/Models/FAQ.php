@@ -9,10 +9,18 @@ class Faq extends Model
 {
     use HasFactory;
 
-    protected $guarded = [];
+    protected $fillable = [
+        'question',
+        'answer',
+        'sort_order',
+        'is_active',
+    ];
 
     protected $casts = [
+        'question' => 'array',
+        'answer' => 'array',
         'is_active' => 'boolean',
+        'sort_order' => 'integer',
     ];
 
     public function scopeActive($query)
