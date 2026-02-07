@@ -33,6 +33,7 @@ return new class extends Migration {
 
             // عنوان أساسي واحد فقط لكل مستخدم (نضمنه بالتطبيق + Transaction)
             $table->boolean('is_default')->default(false);
+            $table->boolean('is_current_location')->default(false);
             $table->text('address_link')->nullable();
 
 

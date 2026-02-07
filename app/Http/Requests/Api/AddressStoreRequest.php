@@ -28,6 +28,7 @@ class AddressStoreRequest extends FormRequest
             'lng' => ['required','numeric','between:-180,180'],
 
             'is_default' => ['nullable','boolean'],
+            'is_current_location' => ['nullable','boolean'],
         ];
     }
 }

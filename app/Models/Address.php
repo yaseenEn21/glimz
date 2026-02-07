@@ -16,6 +16,7 @@ class Address extends Model
         'building_name','building_number','landmark',
         'lat','lng',
         'is_default',
+        'is_current_location',
         'created_by','updated_by',
     ];
 

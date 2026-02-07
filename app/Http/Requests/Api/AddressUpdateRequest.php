@@ -27,6 +27,7 @@ class AddressUpdateRequest extends FormRequest
             'lng' => ['sometimes','required','numeric','between:-180,180'],
 
             'is_default' => ['sometimes','boolean'],
+            'is_current_location' => ['nullable','boolean'],
         ];
     }
 }

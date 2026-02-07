@@ -27,6 +27,7 @@ class AddressResource extends JsonResource
             'lng' => (string) $this->lng,
 
             'is_default' => (bool) $this->is_default,
+            'is_current_location' => (bool) $this->is_current_location,
         ];
     }
 }

@@ -4,21 +4,345 @@
 
 @push('custom-style')
     <style>
-        .slot-grid {
+        /* ===== Wizard Shell ===== */
+        .wizard-shell {
             display: flex;
-            flex-wrap: wrap;
-            gap: .5rem;
+            gap: 1.5rem;
+            align-items: flex-start;
+        }
+
+        /* ===== Sidebar Stepper ===== */
+        .wizard-sidebar {
+            position: sticky;
+            top: 90px;
+            width: 280px;
+            min-width: 280px;
+            background: linear-gradient(160deg, #1B2A4A 0%, #0F1C34 100%);
+            border-radius: 1.25rem;
+            padding: 2rem 1.5rem;
+            color: #fff;
+            box-shadow: 0 12px 40px rgba(15, 28, 52, .25);
+        }
+
+        .wizard-sidebar .brand-label {
+            font-size: .7rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            opacity: .45;
+            margin-bottom: 2rem;
+            font-weight: 600;
+        }
+
+        .step-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: .85rem 0;
+            cursor: pointer;
+            position: relative;
+            transition: all .25s;
+        }
+
+        .step-item:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            left: 17px;
+            top: 52px;
+            width: 2px;
+            height: calc(100% - 32px);
+            background: rgba(255, 255, 255, .1);
+        }
+
+        .step-item.completed:not(:last-child)::after {
+            background: rgba(80, 205, 137, .5);
+        }
+
+        .step-dot {
+            width: 36px;
+            height: 36px;
+            min-width: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: .8rem;
+            background: rgba(255, 255, 255, .06);
+            border: 2px solid rgba(255, 255, 255, .12);
+            transition: all .3s;
+        }
+
+        .step-item.active .step-dot {
+            background: #3B82F6;
+            border-color: #3B82F6;
+            box-shadow: 0 0 0 5px rgba(59, 130, 246, .25);
+        }
+
+        .step-item.completed .step-dot {
+            background: #10B981;
+            border-color: #10B981;
+        }
+
+        .step-item.completed .step-dot::after {
+            content: '✓';
+        }
+
+        .step-info .step-title {
+            font-weight: 600;
+            font-size: .95rem;
+            margin-bottom: .15rem;
+            opacity: .55;
+            transition: opacity .25s;
+        }
+
+        .step-item.active .step-title,
+        .step-item.completed .step-title {
+            opacity: 1;
+        }
+
+        .step-info .step-desc {
+            font-size: .75rem;
+            opacity: .35;
+            line-height: 1.4;
+        }
+
+        .step-item.active .step-desc {
+            opacity: .6;
+        }
+
+        /* ===== Main Content ===== */
+        .wizard-main {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .wizard-step-panel {
+            display: none;
+        }
+
+        .wizard-step-panel.active {
+            display: block;
+            animation: wz-fadeUp .35s ease-out;
+        }
+
+        @keyframes wz-fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Section blocks */
+        .section-block {
+            background: #fff;
+            border: 1px solid #EEF0F4;
+            border-radius: 1rem;
+            padding: 1.75rem;
+            margin-bottom: 1.25rem;
+            transition: box-shadow .2s;
+        }
+
+        .section-block:hover {
+            box-shadow: 0 4px 20px rgba(0, 0, 0, .04);
+        }
+
+        .section-block .block-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-block .block-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: .75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+        }
+
+        .section-block .block-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #1B2A4A;
+            margin: 0;
+        }
+
+        .section-block .block-subtitle {
+            font-size: .78rem;
+            color: #9CA3AF;
+            margin: 0;
+        }
+
+        /* Slot Grid Redesign */
+        .slot-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: .6rem;
         }
 
         .slot-btn {
-            border: 1px dashed #E4E6EF;
-            border-radius: .75rem;
-            padding: .5rem .75rem;
+            border: 2px solid #EEF0F4;
+            border-radius: .85rem;
+            padding: .7rem .85rem;
             cursor: pointer;
+            text-align: center;
+            transition: all .2s;
+            background: #FAFBFC;
+        }
+
+        .slot-btn:hover {
+            border-color: #C7D2FE;
+            background: #EEF2FF;
         }
 
         .slot-btn.active {
-            border-style: solid;
+            border-color: #3B82F6;
+            background: linear-gradient(135deg, #EEF2FF, #DBEAFE);
+            box-shadow: 0 2px 12px rgba(59, 130, 246, .15);
+        }
+
+        /* Summary Floating */
+        .summary-float {
+            background: linear-gradient(135deg, #F0FDF4, #ECFDF5);
+            border: 1px solid #BBF7D0;
+            border-radius: 1rem;
+            padding: 1.5rem;
+        }
+
+        .summary-float .sum-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: .55rem 0;
+        }
+
+        .summary-float .sum-row:not(:last-child) {
+            border-bottom: 1px dashed #D1FAE5;
+        }
+
+        /* Navigation Bar */
+        .wizard-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem 1.75rem;
+            background: #fff;
+            border: 1px solid #EEF0F4;
+            border-radius: 1rem;
+            margin-top: 1.25rem;
+        }
+
+        .wizard-nav .btn-wz {
+            display: inline-flex;
+            align-items: center;
+            gap: .5rem;
+            padding: .65rem 1.75rem;
+            border-radius: .75rem;
+            font-weight: 600;
+            font-size: .9rem;
+            transition: all .2s;
+        }
+
+        .btn-wz-prev {
+            background: #F3F4F6;
+            color: #6B7280;
+            border: none;
+        }
+
+        .btn-wz-prev:hover {
+            background: #E5E7EB;
+            color: #374151;
+        }
+
+        .btn-wz-next {
+            background: #3B82F6;
+            color: #fff;
+            border: none;
+        }
+
+        .btn-wz-next:hover {
+            background: #2563EB;
+        }
+
+        .btn-wz-submit {
+            background: #10B981;
+            color: #fff;
+            border: none;
+        }
+
+        .btn-wz-submit:hover {
+            background: #059669;
+        }
+
+        /* Info Banners */
+        .info-banner {
+            display: flex;
+            align-items: flex-start;
+            gap: .85rem;
+            background: #FFF7ED;
+            border: 1px solid #FED7AA;
+            border-radius: .85rem;
+            padding: 1rem 1.25rem;
+            font-size: .85rem;
+            color: #92400E;
+        }
+
+        .info-banner.blue {
+            background: #EFF6FF;
+            border-color: #BFDBFE;
+            color: #1E40AF;
+        }
+
+        .info-banner.amber {
+            background: #FFFBEB;
+            border-color: #FDE68A;
+            color: #92400E;
+        }
+
+        /* Product Table Redesign */
+        .product-row-card {
+            background: #FAFBFC;
+            border: 1px solid #EEF0F4;
+            border-radius: .85rem;
+            padding: 1rem 1.25rem;
+            margin-bottom: .6rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .product-row-card .prod-field {
+            flex: 1;
+        }
+
+        .product-row-card .prod-qty {
+            width: 100px;
+        }
+
+        /* Responsive */
+        @media (max-width: 991px) {
+            .wizard-shell {
+                flex-direction: column;
+            }
+
+            .wizard-sidebar {
+                position: static;
+                width: 100%;
+                min-width: auto;
+                padding: 1.25rem;
+            }
+
+            .step-item:not(:last-child)::after {
+                display: none;
+            }
         }
     </style>
 @endpush
@@ -29,350 +353,328 @@
     <a href="{{ route('dashboard.bookings.index') }}" class="btn btn-light">{{ __('bookings.back_to_list') }}</a>
 @endsection
 
-<div class="card">
-    <form id="booking_form" action="{{ route('dashboard.bookings.store') }}" method="POST">
-        @csrf
+<form id="booking_form" action="{{ route('dashboard.bookings.store') }}" method="POST">
+    @csrf
+    <div id="form_result" class="alert d-none mb-4"></div>
 
-        <div class="card-body">
-            <div id="form_result" class="alert d-none"></div>
+    <div class="wizard-shell">
 
-            {{-- Tabs --}}
-            <ul class="nav nav-tabs nav-line-tabs mb-6">
-                <li class="nav-item">
-                    <a class="nav-link active" data-bs-toggle="tab" href="#tab_customer">
-                        <i class="ki-duotone ki-profile-circle fs-3 me-2"><span class="path1"></span><span
-                                class="path2"></span><span class="path3"></span></i>
-                        {{ __('bookings.tabs.customer') }}
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" data-bs-toggle="tab" href="#tab_booking">
-                        <i class="ki-duotone ki-calendar fs-3 me-2"><span class="path1"></span><span
-                                class="path2"></span></i>
-                        {{ __('bookings.tabs.booking') }}
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" data-bs-toggle="tab" href="#tab_products">
-                        <i class="ki-duotone ki-basket fs-3 me-2"><span class="path1"></span><span
-                                class="path2"></span></i>
-                        {{ __('bookings.tabs.products') }}
-                    </a>
-                </li>
-            </ul>
+        {{-- ===== LEFT: Sidebar Stepper ===== --}}
+        <div class="wizard-sidebar">
+            <div class="brand-label">{{ __('bookings.create.title') }}</div>
 
-            <div class="tab-content">
-
-                {{-- =========================
-                     TAB 1: Customer + Car + Address
-                ========================== --}}
-                <div class="tab-pane fade show active" id="tab_customer" role="tabpanel">
-                    <div class="row g-8">
-
-                        <div class="col-lg-6">
-                            <div class="card card-flush h-100">
-                                <div class="card-header pt-6">
-                                    <div class="card-title">
-                                        <h3 class="fw-bold mb-0">{{ __('bookings.customer.title') }}</h3>
-                                    </div>
-                                    <div class="card-toolbar">
-                                        <button type="button" class="btn btn-sm btn-light-primary"
-                                            data-bs-toggle="modal" data-bs-target="#modal_customer">
-                                            <i class="ki-duotone ki-plus fs-4 me-1"><span class="path1"></span><span
-                                                    class="path2"></span></i>
-                                            {{ __('bookings.customer.add_new') }}
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="card-body">
-                                    <label
-                                        class="required fw-semibold fs-6 mb-2">{{ __('bookings.fields.user') }}</label>
-                                    <select id="user_id" name="user_id" class="form-select"
-                                        data-placeholder="{{ __('bookings.placeholders.user') }}">
-                                        <option></option>
-                                    </select>
-                                    <div class="invalid-feedback"></div>
-
-                                    <div class="separator my-6"></div>
-
-                                    <div
-                                        class="notice d-flex bg-light-primary rounded border-primary border border-dashed p-4">
-                                        <i class="ki-duotone ki-information-5 fs-2tx text-primary me-4">
-                                            <span class="path1"></span><span class="path2"></span><span
-                                                class="path3"></span>
-                                        </i>
-                                        <div class="d-flex flex-stack flex-grow-1">
-                                            <div class="fw-semibold">
-                                                <div class="fs-6 text-gray-700">
-                                                    {{ __('bookings.customer.notice') }}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-lg-6">
-                            <div class="card card-flush h-100">
-                                <div class="card-header pt-6">
-                                    <div class="card-title">
-                                        <h3 class="fw-bold mb-0">{{ __('bookings.car.title') }}</h3>
-                                    </div>
-                                    <div class="card-toolbar">
-                                        <button type="button" class="btn btn-sm btn-light-primary" id="btn_add_car"
-                                            disabled data-bs-toggle="modal" data-bs-target="#modal_car">
-                                            <i class="ki-duotone ki-plus fs-4 me-1"><span class="path1"></span><span
-                                                    class="path2"></span></i>
-                                            {{ __('bookings.car.add') }}
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="card-body">
-                                    <label
-                                        class="required fw-semibold fs-6 mb-2">{{ __('bookings.fields.car') }}</label>
-                                    <select id="car_id" name="car_id" class="form-select" data-control="select2"
-                                        data-placeholder="{{ __('bookings.placeholders.car') }}" disabled>
-                                        <option></option>
-                                    </select>
-                                    <div class="invalid-feedback"></div>
-
-                                    <div class="separator my-6"></div>
-
-                                    <h4 class="fw-bold mb-3">{{ __('bookings.address.title') }}</h4>
-
-                                    <div class="d-flex justify-content-between align-items-center mb-2">
-                                        <label
-                                            class="required fw-semibold fs-6 mb-0">{{ __('bookings.fields.address') }}</label>
-                                        <button type="button" class="btn btn-sm btn-light-primary" id="btn_add_address"
-                                            disabled data-bs-toggle="modal" data-bs-target="#modal_address">
-                                            <i class="ki-duotone ki-plus fs-4 me-1"><span class="path1"></span><span
-                                                    class="path2"></span></i>
-                                            {{ __('bookings.address.add') }}
-                                        </button>
-                                    </div>
-
-                                    <select id="address_id" name="address_id" class="form-select"
-                                        data-control="select2"
-                                        data-placeholder="{{ __('bookings.placeholders.address') }}" disabled>
-                                        <option></option>
-                                    </select>
-                                    <div class="invalid-feedback"></div>
-
-                                    <div class="form-text mt-2">
-                                        {{ __('bookings.address.hint') }}
-                                    </div>
-
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
+            <div class="step-item active" data-step="1" onclick="goToStep(1)">
+                <div class="step-dot">1</div>
+                <div class="step-info">
+                    <div class="step-title">{{ __('bookings.tabs.customer') }}</div>
+                    <div class="step-desc">{{ __('bookings.customer.title') }} &amp; {{ __('bookings.car.title') }}</div>
                 </div>
+            </div>
 
-                {{-- =========================
-                     TAB 2: Booking Details + Slots
-                ========================== --}}
-                <div class="tab-pane fade" id="tab_booking" role="tabpanel">
-                    <div class="row g-8">
+            <div class="step-item" data-step="2" onclick="goToStep(2)">
+                <div class="step-dot">2</div>
+                <div class="step-info">
+                    <div class="step-title">{{ __('bookings.tabs.booking') }}</div>
+                    <div class="step-desc">{{ __('bookings.details.title') }}</div>
+                </div>
+            </div>
 
+            <div class="step-item" data-step="3" onclick="goToStep(3)">
+                <div class="step-dot">3</div>
+                <div class="step-info">
+                    <div class="step-title">{{ __('bookings.tabs.products') }}</div>
+                    <div class="step-desc">{{ __('bookings.products.title') }}</div>
+                </div>
+            </div>
+        </div>
+
+        {{-- ===== RIGHT: Main Panels ===== --}}
+        <div class="wizard-main">
+
+            {{-- =========================
+                 STEP 1 – Customer + Car + Address
+            ========================== --}}
+            <div class="wizard-step-panel active" data-panel="1">
+
+                {{-- Customer Block --}}
+                <div class="section-block">
+                    <div class="block-header">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="block-icon bg-light-primary text-primary">
+                                <i class="ki-duotone ki-profile-circle fs-2"><span class="path1"></span><span class="path2"></span><span class="path3"></span></i>
+                            </div>
+                            <div>
+                                <h4 class="block-title">{{ __('bookings.customer.title') }}</h4>
+                                <p class="block-subtitle">{{ __('bookings.customer.notice') }}</p>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-light-primary" data-bs-toggle="modal"
+                            data-bs-target="#modal_customer">
+                            <i class="ki-duotone ki-plus fs-4 me-1"><span class="path1"></span><span class="path2"></span></i>
+                            {{ __('bookings.customer.add_new') }}
+                        </button>
+                    </div>
+
+                    <div class="row">
                         <div class="col-lg-8">
-                            <div class="card card-flush">
-                                <div class="card-header pt-6">
-                                    <div class="card-title">
-                                        <h3 class="fw-bold mb-0">{{ __('bookings.details.title') }}</h3>
-                                    </div>
-                                </div>
-                                <div class="card-body">
-
-                                    <div class="row g-6">
-
-                                        <div class="col-md-6">
-                                            <label
-                                                class="required fw-semibold fs-6 mb-2">{{ __('bookings.fields.service') }}</label>
-                                            <select id="service_id" name="service_id" class="form-select"
-                                                data-control="select2"
-                                                data-placeholder="{{ __('bookings.placeholders.service') }}">
-                                                <option></option>
-                                                @foreach ($services as $srv)
-                                                    <option value="{{ $srv->id }}"
-                                                        data-duration="{{ (int) $srv->duration_minutes }}">
-                                                        {{ function_exists('i18n') ? i18n($srv->name) : $srv->name['ar'] ?? ($srv->name['en'] ?? '') }}
-                                                    </option>
-                                                @endforeach
-                                            </select>
-                                            <div class="invalid-feedback"></div>
-                                        </div>
-
-                                        <div class="col-md-3">
-                                            <label
-                                                class="required fw-semibold fs-6 mb-2">{{ __('bookings.fields.date') }}</label>
-                                            <input type="date" id="booking_date" name="booking_date"
-                                                class="form-control" value="{{ old('booking_date') }}">
-                                            <div class="invalid-feedback"></div>
-                                        </div>
-
-                                        <div class="col-md-3">
-                                            <label
-                                                class="fw-semibold fs-6 mb-2">{{ __('bookings.fields.employee') }}</label>
-                                            <select id="employee_id" name="employee_id" class="form-select" disabled>
-                                                <option value="">{{ __('bookings.placeholders.employee_auto') }}
-                                                </option>
-                                            </select>
-                                            <div class="invalid-feedback"></div>
-                                        </div>
-
-                                        <div class="col-12">
-                                            <div class="separator my-2"></div>
-                                        </div>
-
-                                        <div class="col-md-6">
-                                            <label
-                                                class="fw-semibold fs-6 mb-2">{{ __('bookings.fields.package_subscription') }}</label>
-                                            <select id="package_subscription_id" name="package_subscription_id"
-                                                class="form-select" disabled>
-                                                <option value="">
-                                                    {{ __('bookings.placeholders.package_optional') }}</option>
-                                            </select>
-                                            <div class="form-text">
-                                                {{ __('bookings.package.hint') }}
-                                            </div>
-                                        </div>
-
-                                        <div class="col-md-6">
-                                            <label
-                                                class="fw-semibold fs-6 mb-2">{{ __('bookings.fields.note') }}</label>
-                                            <input type="text" name="note" class="form-control"
-                                                placeholder="{{ __('bookings.placeholders.note') }}">
-                                            <div class="invalid-feedback"></div>
-                                        </div>
-
-                                        <div class="col-12">
-                                            <label
-                                                class="required fw-semibold fs-6 mb-2">{{ __('bookings.fields.time') }}</label>
-
-                                            <input type="hidden" name="start_time" id="start_time">
-
-                                            <div class="d-flex align-items-center gap-3 mb-3">
-                                                <button type="button" class="btn btn-light-primary btn-sm"
-                                                    id="btn_load_slots" disabled>
-                                                    <i class="ki-duotone ki-reload fs-4 me-1"><span
-                                                            class="path1"></span><span class="path2"></span></i>
-                                                    {{ __('bookings.slots.load') }}
-                                                </button>
-
-                                                <span class="text-muted fs-7" id="slots_meta"></span>
-                                            </div>
-
-                                            <div id="slots_wrap" class="slot-grid"></div>
-
-                                            <div class="text-danger mt-2" id="slots_error"></div>
-                                            <div class="form-text mt-2">{{ __('bookings.slots.hint') }}</div>
-                                        </div>
-
-                                    </div>
-
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-lg-4">
-                            <div class="card card-flush">
-                                <div class="card-header pt-6">
-                                    <div class="card-title">
-                                        <h3 class="fw-bold mb-0">{{ __('bookings.summary.title') }}</h3>
-                                    </div>
-                                </div>
-                                <div class="card-body">
-                                    <div class="d-flex flex-column gap-4">
-                                        <div class="d-flex justify-content-between">
-                                            <span class="text-muted">{{ __('bookings.summary.duration') }}</span>
-                                            <span class="fw-bold" id="sum_duration">—</span>
-                                        </div>
-                                        <div class="d-flex justify-content-between">
-                                            <span class="text-muted">{{ __('bookings.summary.start') }}</span>
-                                            <span class="fw-bold" id="sum_start">—</span>
-                                        </div>
-                                        <div class="d-flex justify-content-between">
-                                            <span class="text-muted">{{ __('bookings.summary.end') }}</span>
-                                            <span class="fw-bold" id="sum_end">—</span>
-                                        </div>
-
-                                        <div class="separator"></div>
-
-                                        <div
-                                            class="notice d-flex bg-light-warning rounded border-warning border border-dashed p-4">
-                                            <i class="ki-duotone ki-information-5 fs-2tx text-warning me-4">
-                                                <span class="path1"></span><span class="path2"></span><span
-                                                    class="path3"></span>
-                                            </i>
-                                            <div class="fw-semibold">
-                                                <div class="fs-6 text-gray-700">
-                                                    {{ __('bookings.summary.notice') }}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                    </div>
-                </div>
-
-                {{-- =========================
-                     TAB 3: Products
-                ========================== --}}
-                <div class="tab-pane fade" id="tab_products" role="tabpanel">
-                    <div class="card card-flush">
-                        <div class="card-header pt-6">
-                            <div class="card-title">
-                                <h3 class="fw-bold mb-0">{{ __('bookings.products.title') }}</h3>
-                            </div>
-                            <div class="card-toolbar">
-                                <button type="button" class="btn btn-sm btn-light-primary" id="btn_add_product_row">
-                                    <i class="ki-duotone ki-plus fs-4 me-1"><span class="path1"></span><span
-                                            class="path2"></span></i>
-                                    {{ __('bookings.products.add_row') }}
-                                </button>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table align-middle table-row-dashed">
-                                    <thead>
-                                        <tr class="text-muted fw-bold text-uppercase fs-7">
-                                            <th style="width:55%">{{ __('bookings.products.product') }}</th>
-                                            <th style="width:25%">{{ __('bookings.products.qty') }}</th>
-                                            <th class="text-end" style="width:20%">
-                                                {{ __('bookings.products.actions') }}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="products_tbody"></tbody>
-                                </table>
-                            </div>
-
-                            <div class="form-text">
-                                {{ __('bookings.products.hint') }}
-                            </div>
+                            <label class="required fw-semibold fs-6 mb-2">{{ __('bookings.fields.user') }}</label>
+                            <select id="user_id" name="user_id" class="form-select"
+                                data-placeholder="{{ __('bookings.placeholders.user') }}">
+                                <option></option>
+                            </select>
+                            <div class="invalid-feedback"></div>
                         </div>
                     </div>
                 </div>
 
-            </div>{{-- /tab-content --}}
+                {{-- Car Block --}}
+                <div class="section-block">
+                    <div class="block-header">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="block-icon bg-light-warning text-warning">
+                                <i class="ki-duotone ki-car-2 fs-2"><span class="path1"></span><span class="path2"></span><span class="path3"></span></i>
+                            </div>
+                            <div>
+                                <h4 class="block-title">{{ __('bookings.car.title') }}</h4>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-light-primary" id="btn_add_car" disabled
+                            data-bs-toggle="modal" data-bs-target="#modal_car">
+                            <i class="ki-duotone ki-plus fs-4 me-1"><span class="path1"></span><span class="path2"></span></i>
+                            {{ __('bookings.car.add') }}
+                        </button>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <label class="required fw-semibold fs-6 mb-2">{{ __('bookings.fields.car') }}</label>
+                            <select id="car_id" name="car_id" class="form-select" data-control="select2"
+                                data-placeholder="{{ __('bookings.placeholders.car') }}" disabled>
+                                <option></option>
+                            </select>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Address Block --}}
+                <div class="section-block">
+                    <div class="block-header">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="block-icon bg-light-success text-success">
+                                <i class="ki-duotone ki-geolocation fs-2"><span class="path1"></span><span class="path2"></span><span class="path3"></span></i>
+                            </div>
+                            <div>
+                                <h4 class="block-title">{{ __('bookings.address.title') }}</h4>
+                                <p class="block-subtitle">{{ __('bookings.address.hint') }}</p>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-light-primary" id="btn_add_address" disabled
+                            data-bs-toggle="modal" data-bs-target="#modal_address">
+                            <i class="ki-duotone ki-plus fs-4 me-1"><span class="path1"></span><span class="path2"></span></i>
+                            {{ __('bookings.address.add') }}
+                        </button>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-lg-8">
+                            <label class="required fw-semibold fs-6 mb-2">{{ __('bookings.fields.address') }}</label>
+                            <select id="address_id" name="address_id" class="form-select" data-control="select2"
+                                data-placeholder="{{ __('bookings.placeholders.address') }}" disabled>
+                                <option></option>
+                            </select>
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            {{-- =========================
+                 STEP 2 – Booking Details + Slots
+            ========================== --}}
+            <div class="wizard-step-panel" data-panel="2">
+
+                {{-- Service + Date + Employee --}}
+                <div class="section-block">
+                    <div class="block-header">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="block-icon bg-light-info text-info">
+                                <i class="ki-duotone ki-calendar fs-2"><span class="path1"></span><span class="path2"></span></i>
+                            </div>
+                            <div>
+                                <h4 class="block-title">{{ __('bookings.details.title') }}</h4>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row g-5">
+                        <div class="col-md-5">
+                            <label class="required fw-semibold fs-6 mb-2">{{ __('bookings.fields.service') }}</label>
+                            <select id="service_id" name="service_id" class="form-select" data-control="select2"
+                                data-placeholder="{{ __('bookings.placeholders.service') }}">
+                                <option></option>
+                                @foreach ($services as $srv)
+                                    <option value="{{ $srv->id }}"
+                                        data-duration="{{ (int) $srv->duration_minutes }}">
+                                        {{ function_exists('i18n') ? i18n($srv->name) : $srv->name['ar'] ?? ($srv->name['en'] ?? '') }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label class="required fw-semibold fs-6 mb-2">{{ __('bookings.fields.date') }}</label>
+                            <input type="date" id="booking_date" name="booking_date" class="form-control"
+                                value="{{ old('booking_date') }}">
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="fw-semibold fs-6 mb-2">{{ __('bookings.fields.employee') }}</label>
+                            <select id="employee_id" name="employee_id" class="form-select" disabled>
+                                <option value="">{{ __('bookings.placeholders.employee_auto') }}</option>
+                            </select>
+                            <div class="invalid-feedback"></div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="fw-semibold fs-6 mb-2">{{ __('bookings.fields.package_subscription') }}</label>
+                            <select id="package_subscription_id" name="package_subscription_id" class="form-select"
+                                disabled>
+                                <option value="">{{ __('bookings.placeholders.package_optional') }}</option>
+                            </select>
+                            <div class="form-text">{{ __('bookings.package.hint') }}</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="fw-semibold fs-6 mb-2">{{ __('bookings.fields.note') }}</label>
+                            <input type="text" name="note" class="form-control"
+                                placeholder="{{ __('bookings.placeholders.note') }}">
+                            <div class="invalid-feedback"></div>
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Time Slots --}}
+                <div class="section-block">
+                    <div class="block-header">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="block-icon bg-light-danger text-danger">
+                                <i class="ki-duotone ki-time fs-2"><span class="path1"></span><span class="path2"></span></i>
+                            </div>
+                            <div>
+                                <h4 class="block-title">{{ __('bookings.fields.time') }}</h4>
+                                <p class="block-subtitle">{{ __('bookings.slots.hint') }}</p>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-light-primary" id="btn_load_slots" disabled>
+                            <i class="ki-duotone ki-reload fs-4 me-1"><span class="path1"></span><span class="path2"></span></i>
+                            {{ __('bookings.slots.load') }}
+                        </button>
+                    </div>
+
+                    <input type="hidden" name="start_time" id="start_time">
+                    <span class="text-muted fs-7 d-block mb-3" id="slots_meta"></span>
+
+                    <div id="slots_wrap" class="slot-grid"></div>
+                    <div class="text-danger mt-2" id="slots_error"></div>
+                </div>
+
+                {{-- Summary --}}
+                <div class="summary-float">
+                    <div class="d-flex align-items-center gap-2 mb-3">
+                        <i class="ki-duotone ki-chart-simple fs-3 text-success"><span class="path1"></span><span class="path2"></span><span class="path3"></span></i>
+                        <h5 class="fw-bold mb-0 text-success">{{ __('bookings.summary.title') }}</h5>
+                    </div>
+
+                    <div class="sum-row">
+                        <span class="text-muted">{{ __('bookings.summary.duration') }}</span>
+                        <span class="fw-bold" id="sum_duration">—</span>
+                    </div>
+                    <div class="sum-row">
+                        <span class="text-muted">{{ __('bookings.summary.start') }}</span>
+                        <span class="fw-bold" id="sum_start">—</span>
+                    </div>
+                    <div class="sum-row">
+                        <span class="text-muted">{{ __('bookings.summary.end') }}</span>
+                        <span class="fw-bold" id="sum_end">—</span>
+                    </div>
+
+                    <div class="info-banner amber mt-3">
+                        <i class="ki-duotone ki-information-5 fs-2"><span class="path1"></span><span class="path2"></span><span class="path3"></span></i>
+                        <div>{{ __('bookings.summary.notice') }}</div>
+                    </div>
+                </div>
+
+            </div>
+
+            {{-- =========================
+                 STEP 3 – Products
+            ========================== --}}
+            <div class="wizard-step-panel" data-panel="3">
+
+                <div class="section-block">
+                    <div class="block-header">
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="block-icon bg-light-primary text-primary">
+                                <i class="ki-duotone ki-basket fs-2"><span class="path1"></span><span class="path2"></span></i>
+                            </div>
+                            <div>
+                                <h4 class="block-title">{{ __('bookings.products.title') }}</h4>
+                                <p class="block-subtitle">{{ __('bookings.products.hint') }}</p>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-light-primary" id="btn_add_product_row">
+                            <i class="ki-duotone ki-plus fs-4 me-1"><span class="path1"></span><span class="path2"></span></i>
+                            {{ __('bookings.products.add_row') }}
+                        </button>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table align-middle table-row-dashed">
+                            <thead>
+                                <tr class="text-muted fw-bold text-uppercase fs-7">
+                                    <th style="width:55%">{{ __('bookings.products.product') }}</th>
+                                    <th style="width:25%">{{ __('bookings.products.qty') }}</th>
+                                    <th class="text-end" style="width:20%">{{ __('bookings.products.actions') }}</th>
+                                </tr>
+                            </thead>
+                            <tbody id="products_tbody"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="info-banner blue mt-3" id="no_products_hint">
+                        <i class="ki-duotone ki-information-5 fs-2"><span class="path1"></span><span class="path2"></span><span class="path3"></span></i>
+                        <div>{{ __('bookings.products.hint') }}</div>
+                    </div>
+                </div>
+
+            </div>
+
+            {{-- ===== Bottom Navigation ===== --}}
+            <div class="wizard-nav">
+                <button type="button" class="btn-wz btn-wz-prev" id="wz_prev" style="visibility:hidden">
+                    <i class="ki-duotone ki-arrow-{{ App::getLocale() == 'ar' ? 'right' : 'left' }} fs-4"><span class="path1"></span><span class="path2"></span></i>
+                    {{ __('bookings.back') }}
+                </button>
+
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn-wz btn-wz-next" id="wz_next">
+                        {{ __('bookings.tabs.booking') }}
+                        <i class="ki-duotone ki-arrow-{{ App::getLocale() == 'ar' ? 'left' : 'right' }} fs-4"><span class="path1"></span><span class="path2"></span></i>
+                    </button>
+
+                    <button type="submit" class="btn-wz btn-wz-submit" id="wz_submit" style="display:none">
+                        <span class="indicator-label">{{ __('bookings.save') }}</span>
+                    </button>
+                </div>
+            </div>
 
         </div>
-
-        <div class="card-footer d-flex justify-content-end gap-3">
-            <button type="button" class="btn btn-light"
-                onclick="history.back()">{{ __('bookings.cancel') }}</button>
-            <button type="submit" class="btn btn-primary">
-                <span class="indicator-label">{{ __('bookings.save') }}</span>
-            </button>
-        </div>
-    </form>
-</div>
+    </div>
+</form>
 
 
 {{-- =========================
@@ -456,15 +758,13 @@
                         </div>
 
                         <div class="col-md-4 fv-row">
-                            <label
-                                class="required fw-semibold fs-6 mb-2">{{ __('bookings.car.plate_number') }}</label>
+                            <label class="required fw-semibold fs-6 mb-2">{{ __('bookings.car.plate_number') }}</label>
                             <input type="text" name="plate_number" class="form-control" placeholder="1234">
                             <div class="invalid-feedback"></div>
                         </div>
 
                         <div class="col-md-4 fv-row">
-                            <label
-                                class="required fw-semibold fs-6 mb-2">{{ __('bookings.car.plate_letters') }}</label>
+                            <label class="required fw-semibold fs-6 mb-2">{{ __('bookings.car.plate_letters') }}</label>
                             <input type="text" name="plate_letters" class="form-control" placeholder="ABC">
                             <div class="invalid-feedback"></div>
                         </div>
@@ -567,18 +867,6 @@
                             <div class="invalid-feedback"></div>
                         </div>
 
-                        <div class="col-md-6 fv-row">
-                            <label class="required fw-semibold fs-6 mb-2">Lat</label>
-                            <input name="lat" id="addr_lat" class="form-control" placeholder="26.35">
-                            <div class="invalid-feedback"></div>
-                        </div>
-
-                        <div class="col-md-6 fv-row">
-                            <label class="required fw-semibold fs-6 mb-2">Lng</label>
-                            <input name="lng" id="addr_lng" class="form-control" placeholder="50.08">
-                            <div class="invalid-feedback"></div>
-                        </div>
-
                         <div class="col-12">
                             <div id="addr_pick_map" class="mb-2"></div>
                             <div class="form-text">{{ __('bookings.address.map_hint') }}</div>
@@ -623,6 +911,60 @@
 
 @push('custom-script')
 <script>
+    // ===========================
+    // Wizard Navigation
+    // ===========================
+    let currentStep = 1;
+    const totalSteps = 3;
+
+    const stepLabels = {
+        1: "{{ __('bookings.tabs.customer') }}",
+        2: "{{ __('bookings.tabs.booking') }}",
+        3: "{{ __('bookings.tabs.products') }}"
+    };
+
+    function goToStep(step) {
+        if (step < 1 || step > totalSteps) return;
+
+        currentStep = step;
+
+        // panels
+        document.querySelectorAll('.wizard-step-panel').forEach(p => p.classList.remove('active'));
+        document.querySelector(`.wizard-step-panel[data-panel="${step}"]`).classList.add('active');
+
+        // sidebar
+        document.querySelectorAll('.step-item').forEach(s => {
+            const sStep = parseInt(s.dataset.step);
+            s.classList.remove('active');
+            s.classList.remove('completed');
+            if (sStep === step) s.classList.add('active');
+            if (sStep < step) s.classList.add('completed');
+        });
+
+        // nav buttons
+        const $prev = document.getElementById('wz_prev');
+        const $next = document.getElementById('wz_next');
+        const $submit = document.getElementById('wz_submit');
+
+        $prev.style.visibility = step === 1 ? 'hidden' : 'visible';
+        $next.style.display = step === totalSteps ? 'none' : 'inline-flex';
+        $submit.style.display = step === totalSteps ? 'inline-flex' : 'none';
+
+        // next label
+        if (step < totalSteps) {
+            $next.innerHTML = stepLabels[step + 1] +
+                ' <i class="ki-duotone ki-arrow-{{ App::getLocale() == 'ar' ? 'left' : 'right' }} fs-4"><span class="path1"></span><span class="path2"></span></i>';
+        }
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    document.getElementById('wz_next').addEventListener('click', () => goToStep(currentStep + 1));
+    document.getElementById('wz_prev').addEventListener('click', () => goToStep(currentStep - 1));
+
+    // ===========================
+    // Original Logic (preserved)
+    // ===========================
     (function() {
         const isAr = document.documentElement.lang === 'ar';
 
@@ -641,7 +983,7 @@
             width: '100%',
             placeholder: $user.data('placeholder') || '',
             allowClear: true,
-            minimumInputLength: 0, // ✅ يجيب عند فتح القائمة
+            minimumInputLength: 0,
             ajax: {
                 url: "{{ route('dashboard.bookings.lookups.users') }}",
                 dataType: 'json',
@@ -667,7 +1009,6 @@
                 loadPackageSubscriptions();
             }
         });
-
 
         // car/address select2 (static but dynamic items)
         $('#car_id').select2({
@@ -736,7 +1077,7 @@
                     $('#address_id').trigger('change');
                 });
 
-            // ✅ load package subscriptions for this user
+            // load package subscriptions for this user
             loadPackageSubscriptions();
 
         });
@@ -766,13 +1107,12 @@
                 return;
             }
 
-            // لو بدك تخلي الباقة تشتغل فقط بعد اختيار خدمة:
             if (!serviceId) {
                 resetPackageSelect(true);
                 return;
             }
 
-            const prev = $pkg.val(); // حاول نحافظ على الاختيار لو ما زال صالح
+            const prev = $pkg.val();
 
             resetPackageSelect(true);
 
@@ -790,19 +1130,15 @@
                         $pkg.append(new Option(it.text, it.id, false, false));
                     });
 
-                    // enable only if there are items
                     $pkg.prop('disabled', false);
 
-                    // restore selection if still exists
                     if (prev && $pkg.find(`option[value="${prev}"]`).length) {
                         $pkg.val(prev).trigger('change');
                     } else {
                         $pkg.val('').trigger('change');
                     }
 
-                    // لو ما في اشتراكات
                     if (!items.length) {
-                        // تقدر تخليها disabled أو تتركها enabled مع خيار واحد
                         $pkg.prop('disabled', true);
                     }
                 })
@@ -815,7 +1151,7 @@
         // ----------------------------
         // slots loading
         // ----------------------------
-        let slotsCache = []; // items from server
+        let slotsCache = [];
 
         function canLoadSlots() {
             return !!$('#service_id').val() && !!$('#address_id').val() && !!$('#booking_date').val();
@@ -828,7 +1164,6 @@
         $('#service_id, #address_id, #booking_date').on('change', function() {
             toggleSlotsButton();
 
-            // reset selection
             $('#start_time').val('');
             $('#slots_wrap').empty();
             $('#slots_error').text('');
@@ -904,11 +1239,9 @@
 
             $('#start_time').val(s.start_time);
 
-            // summary
             $('#sum_start').text(s.start_time);
             $('#sum_end').text(s.end_time);
 
-            // employees select
             const employees = s.employees || [];
             const $emp = $('#employee_id');
 
@@ -919,10 +1252,8 @@
                 $emp.append(new Option(e.name, e.employee_id, false, false));
             });
 
-            // enable select only if multiple
             $emp.prop('disabled', employees.length <= 1);
 
-            // if one employee -> set it (optional)
             if (employees.length === 1) {
                 $emp.val(employees[0].employee_id);
             } else {
@@ -947,8 +1278,8 @@
                     <div class="invalid-feedback"></div>
                 </td>
                 <td class="text-end">
-                    <button type="button" class="btn btn-sm btn-light-danger js-remove-row">
-                        <i class="ki-duotone ki-trash fs-4"><span class="path1"></span><span class="path2"></span><span class="path3"></span></i>
+                    <button type="button" class="btn btn-sm js-remove-row">
+                        <i class="fa-regular fa-trash-can text-danger me-2"></i>
                     </button>
                 </td>
             </tr>
@@ -1028,7 +1359,6 @@
                                 'Validation error');
                         }
 
-                        // slot error place
                         if (xhr.responseJSON.errors.start_time) {
                             $('#slots_error').text(xhr.responseJSON.errors.start_time[0]);
                         }
@@ -1054,7 +1384,6 @@
             const $f = $(this);
             const data = $f.serialize();
 
-            // clear
             $f.find('.is-invalid').removeClass('is-invalid');
             $f.find('.invalid-feedback').text('');
             $('#customer_result').addClass('d-none').removeClass('alert-danger alert-success').text('');
@@ -1063,7 +1392,6 @@
                 .done(res => {
                     $('#modal_customer').modal('hide');
 
-                    // set select2 value
                     const option = new Option(res.text, res.id, true, true);
                     $('#user_id').append(option).trigger('change');
 

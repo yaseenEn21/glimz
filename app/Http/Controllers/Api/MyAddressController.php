@@ -55,6 +55,12 @@ class MyAddressController extends Controller
                 $data['is_default'] = false;
             }
 
+            if (!empty($data['is_current_location'])) {
+                Address::where('user_id', $user->id)
+                    ->where('is_current_location', true)
+                    ->update(['is_current_location' => false]);
+            }
+
             return Address::create($data);
         });
 
@@ -77,13 +83,20 @@ class MyAddressController extends Controller
         if ($address->user_id !== $request->user()->id) {
             return api_error(__('api.not_found'), 404);
         }
-
+        
         DB::transaction(function () use ($request, $address) {
             $data = $request->validated();
-
+            
             if (array_key_exists('is_default', $data) && (bool)$data['is_default'] === true) {
                 Address::where('user_id', $address->user_id)->update(['is_default' => false]);
                 $data['is_default'] = true;
+            }
+
+            if (!empty($data['is_current_location'])) {
+                Address::where('user_id', $address->user_id)
+                    ->where('id', '!=', $address->id)
+                    ->where('is_current_location', true)
+                    ->update(['is_current_location' => false]);
             }
 
             $address->update($data);
