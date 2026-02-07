@@ -29,6 +29,7 @@ class BookingStoreRequest extends FormRequest
             'products' => ['nullable', 'array'],
             'products.*.product_id' => ['required_with:products', 'integer', 'exists:products,id'],
             'products.*.qty' => ['required_with:products', 'integer', 'min:1'],
+            'is_current_location' => ['nullable', 'boolean'],
         ];
     }
 
