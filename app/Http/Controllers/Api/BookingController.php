@@ -595,6 +595,17 @@ class BookingController extends Controller
         if (!$address)
             return api_error('Address not found', 404);
 
+        if (!empty($data['is_current_location']) && $data['is_current_location'] == true) {
+
+            Address::where('user_id', $user->id)
+                ->where('id', '!=', $address->id)
+                ->where('is_current_location', true)
+                ->update(['is_current_location' => false]);
+
+            $address->is_current_location = true;
+            $address->save();
+        }
+
         $subscriptionId = $data['package_subscription_id'] ?? null;
         $usingPackage = !empty($subscriptionId);
 
