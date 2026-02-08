@@ -22,6 +22,7 @@ class AddressResource extends JsonResource
             'building_name' => $this->building_name,
             'building_number' => $this->building_number,
             'landmark' => $this->landmark,
+            'description' => $this->description,
 
             'lat' => (string) $this->lat,
             'lng' => (string) $this->lng,

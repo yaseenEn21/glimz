@@ -18,6 +18,7 @@ class AddressUpdateRequest extends FormRequest
             'city' => ['sometimes','nullable','string','max:100'],
             'area' => ['sometimes','nullable','string','max:150'],
             'address_line' => ['sometimes','nullable','string','max:255'],
+            'description' => ['nullable','string','max:1000'],
 
             'building_name' => ['sometimes','nullable','string','max:150'],
             'building_number' => ['sometimes','nullable','string','max:50'],

@@ -18,6 +18,7 @@ class AddressStoreRequest extends FormRequest
             'city' => ['nullable','string','max:100'],
             'area' => ['nullable','string','max:150'],
             'address_line' => ['nullable','string','max:255'],
+            'description' => ['nullable','string','max:1000'],
 
             'building_name' => ['nullable','string','max:150'],
             'building_number' => ['nullable','string','max:50'],

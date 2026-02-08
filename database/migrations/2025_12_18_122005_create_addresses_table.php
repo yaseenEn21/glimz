@@ -26,6 +26,7 @@ return new class extends Migration {
             $table->string('building_name')->nullable();
             $table->string('building_number')->nullable();
             $table->text('landmark')->nullable();   // أقرب معلم
+            $table->text('description')->nullable();
 
             // ✅ الأهم
             $table->decimal('lat', 10, 7);
