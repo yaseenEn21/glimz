@@ -17,6 +17,7 @@ class Address extends Model
         'lat','lng',
         'is_default',
         'is_current_location',
+        'address_name',
         'created_by','updated_by',
     ];
 
