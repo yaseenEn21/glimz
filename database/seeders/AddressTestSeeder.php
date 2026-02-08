@@ -12,8 +12,10 @@ class AddressTestSeeder extends Seeder
     {
         DB::transaction(function () {
 
-            Address::where('user_id', 1)->delete();
+            // ✅ تنظيف العناوين السابقة للمستخدم
+            Address::where('user_id', 4)->delete();
 
+            // ✅ العنوان الأول → is_default = true & is_current_location = true
             Address::create([
                 'user_id' => 4,
                 'type' => 'home',
@@ -24,17 +26,19 @@ class AddressTestSeeder extends Seeder
                 'building_name' => 'لا يوجد',
                 'building_number' => '15',
                 'landmark' => 'تموينات العزيزية',
-                'lat' => 26.4207,
-                'lng' => 50.0888,
+                'lat' => 21.4207,
+                'lng' => 39.0888,
                 'is_default' => true,
+                'is_current_location' => true, // ✅ الموقع الحالي
             ]);
 
+            // ✅ العنوان الثاني → is_default = false & is_current_location = false
             Address::create([
                 'user_id' => 4,
                 'type' => 'work',
                 'country' => 'Saudi Arabia',
                 'city' => 'Jeddah',
-                'area' => 'Al Hamdaniyah',
+                'area' => 'Al Rawdah',
                 'address_line' => 'Work Location - Jeddah',
                 'building_name' => 'برج رقم واحد',
                 'building_number' => '5',
@@ -42,6 +46,24 @@ class AddressTestSeeder extends Seeder
                 'lat' => 21.5561111,
                 'lng' => 39.2258333,
                 'is_default' => false,
+                'is_current_location' => false, // ✅ ليس الموقع الحالي
+            ]);
+
+            // ✅ عنوان ثالث (اختياري)
+            Address::create([
+                'user_id' => 4,
+                'type' => 'other',
+                'country' => 'Saudi Arabia',
+                'city' => 'Jeddah',
+                'area' => 'Al Salamah',
+                'address_line' => 'Friend House - Jeddah',
+                'building_name' => null,
+                'building_number' => '22',
+                'landmark' => 'بالقرب من مسجد الفاروق',
+                'lat' => 21.6358,
+                'lng' => 39.1058,
+                'is_default' => false,
+                'is_current_location' => false,
             ]);
         });
     }
