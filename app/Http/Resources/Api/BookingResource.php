@@ -23,9 +23,11 @@ class BookingResource extends JsonResource
             'status_meta' => BookingStatus::meta((string) $this->status),
 
             'date' => $this->booking_date?->format('d-m-Y'),
-            'datetime' => $this->booking_date && $this->start_time
-                ? \Carbon\Carbon::parse($this->booking_date->format('Y-m-d') . ' ' . $this->start_time)
-                    ->toISOString()
+            'datetime' => $this->booking_date
+                ? $this->booking_date
+                    ->copy()
+                    ->setTimeFromTimeString($this->start_time)
+                    ->format('Y-m-d\TH:i:s')
                 : null,
             'start_time' => substr((string) $this->start_time, 0, 5),
             'end_time' => substr((string) $this->end_time, 0, 5),
