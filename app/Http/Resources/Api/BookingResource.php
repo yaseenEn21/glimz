@@ -23,6 +23,10 @@ class BookingResource extends JsonResource
             'status_meta' => BookingStatus::meta((string) $this->status),
 
             'date' => $this->booking_date?->format('d-m-Y'),
+            'datetime' => $this->booking_date && $this->start_time
+                ? \Carbon\Carbon::parse($this->booking_date->format('Y-m-d') . ' ' . $this->start_time)
+                    ->toISOString()
+                : null,
             'start_time' => substr((string) $this->start_time, 0, 5),
             'end_time' => substr((string) $this->end_time, 0, 5),
             'duration_minutes' => (int) $this->duration_minutes,
@@ -30,7 +34,7 @@ class BookingResource extends JsonResource
             'car_id' => (int) $this->car_id,
             'car' => new CarResource($this->whenLoaded('car')),
             'address_id' => (int) $this->address_id,
-            'address_label' => $this->address?->address_line, 
+            'address_label' => $this->address?->address_line,
             // 'service_id' => (int) $this->service_id,
             'employee_id' => $this->employee_id ? (int) $this->employee_id : null,
 
