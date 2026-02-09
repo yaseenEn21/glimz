@@ -948,9 +948,9 @@ class BookingController extends Controller
                 ->where('status', 'paid')
                 ->exists();
 
-        if ($paidExists) {
-            return api_error('Booking cannot be edited after payment', 422);
-        }
+        // if ($paidExists) {
+        //     return api_error('Booking cannot be edited after payment', 422);
+        // }
 
         $startDt = Carbon::createFromFormat(
             'Y-m-d H:i',
