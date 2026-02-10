@@ -123,4 +123,13 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    'company_name_ar' => 'جليمز',
+    'company_name_en' => 'Glimz',
+    'company_address_ar' => 'الرياض، المملكة العربية السعودية',
+    'company_address_en' => 'Riyadh, Saudi Arabia',
+    'company_phone' => '+966 XX XXX XXXX',
+    'company_email' => 'info@glimz.com',
+    'company_cr' => '',
+    'company_vat_number' => '',
+
 ];

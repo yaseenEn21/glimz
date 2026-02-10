@@ -109,6 +109,7 @@ Route::prefix('v1')->middleware(['set.api.locale'])->group(function () {
         Route::get('wallet/transactions', [WalletTransactionController::class, 'index']);
 
         // Invoices
+        Route::get('invoices/{invoice}/download', [InvoiceController::class, 'download']);
         Route::get('invoices', [InvoiceController::class, 'index']);
         Route::get('invoices/{invoice}', [InvoiceController::class, 'show']);
 

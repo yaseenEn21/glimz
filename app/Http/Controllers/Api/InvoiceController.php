@@ -112,4 +112,64 @@ class InvoiceController extends Controller
 
         return api_success(new InvoiceResource($invoice));
     }
+
+    /**
+     * GET /api/v1/invoices/{invoice}/download
+     */
+    public function download($invoiceId)
+    {
+        $user = request()->user();
+        if (!$user)
+            return api_error('Unauthenticated', 401);
+
+        $invoice = Invoice::query()
+            ->where('id', $invoiceId)
+            ->where('user_id', $user->id)
+            ->with([
+                'user',
+                'items' => fn($q) => $q->orderBy('sort_order'),
+                'items.itemable',
+                'latestPaidPayment',
+                'invoiceable', // Booking, etc.
+            ])
+            ->first();
+
+        if (!$invoice) {
+            return api_error('Not found', 404);
+        }
+
+        // اللغة من الهيدر Accept-Language أو fallback
+        $locale = request()->header('Accept-Language', 'ar');
+        $locale = in_array($locale, ['ar', 'en']) ? $locale : 'ar';
+
+        $isRtl = $locale === 'ar';
+
+        // بيانات الشركة (عدّلها حسب إعداداتك)
+        $company = [
+            'name' => $locale === 'ar' ? config('app.company_name_ar', 'جلمز') : config('app.company_name_en', 'Glimz'),
+            'address' => $locale === 'ar' ? config('app.company_address_ar', 'الرياض، المملكة العربية السعودية') : config('app.company_address_en', 'Riyadh, Saudi Arabia'),
+            'phone' => config('app.company_phone', '+966 XX XXX XXXX'),
+            'email' => config('app.company_email', 'info@glimz.com'),
+            'cr' => config('app.company_cr', ''),       // السجل التجاري
+            'vat' => config('app.company_vat_number', ''), // الرقم الضريبي
+            'logo' => public_path('images/logo.png'),
+        ];
+
+        // اكتب هذا:
+        $pdf = \PDF::loadView('dashboard.invoices.pdf', [
+            'invoice' => $invoice,
+            'company' => $company,
+            'locale' => $locale,
+            'isRtl' => $isRtl,
+        ], [], [
+            'format' => 'A4',
+            'orientation' => 'P',
+            'autoLangToFont' => true,   // يدعم العربية تلقائيًا
+            'autoScriptToLang' => true,
+        ]);
+
+        $filename = "invoice-{$invoice->number}.pdf";
+
+        return $pdf->download($filename);
+    }
 }
