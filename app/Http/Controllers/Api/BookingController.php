@@ -1088,7 +1088,7 @@ class BookingController extends Controller
         // -----------------------------
         // 6) Transaction update + package refund/deduct + products + invoice
         // -----------------------------
-        $updated = DB::transaction(function () use ($booking, $request, $user, $car, $address, $service, $dbDate, $apiDate, $startTime, $endTime, $duration, $pickedEmployeeId, $newSubscriptionId, $usingPackage, $pricing, $finalUnitPrice, $chargeAmount, $invoiceService) {
+        $updated = DB::transaction(function () use ($booking, $request, $user, $car, $address, $service, $dbDate, $apiDate, $startTime, $endTime, $duration, $pickedEmployeeId, $newSubscriptionId, $usingPackage, $pricing, $finalUnitPrice, $chargeAmount, $invoiceService, $paidExists) {
             $b = Booking::query()
                 ->where('id', $booking->id)
                 ->where('user_id', $user->id)
@@ -1283,14 +1283,14 @@ class BookingController extends Controller
             ]);
 
             // ✅ 6.5) Invoice logic (pending/unpaid only)
+            // ✅ 6.5) Invoice logic
             if ($total <= 0.0) {
-                // مثل store: confirmed + لا حاجة لفاتورة
+                // باقة بدون منتجات → confirmed + حذف unpaid إن وجدت
                 $b->update([
                     'status' => 'confirmed',
                     'confirmed_at' => $b->confirmed_at ?? now(),
                 ]);
 
-                // احذف الفاتورة unpaid (اختياري لكن مريح للـ UI)
                 $inv = Invoice::query()
                     ->where('invoiceable_type', Booking::class)
                     ->where('invoiceable_id', $b->id)
@@ -1302,17 +1302,131 @@ class BookingController extends Controller
                     $inv->items()->delete();
                     $inv->delete();
                 }
+
+                // لو كان مدفوع والآن صار 0 → credit note بالمبلغ المدفوع
+                if ($paidExists) {
+                    $paidTotal = (float) Invoice::query()
+                        ->where('invoiceable_type', Booking::class)
+                        ->where('invoiceable_id', $b->id)
+                        ->where('status', 'paid')
+                        ->sum('total');
+
+                    if ($paidTotal > 0) {
+                        $invoiceService->createBookingCreditNoteToWallet(
+                            $b,
+                            $paidTotal,
+                            $user->id,
+                            ['reason' => 'booking_updated_to_zero']
+                        );
+                    }
+                }
+
+            } elseif ($paidExists) {
+                // ✅ الحجز مدفوع والمبلغ الجديد > 0
+                $paidTotal = (float) Invoice::query()
+                    ->where('invoiceable_type', Booking::class)
+                    ->where('invoiceable_id', $b->id)
+                    ->where('status', 'paid')
+                    ->sum('total');
+
+                $diff = round($total - $paidTotal, 2);
+
+                if ($diff > 0) {
+                    // المبلغ زاد → فاتورة فرق (adjustment)
+                    $deltaItems = [];
+
+                    // فرق الخدمة
+                    $oldServiceCharge = (float) collect($b->invoices)
+                        ->where('status', 'paid')
+                        ->flatMap->items
+                        ->where('item_type', 'service')
+                        ->sum('line_total');
+
+                    $newServiceCharge = $chargeAmount;
+                    $serviceDiff = round($newServiceCharge - $oldServiceCharge, 2);
+
+                    if ($serviceDiff > 0) {
+                        $deltaItems[] = [
+                            'product_id' => $service->id,
+                            'title' => $service->name . ' (تعديل)',
+                            'qty' => 1,
+                            'unit_price' => $serviceDiff,
+                        ];
+                    }
+
+                    // فرق المنتجات
+                    $oldProductsTotal = (float) collect($b->invoices)
+                        ->where('status', 'paid')
+                        ->flatMap->items
+                        ->where('item_type', 'product')
+                        ->sum('line_total');
+
+                    $newProductsTotal = (float) ($b->products_subtotal_snapshot ?? 0);
+                    $productsDiff = round($newProductsTotal - $oldProductsTotal, 2);
+
+                    if ($productsDiff > 0) {
+                        $deltaItems[] = [
+                            'product_id' => 0,
+                            'title' => 'فرق منتجات (تعديل)',
+                            'qty' => 1,
+                            'unit_price' => $productsDiff,
+                        ];
+                    }
+
+                    if (!empty($deltaItems)) {
+                        $invoiceService->createBookingProductsDeltaInvoice(
+                            $b,
+                            $deltaItems,
+                            $user->id
+                        );
+                    }
+
+                    // يبقى pending حتى يدفع الفرق
+                    $b->update([
+                        'status' => 'pending',
+                        'confirmed_at' => null,
+                    ]);
+
+                } elseif ($diff < 0) {
+                    // المبلغ نقص → credit note بالفرق
+                    $invoiceService->createBookingCreditNoteToWallet(
+                        $b,
+                        abs($diff),
+                        $user->id,
+                        ['reason' => 'booking_updated_partial_refund']
+                    );
+
+                    // يبقى confirmed لأنه دافع أكثر من المطلوب
+                    $b->update([
+                        'status' => 'confirmed',
+                        'confirmed_at' => $b->confirmed_at ?? now(),
+                    ]);
+
+                } else {
+                    // المبلغ نفسه → لا تعمل شيء بالفواتير
+                    $b->update([
+                        'status' => 'confirmed',
+                        'confirmed_at' => $b->confirmed_at ?? now(),
+                    ]);
+                }
+
             } else {
-                // لازم يبقى pending (للدفع)
+                // ✅ الحجز غير مدفوع → نفس المنطق القديم
                 $b->update([
                     'status' => 'pending',
                     'confirmed_at' => null,
                 ]);
 
-                $invoice = $invoiceService->syncBookingUnpaidInvoice($b->fresh(['service', 'products.product']), $user->id);
+                $invoice = $invoiceService->syncBookingUnpaidInvoice(
+                    $b->fresh(['service', 'products.product']),
+                    $user->id
+                );
 
                 if (!$invoice) {
-                    $invoiceService->createBookingInvoice($b->fresh(['service', 'products.product']), $user->id);
+                    $invoiceService->createBookingInvoice(
+                        $b->fresh(['service', 'products.product']),
+                        $user->id
+                    );
                 }
             }
 
