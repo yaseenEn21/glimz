@@ -36,9 +36,15 @@ class BookingCancellationService
                 ]);
 
             // 2) لو فيه مدفوعات مدفوعة → استرجاع للمحفظة افتراضيًا
+            // 2) لو فيه مدفوعات مدفوعة → استرجاع للمحفظة
+            $paidInvoiceIds = Invoice::query()
+                ->where('invoiceable_type', Booking::class)
+                ->where('invoiceable_id', $booking->id)
+                ->where('status', 'paid')
+                ->pluck('id');
+
             $paidAmount = (float) Payment::query()
-                ->where('payable_type', Booking::class)
-                ->where('payable_id', $booking->id)
+                ->whereIn('invoice_id', $paidInvoiceIds)
                 ->where('status', 'paid')
                 ->sum('amount');
 
@@ -84,7 +90,7 @@ class BookingCancellationService
             }
 
             // 3) رجّع غسلة للباقة إذا كانت انخصمت
-            $bmeta = (array)($booking->meta ?? []);
+            $bmeta = (array) ($booking->meta ?? []);
             if (!empty($bmeta['package_covers_service']) && !empty($bmeta['package_deducted']) && $booking->package_subscription_id) {
                 $sub = PackageSubscription::query()
                     ->where('id', $booking->package_subscription_id)
@@ -94,7 +100,7 @@ class BookingCancellationService
 
                 if ($sub) {
                     $sub->update([
-                        'remaining_washes' => (int)$sub->remaining_washes + 1,
+                        'remaining_washes' => (int) $sub->remaining_washes + 1,
                         'updated_at' => now(),
                     ]);
 
@@ -116,7 +122,7 @@ class BookingCancellationService
                 'booking_id' => $booking->id,
                 'from_status' => $from,
                 'to_status' => 'cancelled',
-                'note' => $reason . ($note ? ' - '.$note : ''),
+                'note' => $reason . ($note ? ' - ' . $note : ''),
                 'created_by' => $actorId,
             ]);
 
