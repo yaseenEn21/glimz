@@ -56,7 +56,7 @@ class ReviewController extends Controller
                 return $name ?? '—';
             })
             ->addColumn('employee_label', function ($booking) {
-                return $booking->employee?->name ?? '—';
+                return $booking->employee?->user->name ?? '—';
             })
             ->addColumn('rating_stars', function ($booking) {
                 return str_repeat('⭐', $booking->rating) . " ({$booking->rating})";
