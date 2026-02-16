@@ -369,21 +369,31 @@
             const products = btn.data('products');
 
             // ✅ تنسيق بسيط ومرتب
-            let text = `📋 معلومات الحجز ( ${bookingId} )
+            let text = `📋 Booking Info ( ${bookingId} )
 
 
-🧰 الخدمة: ${serviceName}
-📅 التاريخ: ${bookingDate}
-🕒 الوقت: ${startTime}
+🧰 Service: ${serviceName}
+📅 Date: ${bookingDate}
+🕒 Time: ${startTime}
 
-👤 العميل: ${customerName}
-📱 الجوال: ${customerMobile}
+👤 Customer: ${customerName}
+📱 Mobile: ${customerMobile}
 
-🚗 السيارة: ${carMake} ${carModel}
-🔢 اللوحة: ${plate}
-🎨 اللون: ${carColor}
+🚗 Car: ${carMake} ${carModel}
+🔢 Plate: ${plate}
+🎨 Color: ${carColor}
 
-📍 العنوان: ${address}`;
+📍 Address: ${address}`;
+
+            if (lat && lng) {
+                text += `\n🗺 Map: https://maps.google.com/?q=${lat},${lng}`;
+            }
+
+            if (products && products.trim() !== '') {
+                text += `\n\n📦 Products: ${products}`;
+            } else {
+                text += `\n\n📦 Products: No products`;
+            }
 
             if (lat && lng) {
                 text += `\n🗺 الخريطة: https://maps.google.com/?q=${lat},${lng}`;
