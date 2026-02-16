@@ -77,6 +77,20 @@ class ReviewController extends Controller
             ->make(true);
     }
 
+    public function destroy(Booking $booking)
+    {
+        $booking->update([
+            'rating' => null,
+            'rating_comment' => null,
+            'rated_at' => null,
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'message' => __('reviews.deleted_successfully'),
+        ]);
+    }
+
 
 
 }
