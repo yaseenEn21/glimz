@@ -62,6 +62,7 @@ class BookingCalendarController extends Controller
         $employeeId = $request->query('employee_id');
 
         $q = Booking::query()
+            ->where('status', '!=', 'cancelled')
             ->with(['user:id,name', 'service:id,name', 'car:id,plate_number', 'address:id,address_line'])
             ->whereDate('booking_date', '>=', $start->toDateString())
             ->whereDate('booking_date', '<', $end->toDateString())
