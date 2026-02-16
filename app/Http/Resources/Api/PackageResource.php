@@ -18,6 +18,7 @@ class PackageResource extends JsonResource
             'id' => $this->id,
             'name' => i18n($this->name),
             'description' => i18n($this->description),
+            'type' => $this->type, // limited, unlimited
 
             'short_description' => i18n($this->description),
             'label' => i18n($this->label),

@@ -194,10 +194,7 @@ class BookingController extends Controller
                 $invoices = $row->invoices;
 
                 if ($invoices->isEmpty()) {
-                    // لا توجد فواتير = غير مسدد
-                    $paymentStatus = '<span class="badge badge-light-danger fs-8 mt-1">' .
-                        __('bookings.payment_status.unpaid') .
-                        '</span>';
+                    $paymentStatus = '';
                 } else {
                     // تحقق من وجود فاتورة واحدة على الأقل غير مدفوعة
                     $hasUnpaid = $invoices->contains('status', 'unpaid');
@@ -882,13 +879,12 @@ class BookingController extends Controller
         WalletService $walletService,
         InvoiceService $invoiceService
     ) {
-
         $data = $request->validate([
             'status' => ['required', Rule::in(['pending', 'confirmed', 'moving', 'arrived', 'completed', 'cancelled'])],
+            'cancel_reason' => ['nullable', 'string', 'max:1000'],
             'note' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        // لو مكتمل/ملغي → لا يسمح بالتعديل (حسب طلبك)
         if (in_array($booking->status, ['completed', 'cancelled'], true)) {
             return response()->json([
                 'ok' => false,
@@ -907,23 +903,21 @@ class BookingController extends Controller
             }
 
             if ($data['status'] === 'cancelled') {
-                $reason = 'cancelled_by_admin';
-                $note = $data['cancel_note'] ?? null;
+                $reason = $data['cancel_reason'] ?: 'cancelled_by_admin';
+                $note = $data['note'] ?? null;
 
-                $actorId = auth()->id();
-
-                $cancelService->cancel($booking, $reason, $note, $actorId, $walletService, $invoiceService);
+                $cancelService->cancel($booking, $reason, $note, auth()->id(), $walletService, $invoiceService);
 
                 return response()->json([
                     'ok' => true,
                     'message' => __('bookings.cancelled_successfully'),
+                    'html' => view('dashboard.bookings._status_control', ['booking' => $booking->refresh()])->render(),
                 ]);
             }
 
             $from = $booking->status;
             $to = $data['status'];
 
-            // لو نفس الحالة
             if ($from === $to) {
                 return response()->json([
                     'ok' => true,
@@ -932,23 +926,14 @@ class BookingController extends Controller
                 ]);
             }
 
-            // timestamps بسيطة
             $update = ['status' => $to, 'updated_by' => auth()->id()];
 
             if ($to === 'confirmed' && !$booking->confirmed_at) {
                 $update['confirmed_at'] = now();
             }
 
-            if ($to === 'cancelled') {
-                $update['cancelled_at'] = now();
-                // اختياري: خزّن سبب سريع لو بدك
-                if (!$booking->cancel_reason)
-                    $update['cancel_reason'] = 'dashboard';
-            }
-
             $booking->update($update);
 
-            // ✅ log
             $booking->statusLogs()->create([
                 'from_status' => $from,
                 'to_status' => $to,

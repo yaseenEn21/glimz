@@ -42,16 +42,18 @@ class PromotionController extends Controller
             ->withCount('coupons')
             ->latest('id');
 
-        if ($search = trim((string)$request->get('search_custom'))) {
+        if ($search = trim((string) $request->get('search_custom'))) {
             $query->where(function ($q) use ($search) {
                 $q->where('name->ar', 'like', "%{$search}%")
-                  ->orWhere('name->en', 'like', "%{$search}%");
+                    ->orWhere('name->en', 'like', "%{$search}%");
             });
         }
 
         if ($status = $request->get('status')) {
-            if ($status === 'active') $query->where('is_active', true);
-            if ($status === 'inactive') $query->where('is_active', false);
+            if ($status === 'active')
+                $query->where('is_active', true);
+            if ($status === 'inactive')
+                $query->where('is_active', false);
         }
 
         return $datatable->eloquent($query)
@@ -159,7 +161,7 @@ class PromotionController extends Controller
     // ===== Select2 search (تُستخدم في صفحة الكوبون عندك) =====
     public function searchServices(Request $request)
     {
-        $q = trim((string)$request->get('q', ''));
+        $q = trim((string) $request->get('q', ''));
         $locale = app()->getLocale();
 
         $query = Service::query()->select('id', 'name')->where('is_active', true);
@@ -167,7 +169,7 @@ class PromotionController extends Controller
         if ($q !== '') {
             $query->where(function ($x) use ($q) {
                 $x->where('name->ar', 'like', "%{$q}%")
-                  ->orWhere('name->en', 'like', "%{$q}%");
+                    ->orWhere('name->en', 'like', "%{$q}%");
             });
         }
 
@@ -183,7 +185,7 @@ class PromotionController extends Controller
 
     public function searchPackages(Request $request)
     {
-        $q = trim((string)$request->get('q', ''));
+        $q = trim((string) $request->get('q', ''));
         $locale = app()->getLocale();
 
         $query = Package::query()->select('id', 'name')->where('is_active', true);
@@ -191,7 +193,7 @@ class PromotionController extends Controller
         if ($q !== '') {
             $query->where(function ($x) use ($q) {
                 $x->where('name->ar', 'like', "%{$q}%")
-                  ->orWhere('name->en', 'like', "%{$q}%");
+                    ->orWhere('name->en', 'like', "%{$q}%");
             });
         }
 
@@ -230,6 +232,9 @@ class PromotionController extends Controller
             'ends_at' => $data['ends_at'] ?? null,
 
             'is_active' => $request->boolean('is_active', true),
+
+            'notes' => $request->input('notes', null),
+            'is_visible_in_app' => $request->boolean('is_visible_in_app', true),
         ];
     }
 }

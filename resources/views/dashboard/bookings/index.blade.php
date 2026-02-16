@@ -103,6 +103,31 @@
 
     </div>
 </div>
+
+{{-- Cancel Reason Modal --}}
+<div class="modal fade" id="cancelBookingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ __('bookings.cancel_reason_title') }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <textarea id="cancelReasonInput" class="form-control" rows="3"
+                    placeholder="{{ __('bookings.cancel_reason_placeholder') }}"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">
+                    {{ __('bookings.cancel_modal_close') }}
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmCancelBtn">
+                    {{ __('bookings.confirm_cancel') }}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('custom-script')
@@ -207,28 +232,73 @@
         });
 
         // ✅ change status ajax
+        // ✅ change status ajax — مع مودال الإلغاء
+        let cancelModal = new bootstrap.Modal(document.getElementById('cancelBookingModal'));
+        let pendingCancelSelect = null;
+        let previousStatus = null;
+
         $(document).on('change', '.js-booking-status-select', function() {
             const $select = $(this);
+            const newStatus = $select.val();
+
+            // لو إلغاء → افتح المودال
+            if (newStatus === 'cancelled') {
+                // احفظ الحالة السابقة عشان نرجعها لو ألغى المودال
+                previousStatus = $select.find('option').filter(function() {
+                    return this.defaultSelected;
+                }).val() || 'pending';
+
+                pendingCancelSelect = $select;
+                $('#cancelReasonInput').val('');
+                cancelModal.show();
+                return;
+            }
+
+            // باقي الحالات → أرسل مباشرة
+            sendStatusUpdate($select, newStatus, null);
+        });
+
+        // تأكيد الإلغاء من المودال
+        $('#confirmCancelBtn').on('click', function() {
+            if (!pendingCancelSelect) return;
+
+            const reason = $('#cancelReasonInput').val().trim();
+            sendStatusUpdate(pendingCancelSelect, 'cancelled', reason);
+            cancelModal.hide();
+            pendingCancelSelect = null;
+        });
+
+        // لو أغلق المودال بدون تأكيد → رجّع القيمة القديمة
+        $('#cancelBookingModal').on('hidden.bs.modal', function() {
+            if (pendingCancelSelect) {
+                pendingCancelSelect.val(previousStatus);
+                pendingCancelSelect = null;
+            }
+            previousStatus = null;
+        });
+
+        function sendStatusUpdate($select, status, cancelReason) {
             const url = $select.data('url');
-            const status = $select.val();
+
+            let payload = {
+                _token: "{{ csrf_token() }}",
+                status: status
+            };
+
+            if (cancelReason) {
+                payload.cancel_reason = cancelReason;
+            }
 
             $.ajax({
                 url: url,
                 type: 'PATCH',
-                data: {
-                    _token: "{{ csrf_token() }}",
-                    status: status
-                },
+                data: payload,
                 success: function(res) {
+                    table.ajax.reload(null, false);
                     if (res && res.ok) {
-
-                        table.ajax.reload(null, false);
-
-                        // optional toast
                         if (window.toastr) toastr.success(res.message ||
                             "{{ __('bookings.status_updated') }}");
                     } else {
-                        table.ajax.reload(null, false);
                         if (window.toastr) toastr.error(res.message || 'Error');
                     }
                 },
@@ -239,7 +309,7 @@
                     if (window.toastr) toastr.error(msg);
                 }
             });
-        });
+        }
 
         $(document).on('click', '.js-delete-booking', function() {
             const id = $(this).data('id');
@@ -365,7 +435,6 @@
                 document.body.removeChild(textarea);
             });
         });
-
     })();
 </script>
 @endpush

@@ -17,6 +17,7 @@ return new class extends Migration {
 
             $table->string('code', 30)->unique(); // نخزّنها uppercase
             $table->boolean('is_active')->default(true);
+            $table->boolean('is_visible_in_app')->default(true);
 
             // صلاحية الكوبون (اختياري فوق صلاحية الحملة)
             $table->date('starts_at')->nullable();
@@ -42,6 +43,7 @@ return new class extends Migration {
             $table->decimal('max_discount', 10, 2)->nullable();      // override على max_discount الخاص بالحملة
 
             $table->json('meta')->nullable();
+            $table->text('notes')->nullable();
 
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();

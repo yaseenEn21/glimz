@@ -25,6 +25,8 @@
     $washes = old('washes_count', $package->washes_count);
     $position = old('position', $package->sort_order);
     $isActiveOld = old('is_active', $package->is_active ? 1 : 0);
+    $type = old('type', $package->type ?? 'limited');
+    $cooldown = old('cooldown_days', $package->cooldown_days);
     $isActive = (bool) $isActiveOld;
 @endphp
 
@@ -107,6 +109,7 @@
                     </div>
 
                     {{-- التسعير والصلاحية --}}
+                    {{-- التسعير والصلاحية --}}
                     <div class="card">
                         <div class="card-header border-0 pt-5">
                             <h3 class="card-title align-items-start flex-column">
@@ -145,13 +148,41 @@
                                     <div class="invalid-feedback"></div>
                                 </div>
 
+                                {{-- نوع الباقة --}}
                                 <div class="col-md-4 fv-row">
+                                    <label class="required fw-semibold fs-6 mb-2">
+                                        {{ __('packages.type') }}
+                                    </label>
+                                    <select name="type" id="package_type" class="form-select">
+                                        <option value="limited" {{ $type === 'limited' ? 'selected' : '' }}>
+                                            {{ __('packages.type_limited') }}
+                                        </option>
+                                        <option value="unlimited" {{ $type === 'unlimited' ? 'selected' : '' }}>
+                                            {{ __('packages.type_unlimited') }}
+                                        </option>
+                                    </select>
+                                    <div class="invalid-feedback"></div>
+                                </div>
+
+                                {{-- عدد الغسلات (للمحدودة فقط) --}}
+                                <div class="col-md-4 fv-row" id="washes_count_wrapper">
                                     <label class="required fw-semibold fs-6 mb-2">
                                         {{ __('packages.washes_count') }}
                                     </label>
                                     <input type="number" min="1" name="washes_count" class="form-control"
                                         value="{{ $washes }}"
                                         placeholder="{{ __('packages.washes_count_placeholder') }}">
+                                    <div class="invalid-feedback"></div>
+                                </div>
+
+                                {{-- الفاصل الزمني (لغير المحدودة فقط) --}}
+                                <div class="col-md-4 fv-row d-none" id="cooldown_days_wrapper">
+                                    <label class="required fw-semibold fs-6 mb-2">
+                                        {{ __('packages.cooldown_days') }}
+                                    </label>
+                                    <input type="number" min="1" name="cooldown_days" class="form-control"
+                                        value="{{ $cooldown }}"
+                                        placeholder="{{ __('packages.cooldown_days_placeholder') }}">
                                     <div class="invalid-feedback"></div>
                                 </div>
 
@@ -321,45 +352,68 @@
     (function() {
         const $form = $('#package_edit_form');
 
-        $.ajax({
-            url: $form.attr('action'),
-            type: 'POST', // نخليها POST عادي
-            headers: {
-                'X-HTTP-Method-Override': 'PUT' // ✅ هيدر إضافي يساعد Laravel يقرأها PUT
-            },
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function(res) {
-                Swal.fire({
-                    icon: 'success',
-                    title: '{{ __('packages.singular_title') }}',
-                    text: res.message || '{{ __('packages.updated_successfully') }}',
-                    timer: 2000,
-                    showConfirmButton: false
-                });
+        $form.on('submit', function(e) {
+            e.preventDefault();
 
-                if (res.redirect) {
-                    window.location.href = res.redirect;
-                }
-            },
-            error: function(xhr) {
-                if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
-                    window.KH.showValidationErrors($form, xhr.responseJSON.errors, {
-                        globalAlertSelector: '#form_result'
+            const formData = new FormData($form[0]);
+
+            window.KH.setFormLoading($form, true, {
+                text: 'جاري الحفظ...'
+            });
+
+            $.ajax({
+                url: $form.attr('action'),
+                type: 'POST',
+                headers: {
+                    'X-HTTP-Method-Override': 'PUT'
+                },
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function(res) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: '{{ __('packages.singular_title') }}',
+                        text: res.message || '{{ __('packages.updated_successfully') }}',
+                        timer: 2000,
+                        showConfirmButton: false
                     });
-                } else {
-                    let msg = 'حدث خطأ غير متوقع.';
-                    if (xhr.responseJSON && xhr.responseJSON.message) {
-                        msg = xhr.responseJSON.message;
+
+                    if (res.redirect) {
+                        window.location.href = res.redirect;
                     }
-                    Swal.fire('خطأ', msg, 'error');
+                },
+                error: function(xhr) {
+                    if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
+                        window.KH.showValidationErrors($form, xhr.responseJSON.errors, {
+                            globalAlertSelector: '#form_result'
+                        });
+                    } else {
+                        let msg = 'حدث خطأ غير متوقع.';
+                        if (xhr.responseJSON && xhr.responseJSON.message) {
+                            msg = xhr.responseJSON.message;
+                        }
+                        Swal.fire('خطأ', msg, 'error');
+                    }
+                },
+                complete: function() {
+                    window.KH.setFormLoading($form, false);
                 }
-            },
-            complete: function() {
-                window.KH.setFormLoading($form, false);
-            }
+            });
         });
+
+        // ── Toggle: نوع الباقة ──
+        $('#package_type').on('change', function() {
+            const type = $(this).val();
+
+            if (type === 'unlimited') {
+                $('#washes_count_wrapper').addClass('d-none');
+                $('#cooldown_days_wrapper').removeClass('d-none');
+            } else {
+                $('#washes_count_wrapper').removeClass('d-none');
+                $('#cooldown_days_wrapper').addClass('d-none');
+            }
+        }).trigger('change');
 
     })();
 </script>

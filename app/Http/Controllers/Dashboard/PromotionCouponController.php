@@ -120,7 +120,7 @@ class PromotionCouponController extends Controller
             'title' => __('promotions.coupons.edit'),
             'page_title' => __('promotions.coupons.edit'),
         ]);
-
+        
         return view('dashboard.promotions.coupons.edit', compact('promotion', 'coupon'));
     }
 
@@ -261,6 +261,8 @@ class PromotionCouponController extends Controller
 
             // meta optional (لو عندك inputs إضافية مستقبلًا)
             'meta' => ['nullable'],
+            'notes' => ['nullable', 'string', 'max:2000'],
+            'is_visible_in_app' => ['nullable', 'boolean'],
         ]);
     }
 
@@ -329,6 +331,9 @@ class PromotionCouponController extends Controller
 
             'min_invoice_total' => $data['min_invoice_total'] ?? null,
             'meta' => $metaForDb,
+
+            'notes' => $request->input('notes', null),
+            'is_visible_in_app' => $request->boolean('is_visible_in_app', true),
         ];
     }
 

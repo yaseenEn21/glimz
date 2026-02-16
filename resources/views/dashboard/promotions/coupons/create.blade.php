@@ -54,6 +54,20 @@
                                     <div class="invalid-feedback d-block"></div>
                                 </div>
 
+                                <div class="col-md-6">
+                                    <label
+                                        class="fw-semibold fs-6 mb-2 d-block">{{ __('promotions.coupons.fields.is_visible_in_app') }}</label>
+                                    <div
+                                        class="form-check form-switch form-switch-sm form-check-custom form-check-solid mt-6">
+                                        <input class="form-check-input" type="checkbox" name="is_visible_in_app"
+                                            value="1" />
+                                        <label
+                                            class="form-check-label fw-semibold">{{ __('promotions.coupons.visible_in_app_label') }}</label>
+                                    </div>
+                                    <div class="form-text">{{ __('promotions.coupons.visible_in_app_hint') }}</div>
+                                    <div class="invalid-feedback d-block"></div>
+                                </div>
+
                                 <div class="col-md-6 fv-row">
                                     <label
                                         class="fw-semibold fs-6 mb-2">{{ __('promotions.coupons.fields.starts_at') }}</label>
@@ -142,6 +156,20 @@
                         </div>
                     </div>
 
+                    <div class="card mt-7">
+                <div class="card-header border-0 pt-5">
+                    <h3 class="card-title fw-bold fs-3">{{ __('promotions.coupons.internal_notes') }}</h3>
+                </div>
+                <div class="card-body pt-0">
+                    <div class="fv-row">
+                        <textarea name="notes" class="form-control" rows="4"
+                            placeholder="{{ __('promotions.coupons.notes_placeholder') }}"></textarea>
+                        <div class="form-text">{{ __('promotions.coupons.notes_hint') }}</div>
+                        <div class="invalid-feedback"></div>
+                    </div>
+                </div>
+            </div>
+
                 </div>
 
 
@@ -201,6 +229,7 @@
             </div>
 
         </div>
+
 
         <div class="card-footer d-flex justify-content-end">
             <button type="submit" class="btn btn-primary">

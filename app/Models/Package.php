@@ -26,6 +26,8 @@ class Package extends Model implements HasMedia
         'washes_count',
         'created_by',
         'updated_by',
+        'type',
+        'cooldown_days',
     ];
 
     protected $casts = [
@@ -38,6 +40,8 @@ class Package extends Model implements HasMedia
         'name' => 'array',
         'label' => 'array',
         'description' => 'array',
+        'type' => 'string',
+        'cooldown_days' => 'integer',
     ];
 
     public function services()

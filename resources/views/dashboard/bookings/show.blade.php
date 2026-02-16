@@ -8,8 +8,6 @@
     <a href="{{ route('dashboard.bookings.index') }}" class="btn btn-light">
         {{ __('bookings.back_to_list') }}
     </a>
-
-    {{-- لاحقاً: أزرار تعديل/إلغاء/تغيير حالة --}}
 @endsection
 
 @php
@@ -156,11 +154,6 @@
                 <a class="nav-link" data-bs-toggle="tab" href="#tab_logs">
                     {{ __('bookings.tabs.logs') }}
                     <span class="badge badge-light ms-2">{{ $booking->statusLogs->count() }}</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" data-bs-toggle="tab" href="#tab_meta">
-                    {{ __('bookings.tabs.meta') }}
                 </a>
             </li>
         </ul>
@@ -328,15 +321,6 @@
                                             {{ $booking->currency }}</span>
                                     </div>
                                 </div>
-
-                                @if (!empty($booking->service_pricing_meta))
-                                    <div class="mt-6">
-                                        <div class="text-muted fw-semibold mb-2">{{ __('bookings.pricing_meta') }}
-                                        </div>
-                                        <pre class="bg-light p-4 rounded">{{ json_encode($booking->service_pricing_meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
-                                    </div>
-                                @endif
-
                             </div>
                         </div>
                     </div>
@@ -573,41 +557,6 @@
                     @endforelse
                 </div>
 
-            </div>
-
-            {{-- Meta --}}
-            <div class="tab-pane fade" id="tab_meta" role="tabpanel">
-                <div class="row g-6">
-                    <div class="col-lg-6">
-                        <div class="card card-flush h-100">
-                            <div class="card-header">
-                                <div class="card-title">
-                                    <h3 class="fw-bold">{{ __('bookings.meta') }}</h3>
-                                </div>
-                            </div>
-                            <div class="card-body pt-0">
-                                @if (!empty($booking->meta))
-                                    <pre class="bg-light p-4 rounded">{{ json_encode($booking->meta, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
-                                @else
-                                    <div class="text-muted">{{ __('bookings.meta_empty') }}</div>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-lg-6">
-                        <div class="card card-flush h-100">
-                            <div class="card-header">
-                                <div class="card-title">
-                                    <h3 class="fw-bold">{{ __('bookings.raw') }}</h3>
-                                </div>
-                            </div>
-                            <div class="card-body pt-0">
-                                <pre class="bg-light p-4 rounded">{{ json_encode($booking->toArray(), JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE) }}</pre>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </div>
 
         </div>

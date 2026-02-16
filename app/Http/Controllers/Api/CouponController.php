@@ -48,6 +48,7 @@ class CouponController extends Controller
 
         $q = PromotionCoupon::query()
             ->where('is_active', true)
+            ->where('is_visible_in_app', true)
             // coupon period
             ->where(function ($x) use ($today) {
                 $x->whereNull('starts_at')->orWhere('starts_at', '<=', $today);

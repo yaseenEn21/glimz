@@ -98,7 +98,7 @@ class BookingCancellationService
                     ->lockForUpdate()
                     ->first();
 
-                if ($sub) {
+                if ($sub && $sub->package && $sub->package->type === 'limited') {
                     $sub->update([
                         'remaining_washes' => (int) $sub->remaining_washes + 1,
                         'updated_at' => now(),

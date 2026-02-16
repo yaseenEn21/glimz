@@ -82,6 +82,7 @@
                     </div>
 
                     {{-- التسعير والصلاحية --}}
+                    {{-- التسعير والصلاحية --}}
                     <div class="card">
                         <div class="card-header border-0 pt-5">
                             <h3 class="card-title align-items-start flex-column">
@@ -97,7 +98,8 @@
                                         {{ __('packages.price') }}
                                     </label>
                                     <input type="number" step="0.01" min="0" name="price"
-                                        class="form-control" placeholder="{{ __('packages.price_placeholder') }}">
+                                        class="form-control" value="{{ old('price', $package->price ?? '') }}"
+                                        placeholder="{{ __('packages.price_placeholder') }}">
                                     <div class="invalid-feedback"></div>
                                 </div>
                                 <div class="col-md-4 fv-row">
@@ -105,7 +107,9 @@
                                         {{ __('packages.discount_price') }}
                                     </label>
                                     <input type="number" step="0.01" min="0" name="discounted_price"
-                                        class="form-control" placeholder="{{ __('packages.price_placeholder') }}">
+                                        class="form-control"
+                                        value="{{ old('discounted_price', $package->discounted_price ?? '') }}"
+                                        placeholder="{{ __('packages.price_placeholder') }}">
                                     <div class="invalid-feedback"></div>
                                 </div>
                                 <div class="col-md-4 fv-row">
@@ -113,16 +117,48 @@
                                         {{ __('packages.validity_days') }}
                                     </label>
                                     <input type="number" min="1" name="validity_days" class="form-control"
+                                        value="{{ old('validity_days', $package->validity_days ?? '') }}"
                                         placeholder="{{ __('packages.validity_days_placeholder') }}">
                                     <div class="invalid-feedback"></div>
                                 </div>
 
+                                {{-- نوع الباقة --}}
                                 <div class="col-md-4 fv-row">
+                                    <label class="required fw-semibold fs-6 mb-2">
+                                        {{ __('packages.type') }}
+                                    </label>
+                                    <select name="type" id="package_type" class="form-select">
+                                        <option value="limited"
+                                            {{ old('type', $package->type ?? 'limited') === 'limited' ? 'selected' : '' }}>
+                                            {{ __('packages.type_limited') }}
+                                        </option>
+                                        <option value="unlimited"
+                                            {{ old('type', $package->type ?? '') === 'unlimited' ? 'selected' : '' }}>
+                                            {{ __('packages.type_unlimited') }}
+                                        </option>
+                                    </select>
+                                    <div class="invalid-feedback"></div>
+                                </div>
+
+                                {{-- عدد الغسلات (للمحدودة فقط) --}}
+                                <div class="col-md-4 fv-row" id="washes_count_wrapper">
                                     <label class="required fw-semibold fs-6 mb-2">
                                         {{ __('packages.washes_count') }}
                                     </label>
                                     <input type="number" min="1" name="washes_count" class="form-control"
+                                        value="{{ old('washes_count', $package->washes_count ?? '') }}"
                                         placeholder="{{ __('packages.washes_count_placeholder') }}">
+                                    <div class="invalid-feedback"></div>
+                                </div>
+
+                                {{-- الفاصل الزمني (لغير المحدودة فقط) --}}
+                                <div class="col-md-4 fv-row d-none" id="cooldown_days_wrapper">
+                                    <label class="required fw-semibold fs-6 mb-2">
+                                        {{ __('packages.cooldown_days') }}
+                                    </label>
+                                    <input type="number" min="1" name="cooldown_days" class="form-control"
+                                        value="{{ old('cooldown_days', $package->cooldown_days ?? '') }}"
+                                        placeholder="{{ __('packages.cooldown_days_placeholder') }}">
                                     <div class="invalid-feedback"></div>
                                 </div>
 
@@ -130,7 +166,8 @@
                                     <label class="fw-semibold fs-6 mb-2">
                                         {{ __('packages.position') }}
                                     </label>
-                                    <input type="number" min="1" name="position" class="form-control">
+                                    <input type="number" min="1" name="position" class="form-control"
+                                        value="{{ old('position', $package->sort_order ?? '') }}">
                                     <div class="invalid-feedback"></div>
                                 </div>
                             </div>
@@ -335,6 +372,22 @@
                 }
             });
         });
+
+        // ── Toggle: نوع الباقة ──
+        $('#package_type').on('change', function() {
+            const type = $(this).val();
+
+            if (type === 'unlimited') {
+                $('#washes_count_wrapper').addClass('d-none');
+                $('#cooldown_days_wrapper').removeClass('d-none');
+                $('[name="washes_count"]').val('');
+            } else {
+                $('#washes_count_wrapper').removeClass('d-none');
+                $('#cooldown_days_wrapper').addClass('d-none');
+                $('[name="cooldown_days"]').val('');
+            }
+        }).trigger('change');
+
     })();
 </script>
 @endpush

@@ -964,7 +964,6 @@ table.dataTable tbody tr:hover {
 .modal-content {
     border: none !important;
     border-radius: var(--radius-xl) !important;
-    box-shadow: var(--shadow-xl) !important;
 }
 
 .modal-header {

@@ -35,6 +35,7 @@ return [
     'validity_days_placeholder' => 'مثال: 30',
     'washes_count' => 'عدد الغسلات',
     'washes_count_placeholder' => 'مثال: 4',
+    'days' => 'يوم',
 
     // الترتيب
     'position' => 'ترتيب الظهور',
@@ -106,4 +107,14 @@ return [
     'icon_ar' => 'أيقونة الباقة (عربي)',
     'icon_en' => 'أيقونة الباقة (إنجليزي)',
     'icon_hint' => 'أيقونة صغيرة للباقة (PNG, JPG, WEBP - حتى 5MB)',
+
+    'type' => 'نوع الباقة',
+    'type_limited' => 'محدودة',
+    'type_unlimited' => 'غير محدودة',
+    'cooldown_days' => 'الفاصل الزمني بين الغسلات (بالأيام)',
+    'cooldown_days_placeholder' => 'مثلاً: 3',
+
+    // packages.php
+    'washes_limit_reached' => 'تم استنفاد جميع غسلات الباقة',
+    'cooldown_not_passed' => 'لا يمكن الحجز قبل مرور :days أيام من آخر حجز. أقرب تاريخ متاح: :date',
 ];

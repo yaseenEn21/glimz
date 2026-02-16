@@ -13,13 +13,16 @@ return new class extends Migration {
             $table->json('name');
             $table->json('label')->nullable();
             $table->json('description')->nullable();
+            $table->enum('type', ['limited', 'unlimited'])->default('limited');
 
             $table->decimal('price', 10, 2)->default(0);
             $table->decimal('discounted_price', 10, 2)->nullable();
 
             // مدة الصلاحية بالأيام
             $table->unsignedInteger('validity_days')->default(30);
-            $table->unsignedInteger('washes_count')->default(1);
+            $table->unsignedInteger('washes_count')->nullable(); //->default(1);
+
+            $table->unsignedInteger('cooldown_days')->nullable();
 
             $table->unsignedInteger('sort_order')->default(0);
 

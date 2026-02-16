@@ -50,6 +50,9 @@
         }
         return '';
     };
+
+    $isVisibleInApp = (int) old('is_visible_in_app', $coupon->is_visible_in_app ? 1 : 0);
+    $notes = old('notes', $coupon->notes);
 @endphp
 
 <div class="card">
@@ -98,6 +101,23 @@
                                         <label
                                             class="form-check-label fw-semibold">{{ __('promotions.active') }}</label>
                                     </div>
+                                    <div class="invalid-feedback d-block"></div>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <label
+                                        class="fw-semibold fs-6 mb-2 d-block">{{ __('promotions.coupons.fields.is_visible_in_app') }}</label>
+
+                                    <input type="hidden" name="is_visible_in_app" value="0">
+
+                                    <div
+                                        class="form-check form-switch form-switch-sm form-check-custom form-check-solid mt-6">
+                                        <input class="form-check-input" type="checkbox" name="is_visible_in_app"
+                                            value="1" {{ $isVisibleInApp ? 'checked' : '' }} />
+                                        <label
+                                            class="form-check-label fw-semibold">{{ __('promotions.coupons.visible_in_app_label') }}</label>
+                                    </div>
+                                    <div class="form-text">{{ __('promotions.coupons.visible_in_app_hint') }}</div>
                                     <div class="invalid-feedback d-block"></div>
                                 </div>
 
@@ -171,8 +191,8 @@
                                 <div class="col-md-4 fv-row">
                                     <label
                                         class="fw-semibold fs-6 mb-2">{{ __('promotions.coupons.fields.usage_limit_total') }}</label>
-                                    <input type="number" min="1" name="usage_limit_total" class="form-control"
-                                        placeholder="—" value="{{ $usageLimitTotal }}" />
+                                    <input type="number" min="1" name="usage_limit_total"
+                                        class="form-control" placeholder="—" value="{{ $usageLimitTotal }}" />
                                     <div class="invalid-feedback"></div>
                                 </div>
 
@@ -195,6 +215,20 @@
                         </div>
                     </div>
 
+                    <div class="card mt-7">
+                        <div class="card-header border-0 pt-5">
+                            <h3 class="card-title fw-bold fs-3">{{ __('promotions.coupons.internal_notes') }}</h3>
+                        </div>
+                        <div class="card-body pt-0">
+                            <div class="fv-row">
+                                <textarea name="notes" class="form-control" rows="4"
+                                    placeholder="{{ __('promotions.coupons.notes_placeholder') }}">{{ $notes }}</textarea>
+                                <div class="form-text">{{ __('promotions.coupons.notes_hint') }}</div>
+                                <div class="invalid-feedback"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
                 </div>
 
 

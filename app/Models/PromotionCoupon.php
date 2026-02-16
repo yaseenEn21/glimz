@@ -33,6 +33,9 @@ class PromotionCoupon extends Model
 
         'created_by',
         'updated_by',
+
+        'notes',
+        'is_visible_in_app',
     ];
 
     protected $casts = [
@@ -48,6 +51,8 @@ class PromotionCoupon extends Model
         'min_invoice_total' => 'decimal:2',
 
         'meta' => 'array',
+        'is_visible_in_app' => 'boolean',
+
     ];
 
     public function promotion()
@@ -79,7 +84,7 @@ class PromotionCoupon extends Model
                 $model->created_by = $model->created_by ?? auth()->id();
                 $model->updated_by = $model->updated_by ?? auth()->id();
             }
-            $model->code = strtoupper(trim((string)$model->code));
+            $model->code = strtoupper(trim((string) $model->code));
         });
 
         static::updating(function ($model) {
@@ -87,7 +92,7 @@ class PromotionCoupon extends Model
                 $model->updated_by = auth()->id();
             }
             if ($model->isDirty('code')) {
-                $model->code = strtoupper(trim((string)$model->code));
+                $model->code = strtoupper(trim((string) $model->code));
             }
         });
     }

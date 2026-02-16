@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Dashboard;
 
 use App\Http\Controllers\Controller;
+use App\Models\Booking;
 use App\Models\Package;
 use App\Models\PackageSubscription;
 use Illuminate\Http\Request;
@@ -33,7 +34,7 @@ class PackageSubscriptionController extends Controller
     {
         if ($request->ajax()) {
             $query = PackageSubscription::query()
-                ->with(['user:id,name,mobile', 'package:id,name'])
+                ->with(['user:id,name,mobile', 'package:id,name,type'])
                 ->select('package_subscriptions.*');
 
             // 🔍 البحث العام (اسم العميل / موبايل / اسم الباقة)
@@ -109,6 +110,14 @@ class PackageSubscriptionController extends Controller
                     return $start && $end ? "{$start} → {$end}" : '—';
                 })
                 ->editColumn('remaining_washes', function (PackageSubscription $row) {
+                    if ($row->package && $row->package->type == 'unlimited') {
+                        $usedCount = Booking::where('package_subscription_id', $row->id)
+                            ->whereNotIn('status', ['cancelled'])
+                            ->count();
+
+                        return __('package_subscriptions.used_washes', ['count' => $usedCount]);
+                    }
+
                     return $row->remaining_washes . ' / ' . $row->total_washes_snapshot;
                 })
                 ->editColumn('final_price_snapshot', function (PackageSubscription $row) {
@@ -188,8 +197,16 @@ class PackageSubscriptionController extends Controller
 
     public function show(PackageSubscription $packageSubscription)
     {
+        $subscription = $packageSubscription->load(['user', 'package']);
+
+        // عدد الغسلات المستخدمة للباقة غير المحدودة
+        $usedWashesCount = Booking::where('package_subscription_id', $subscription->id)
+            ->whereNotIn('status', ['cancelled'])
+            ->count();
+
         return view('dashboard.package_subscriptions.show', [
-            'subscription' => $packageSubscription->load(['user', 'package']),
+            'subscription' => $subscription,
+            'usedWashesCount' => $usedWashesCount,
         ]);
     }
 

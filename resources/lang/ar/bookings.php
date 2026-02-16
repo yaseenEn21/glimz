@@ -63,6 +63,21 @@ return [
         'cancel' => 'إلغاء',
         'moved_successfully' => 'تم تحديث موعد الحجز بنجاح',
         'cannot_move_status' => 'لا يمكن تعديل حجز مكتمل أو ملغي',
+        // Arabic
+        'time_block_title' => 'حظر الوقت',
+        'action' => 'الإجراء',
+        'target_employees' => 'الموظفون المستهدفون',
+        'reason' => 'السبب',
+        'confirm_block' => 'تأكيد الحظر',
+        'reason_placeholder' => 'اكتب سبب الحظر هنا...',
+        'block_time' => 'حجب الوقت',
+        'time_block_created' => 'تم إنشاء حظر الوقت بنجاح',
+        'blocked' => 'محظور',
+        'remove_block_title' => 'إزالة الحظر',
+        'remove_block_text' => 'هل تريد إزالة الحظر عن',
+        'confirm_remove' => 'نعم، أزل الحظر',
+        'time_block_removed' => 'تم إزالة الحظر بنجاح',
+        'please_wait' => 'انتظر..'
     ],
 
     'tabs' => [
@@ -98,7 +113,7 @@ return [
         'unpaid' => 'غير مسدد',
         'partially_paid' => 'مدفوع جزئياً',
     ],
-    
+
     'filters' => [
         'search_placeholder' => 'بحث: رقم الحجز / اسم العميل / رقم الجوال / اسم الخدمة...',
         'status_placeholder' => 'الحالة',
@@ -203,6 +218,12 @@ return [
     'confirmed_at' => 'تاريخ التأكيد',
     'cancelled_at' => 'تاريخ الإلغاء',
     'cancel_reason' => 'سبب الإلغاء',
+
+    'cancel_reason_title' => 'سبب الإلغاء',
+    'cancel_reason_placeholder' => 'اكتب سبب الإلغاء...',
+    'cancel_modal_close' => 'إغلاق',
+    'confirm_cancel' => 'تأكيد الإلغاء',
+
     'back' => 'رجوع',
 
     'products_subtotal' => 'إجمالي المنتجات',

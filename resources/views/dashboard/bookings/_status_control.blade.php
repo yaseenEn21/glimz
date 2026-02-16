@@ -1,3 +1,4 @@
+{{-- Status Control Blade Component --}}
 @php
     $status = $booking->status ?? 'pending';
 

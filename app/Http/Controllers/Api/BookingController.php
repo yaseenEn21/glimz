@@ -100,476 +100,6 @@ class BookingController extends Controller
         return api_success(new BookingResource($booking), 'Booking');
     }
 
-    /**
-     * POST /api/v1/bookings
-     */
-    // public function store(
-    //     BookingStoreRequest $request,
-    //     SlotService $slotService,
-    //     InvoiceService $invoiceService
-    // ) {
-    //     $user = $request->user();
-    //     if (!$user)
-    //         return api_error('Unauthenticated', 401);
-
-    //     $data = $request->validated();
-
-    //     $car = Car::query()->where('id', $data['car_id'])->where('user_id', $user->id)->first();
-    //     if (!$car)
-    //         return api_error('Car not found', 404);
-
-    //     $address = Address::query()->where('id', $data['address_id'])->where('user_id', $user->id)->first();
-    //     if (!$address)
-    //         return api_error('Address not found', 404);
-
-    //     $service = Service::query()->where('id', $data['service_id'])->where('is_active', true)->first();
-    //     if (!$service)
-    //         return api_error('Service not found', 404);
-
-    //     $day = Carbon::createFromFormat('d-m-Y', $data['date']);
-    //     $dbDate = $day->toDateString();
-
-    //     $startTime = $data['time']; // HH:MM
-    //     $duration = (int) $service->duration_minutes;
-
-    //     $endTime = Carbon::createFromFormat('Y-m-d H:i', $dbDate . ' ' . $startTime)
-    //         ->addMinutes($duration)
-    //         ->format('H:i');
-
-    //     // ✅ تحقق slot متاح + احصل موظفين
-    //     $slots = $slotService->getSlots($data['date'], (int) $service->id, (float) $address->lat, (float) $address->lng);
-
-    //     // ✅ لو ما في slots أصلاً: رجّع رسالة حسب السبب
-    //     if (empty($slots['items'])) {
-    //         $code = $slots['meta']['error_code'] ?? null;
-
-    //         if ($code === 'OUT_OF_COVERAGE') {
-    //             return api_error('Address is outside service coverage area', 422);
-    //         }
-
-    //         if ($code === 'NO_WORKING_HOURS') {
-    //             return api_error('No working hours available for the selected date', 422);
-    //         }
-
-    //         return api_error('No slots available for the selected date', 422);
-    //     }
-
-    //     // بعدها افحص الوقت المحدد
-    //     $slot = collect($slots['items'])->first(fn($s) => ($s['start_time'] ?? null) === $startTime);
-    //     if (!$slot) {
-    //         return api_error('Selected time is not available', 422);
-    //     }
-
-    //     $employees = $slot['employees'] ?? [];
-    //     if (empty($employees))
-    //         return api_error('No employee available for this slot', 422);
-
-    //     $pickedEmployeeId = $data['employee_id'] ?? null;
-    //     if ($pickedEmployeeId) {
-    //         $found = collect($employees)->first(fn($e) => (int) $e['employee_id'] === (int) $pickedEmployeeId);
-    //         if (!$found)
-    //             return api_error('Selected employee is not available in this slot', 422);
-    //     } else {
-    //         $pickedEmployeeId = (int) $employees[0]['employee_id'];
-    //     }
-
-    //     $subscriptionId = $data['package_subscription_id'] ?? null;
-
-    //     // أسعار الخدمة snapshot
-    //     $price = (float) $service->price;
-    //     $disc = $service->discounted_price !== null ? (float) $service->discounted_price : null;
-    //     $final = $disc ?? $price;
-
-    //     // لو عنده باقة تغطي الخدمة → final=0
-    //     $meta = [];
-    //     if ($subscriptionId) {
-    //         $meta['package_covers_service'] = true;
-    //         $final = 0;
-    //     }
-
-    //     $address = Address::query()
-    //         ->where('id', $request->integer('address_id'))
-    //         ->where('user_id', $user->id)
-    //         ->firstOrFail();
-
-    //     $service = Service::query()
-    //         ->where('id', $request->integer('service_id'))
-    //         ->where('is_active', true)
-    //         ->firstOrFail();
-
-    //     $pricing = app(\App\Services\BookingPricingService::class)
-    //         ->resolve($service, $user, $address, $request->input('time'));
-
-    //     // السعر الحقيقي للخدمة
-    //     $final = (float) $pricing['final_unit_price'];
-
-    //     // إذا الحجز باستخدام باقة صالحة تغطي الخدمة -> charge = 0
-    //     $usingPackage = (bool) $request->filled('package_subscription_id'); // (مع تحققك الكامل)
-    //     $chargeAmount = $usingPackage ? 0.0 : $final;
-
-    //     $booking = DB::transaction(function () use ($user, $car, $address, $service, $dbDate, $startTime, $endTime, $duration, $price, $disc, $final, $subscriptionId, $pickedEmployeeId, $data, $meta, $invoiceService, $pricing, $chargeAmount, $usingPackage) {
-    //         $booking = Booking::create([
-    //             'user_id' => $user->id,
-    //             'car_id' => $car->id,
-    //             'address_id' => $address->id,
-    //             'service_id' => $service->id,
-
-    //             'zone_id' => $pricing['zone_id'],
-    //             'time_period' => $pricing['time_period'],
-
-    //             'service_unit_price_snapshot' => $pricing['unit_price'],
-    //             'service_discounted_price_snapshot' => $pricing['discounted_price'],
-    //             'service_final_price_snapshot' => $final,
-
-    //             'service_charge_amount_snapshot' => $chargeAmount,
-    //             'service_pricing_source' => $usingPackage ? 'package' : $pricing['pricing_source'],
-    //             'service_pricing_meta' => [
-    //                 'applied_id' => $pricing['applied_id'],
-    //                 'lat' => (float) $address->lat,
-    //                 'lng' => (float) $address->lng,
-    //             ],
-
-    //             'employee_id' => $pickedEmployeeId,
-    //             'package_subscription_id' => $subscriptionId,
-
-    //             'status' => 'pending',
-
-    //             'booking_date' => $dbDate,
-    //             'start_time' => $startTime,
-    //             'end_time' => $endTime,
-    //             'duration_minutes' => $duration,
-
-    //             'service_price_snapshot' => $price,
-
-    //             'currency' => 'SAR',
-    //             'meta' => $meta,
-
-    //             'created_by' => $user->id,
-    //             'updated_by' => $user->id,
-    //         ]);
-
-    //         // Products
-    //         $productsSubtotal = 0;
-    //         $productsInput = $data['products'] ?? [];
-
-    //         foreach ($productsInput as $p) {
-    //             $prod = Product::query()->where('id', (int) $p['product_id'])->where('is_active', true)->first();
-    //             if (!$prod)
-    //                 continue;
-
-    //             $qty = (int) $p['qty'];
-    //             $unit = (float) $prod->price;
-    //             $line = $qty * $unit;
-
-    //             BookingProduct::create([
-    //                 'booking_id' => $booking->id,
-    //                 'product_id' => $prod->id,
-    //                 'qty' => $qty,
-    //                 'unit_price_snapshot' => $unit,
-    //                 'title' => $prod->name, // JSON
-    //                 'line_total' => $line,
-    //             ]);
-
-    //             $productsSubtotal += $line;
-    //         }
-
-    //         $subtotal = (float) $final + (float) $productsSubtotal;
-    //         $total = $subtotal; // tax لاحقاً
-
-    //         $booking->update([
-    //             'products_subtotal_snapshot' => $productsSubtotal,
-    //             'subtotal_snapshot' => $subtotal,
-    //             'total_snapshot' => $total,
-    //         ]);
-
-    //         // ✅ إن كانت total = 0 → أكد الحجز مباشرة (باقة بدون منتجات)
-    //         if ($total <= 0.0) {
-    //             $m = (array) ($booking->meta ?? []);
-    //             $m['package_deducted'] = false; // رح يتم خصمها عند التأكيد/fulfillment (اختياري)
-    //             $booking->update([
-    //                 'status' => 'confirmed',
-    //                 'confirmed_at' => now(),
-    //                 'meta' => $m,
-    //             ]);
-    //         } else {
-    //             // ✅ اصدار فاتورة
-    //             $invoiceService->createBookingInvoice($booking->fresh(['service', 'products']), $user->id);
-
-    //             // ✅ Job إلغاء بعد 10 دقائق لو ما اندفع
-    //             AutoCancelPendingBookingJob::dispatch($booking->id)
-    //                 ->delay(now()->addMinutes((int) config('booking.pending_auto_cancel_minutes', 10)));
-    //         }
-
-    //         return $booking->fresh(['service', 'products.product', 'invoices']);
-    //     });
-
-    //     return api_success(new BookingResource($booking), 'Booking created', 201);
-    // }
-
-    // public function store(
-    //     BookingStoreRequest $request,
-    //     SlotService $slotService,
-    //     InvoiceService $invoiceService
-    // ) {
-    //     $user = $request->user();
-    //     if (!$user)
-    //         return api_error('Unauthenticated', 401);
-
-    //     $data = $request->validated();
-
-    //     $car = Car::query()
-    //         ->where('id', (int) $data['car_id'])
-    //         ->where('user_id', $user->id)
-    //         ->first();
-    //     if (!$car)
-    //         return api_error('Car not found', 404);
-
-    //     $address = Address::query()
-    //         ->where('id', (int) $data['address_id'])
-    //         ->where('user_id', $user->id)
-    //         ->first();
-    //     if (!$address)
-    //         return api_error('Address not found', 404);
-
-    //     $subscriptionId = $data['package_subscription_id'] ?? null;
-    //     $usingPackage = !empty($subscriptionId);
-
-    //     // -----------------------------
-    //     // 1) Resolve service
-    //     // -----------------------------
-    //     $subscription = null;
-
-    //     if ($usingPackage) {
-    //         $subscription = PackageSubscription::query()
-    //             ->where('id', (int) $subscriptionId)
-    //             ->where('user_id', $user->id)
-    //             ->with([
-    //                 'package.services' => function ($q) {
-    //                     $q->where('services.is_active', true)->orderBy('services.id');
-    //                 }
-    //             ])
-    //             ->first();
-
-    //         if (!$subscription)
-    //             return api_error('Package subscription not found', 404);
-
-    //         // صلاحية الاشتراك
-    //         if ($subscription->status !== 'active')
-    //             return api_error('Package subscription is not active', 422);
-    //         if (!$subscription->ends_at || $subscription->ends_at->endOfDay()->lt(now()))
-    //             return api_error('Package subscription has expired', 422);
-    //         if ((int) $subscription->remaining_washes <= 0)
-    //             return api_error('No remaining washes in this subscription', 422);
-
-    //         // أول خدمة من الباقة
-    //         $service = $subscription->package?->services?->first();
-    //         if (!$service)
-    //             return api_error('No active service found in this package', 422);
-
-    //     } else {
-    //         $service = Service::query()
-    //             ->where('id', (int) $data['service_id'])
-    //             ->where('is_active', true)
-    //             ->first();
-    //         if (!$service)
-    //             return api_error('Service not found', 404);
-    //     }
-
-    //     // -----------------------------
-    //     // 2) Date/time + duration
-    //     // -----------------------------
-    //     $day = Carbon::createFromFormat('d-m-Y', $data['date']);
-    //     $dbDate = $day->toDateString();
-
-    //     $startTime = $data['time']; // HH:MM
-    //     $duration = (int) $service->duration_minutes;
-
-    //     $endTime = Carbon::createFromFormat('Y-m-d H:i', $dbDate . ' ' . $startTime)
-    //         ->addMinutes($duration)
-    //         ->format('H:i');
-
-    //     // -----------------------------
-    //     // 3) Slots validation + pick employee
-    //     // -----------------------------
-    //     $slots = $slotService->getSlots($data['date'], (int) $service->id, (float) $address->lat, (float) $address->lng);
-
-    //     if (empty($slots['items'])) {
-    //         $code = $slots['meta']['error_code'] ?? null;
-
-    //         if ($code === 'OUT_OF_COVERAGE')
-    //             return api_error('Address is outside service coverage area', 422);
-    //         if ($code === 'NO_WORKING_HOURS')
-    //             return api_error('No working hours available for the selected date', 422);
-
-    //         return api_error('No slots available for the selected date', 422);
-    //     }
-
-    //     $slot = collect($slots['items'])->first(fn($s) => ($s['start_time'] ?? null) === $startTime);
-    //     if (!$slot)
-    //         return api_error('Selected time is not available', 422);
-
-    //     $employees = $slot['employees'] ?? [];
-    //     if (empty($employees))
-    //         return api_error('No employee available for this slot', 422);
-
-    //     $pickedEmployeeId = $data['employee_id'] ?? null;
-    //     if ($pickedEmployeeId) {
-    //         $found = collect($employees)->first(fn($e) => (int) $e['employee_id'] === (int) $pickedEmployeeId);
-    //         if (!$found)
-    //             return api_error('Selected employee is not available in this slot', 422);
-    //     } else {
-    //         $pickedEmployeeId = (int) $employees[0]['employee_id'];
-    //     }
-
-    //     // -----------------------------
-    //     // 4) Pricing (كما هو)
-    //     // -----------------------------
-    //     $pricing = app(\App\Services\BookingPricingService::class)
-    //         ->resolve($service, $user, $address, $startTime);
-
-    //     $finalUnitPrice = (float) $pricing['final_unit_price'];
-    //     $chargeAmount = $usingPackage ? 0.0 : $finalUnitPrice;
-
-    //     // -----------------------------
-    //     // 5) Create booking (transaction) + deduct wash immediately
-    //     // -----------------------------
-    //     $booking = DB::transaction(function () use ($user, $car, $address, $service, $dbDate, $startTime, $endTime, $duration, $pickedEmployeeId, $data, $subscriptionId, $usingPackage, $pricing, $finalUnitPrice, $chargeAmount, $invoiceService) {
-
-    //         $meta = (array) ($data['meta'] ?? []);
-
-    //         // ✅ إذا باستخدام باقة: اقفل الاشتراك وخصم غسلة فوراً
-    //         if ($usingPackage) {
-    //             /** @var \App\Models\PackageSubscription $sub */
-    //             $sub = PackageSubscription::query()
-    //                 ->where('id', (int) $subscriptionId)
-    //                 ->where('user_id', $user->id)
-    //                 ->lockForUpdate()
-    //                 ->first();
-
-    //             if (!$sub)
-    //                 throw new \Exception('Package subscription not found');
-    //             if ($sub->status !== 'active')
-    //                 throw new \Exception('Package subscription is not active');
-    //             if (!$sub->ends_at || $sub->ends_at->endOfDay()->lt(now()))
-    //                 throw new \Exception('Package subscription has expired');
-    //             if ((int) $sub->remaining_washes <= 0)
-    //                 throw new \Exception('No remaining washes in this subscription');
-
-    //             $before = (int) $sub->remaining_washes;
-    //             $after = $before - 1;
-
-    //             $sub->update([
-    //                 'remaining_washes' => $after,
-    //                 'updated_at' => now(),
-    //                 'updated_by' => $user->id,
-    //             ]);
-
-    //             $meta['package_covers_service'] = true;
-    //             $meta['package_subscription_id'] = (int) $sub->id;
-    //             $meta['package_id'] = (int) $sub->package_id;
-
-    //             $meta['remaining_washes_before'] = $before;
-    //             $meta['remaining_washes_after'] = $after;
-
-    //             $meta['package_deducted'] = true;
-    //             $meta['package_deducted_at'] = now()->toDateTimeString();
-    //             $meta['package_deducted_by'] = $user->id;
-    //         }
-
-    //         $booking = Booking::create([
-    //             'user_id' => $user->id,
-    //             'car_id' => $car->id,
-    //             'address_id' => $address->id,
-    //             'service_id' => $service->id,
-
-    //             'zone_id' => $pricing['zone_id'],
-    //             'time_period' => $pricing['time_period'],
-
-    //             'service_unit_price_snapshot' => $pricing['unit_price'],
-    //             'service_discounted_price_snapshot' => $pricing['discounted_price'],
-    //             'service_final_price_snapshot' => $finalUnitPrice,
-    //             'service_points_snapshot' => (int) ($service->points ?? 0),
-
-    //             'service_charge_amount_snapshot' => $chargeAmount,
-    //             'service_pricing_source' => $usingPackage ? 'package' : $pricing['pricing_source'],
-    //             'service_pricing_meta' => [
-    //                 'applied_id' => $pricing['applied_id'],
-    //                 'lat' => (float) $address->lat,
-    //                 'lng' => (float) $address->lng,
-    //             ],
-
-    //             'employee_id' => $pickedEmployeeId,
-    //             'package_subscription_id' => $subscriptionId,
-
-    //             'status' => 'pending',
-
-    //             'booking_date' => $dbDate,
-    //             'start_time' => $startTime,
-    //             'end_time' => $endTime,
-    //             'duration_minutes' => $duration,
-
-    //             'service_price_snapshot' => (float) $service->price,
-    //             'currency' => 'SAR',
-    //             'meta' => $meta,
-
-    //             'created_by' => $user->id,
-    //             'updated_by' => $user->id,
-    //         ]);
-
-    //         // Products (كما هو)
-    //         $productsSubtotal = 0;
-    //         $productsInput = $data['products'] ?? [];
-
-    //         foreach ($productsInput as $p) {
-    //             $prod = Product::query()->where('id', (int) $p['product_id'])->where('is_active', true)->first();
-    //             if (!$prod)
-    //                 continue;
-
-    //             $qty = (int) $p['qty'];
-    //             $unit = (float) $prod->price;
-    //             $line = $qty * $unit;
-
-    //             BookingProduct::create([
-    //                 'booking_id' => $booking->id,
-    //                 'product_id' => $prod->id,
-    //                 'qty' => $qty,
-    //                 'unit_price_snapshot' => $unit,
-    //                 'title' => $prod->name,
-    //                 'line_total' => $line,
-    //             ]);
-
-    //             $productsSubtotal += $line;
-    //         }
-
-    //         $subtotal = (float) $chargeAmount + (float) $productsSubtotal;
-    //         $total = $subtotal;
-
-    //         $booking->update([
-    //             'products_subtotal_snapshot' => $productsSubtotal,
-    //             'subtotal_snapshot' => $subtotal,
-    //             'total_snapshot' => $total,
-    //         ]);
-
-    //         // ✅ total = 0 => أكد مباشرة (كما هو)
-    //         if ($total <= 0.0) {
-    //             $booking->update([
-    //                 'status' => 'confirmed',
-    //                 'confirmed_at' => now(),
-    //             ]);
-    //         } else {
-    //             // إصدار فاتورة (كما هو)
-    //             $invoiceService->createBookingInvoice($booking->fresh(['service', 'products']), $user->id);
-
-    //             AutoCancelPendingBookingJob::dispatch($booking->id)
-    //                 ->delay(now()->addMinutes((int) config('booking.pending_auto_cancel_minutes', 10)));
-    //         }
-
-    //         return $booking->fresh(['service', 'products.product', 'invoices', 'car']);
-    //     });
-
-    //     return api_success(new BookingResource($booking), 'Booking created', 201);
-    // }
-
     public function store(
         BookingStoreRequest $request,
         SlotService $slotService,
@@ -627,17 +157,43 @@ class BookingController extends Controller
 
             if (!$subscription)
                 return api_error('Package subscription not found', 404);
-
-            // صلاحية الاشتراك
             if ($subscription->status !== 'active')
                 return api_error('Package subscription is not active', 422);
             if (!$subscription->ends_at || $subscription->ends_at->endOfDay()->lt(now()))
                 return api_error('Package subscription has expired', 422);
-            if ((int) $subscription->remaining_washes <= 0)
-                return api_error('No remaining washes in this subscription', 422);
 
-            // أول خدمة من الباقة
-            $service = $subscription->package?->services?->first();
+            $package = $subscription->package;
+            if (!$package)
+                return api_error('Package not found', 404);
+
+            // ── باقة محدودة: فحص عدد الغسلات ──
+            if ($package->type === 'limited') {
+                if ((int) $subscription->remaining_washes <= 0)
+                    return api_error('No remaining washes in this subscription', 422);
+            }
+
+            // ── باقة غير محدودة: فحص الفاصل الزمني ──
+            if ($package->type === 'unlimited' && $package->cooldown_days) {
+                $lastBooking = Booking::where('package_subscription_id', $subscription->id)
+                    ->whereNotIn('status', ['cancelled'])
+                    ->orderByDesc('booking_date')
+                    ->first();
+
+                if ($lastBooking) {
+                    $minNextDate = Carbon::parse($lastBooking->booking_date)
+                        ->addDays($package->cooldown_days);
+                    $requestedDate = Carbon::createFromFormat('d-m-Y', $data['date']);
+
+                    if ($requestedDate->lt($minNextDate)) {
+                        return api_error(__('packages.cooldown_not_passed', [
+                            'days' => $package->cooldown_days,
+                            'date' => $minNextDate->format('Y-m-d'),
+                        ]), 422);
+                    }
+                }
+            }
+
+            $service = $package->services?->first();
             if (!$service)
                 return api_error('No active service found in this package', 422);
 
@@ -712,9 +268,7 @@ class BookingController extends Controller
 
             $meta = (array) ($data['meta'] ?? []);
 
-            // ✅ إذا باستخدام باقة: اقفل الاشتراك وخصم غسلة فوراً
             if ($usingPackage) {
-                /** @var \App\Models\PackageSubscription $sub */
                 $sub = PackageSubscription::query()
                     ->where('id', (int) $subscriptionId)
                     ->where('user_id', $user->id)
@@ -727,28 +281,37 @@ class BookingController extends Controller
                     throw new \Exception('Package subscription is not active');
                 if (!$sub->ends_at || $sub->ends_at->endOfDay()->lt(now()))
                     throw new \Exception('Package subscription has expired');
-                if ((int) $sub->remaining_washes <= 0)
-                    throw new \Exception('No remaining washes in this subscription');
-
-                $before = (int) $sub->remaining_washes;
-                $after = $before - 1;
-
-                $sub->update([
-                    'remaining_washes' => $after,
-                    'updated_at' => now(),
-                    'updated_by' => $user->id,
-                ]);
 
                 $meta['package_covers_service'] = true;
                 $meta['package_subscription_id'] = (int) $sub->id;
                 $meta['package_id'] = (int) $sub->package_id;
 
-                $meta['remaining_washes_before'] = $before;
-                $meta['remaining_washes_after'] = $after;
+                // ── باقة محدودة: خصم غسلة ──
+                if ($sub->package->type === 'limited') {
+                    if ((int) $sub->remaining_washes <= 0)
+                        throw new \Exception('No remaining washes in this subscription');
 
-                $meta['package_deducted'] = true;
-                $meta['package_deducted_at'] = now()->toDateTimeString();
-                $meta['package_deducted_by'] = $user->id;
+                    $before = (int) $sub->remaining_washes;
+                    $after = $before - 1;
+
+                    $sub->update([
+                        'remaining_washes' => $after,
+                        'updated_at' => now(),
+                        'updated_by' => $user->id,
+                    ]);
+
+                    $meta['remaining_washes_before'] = $before;
+                    $meta['remaining_washes_after'] = $after;
+                    $meta['package_deducted'] = true;
+                    $meta['package_deducted_at'] = now()->toDateTimeString();
+                    $meta['package_deducted_by'] = $user->id;
+                }
+
+                // ── باقة غير محدودة: لا خصم ──
+                if ($sub->package->type === 'unlimited') {
+                    $meta['package_type'] = 'unlimited';
+                    $meta['cooldown_days'] = $sub->package->cooldown_days;
+                }
             }
 
             $booking = Booking::create([
@@ -913,9 +476,6 @@ class BookingController extends Controller
             ],
         ], 'OK');
     }
-
-
-
     public function update(
         BookingUpdateRequest $request,
         SlotService $slotService,
@@ -1111,7 +671,7 @@ class BookingController extends Controller
                     ->lockForUpdate()
                     ->first();
 
-                if ($oldSub) {
+                if ($oldSub && $oldSub->package && $oldSub->package->type === 'limited') {
                     $before = (int) $oldSub->remaining_washes;
                     $after = $before + 1;
 
@@ -1161,13 +721,6 @@ class BookingController extends Controller
                         ]);
                     }
 
-                    if ((int) $sub->remaining_washes <= 0) {
-                        throw ValidationException::withMessages([
-                            'package_subscription_id' => ['No remaining washes in this subscription'],
-                        ]);
-                    }
-
-                    // بما أننا اخترنا الخدمة من أول خدمة في الباقة، فقط تأكيد أمان
                     $firstService = $sub->package?->services?->first();
                     if (!$firstService || (int) $firstService->id !== (int) $service->id) {
                         throw ValidationException::withMessages([
@@ -1175,25 +728,61 @@ class BookingController extends Controller
                         ]);
                     }
 
-                    $before = (int) $sub->remaining_washes;
-                    $after = $before - 1;
+                    // ── باقة محدودة: خصم غسلة ──
+                    if ($sub->package->type === 'limited') {
+                        if ((int) $sub->remaining_washes <= 0) {
+                            throw ValidationException::withMessages([
+                                'package_subscription_id' => ['No remaining washes in this subscription'],
+                            ]);
+                        }
 
-                    $sub->update([
-                        'remaining_washes' => $after,
-                        'updated_at' => now(),
-                        'updated_by' => $user->id,
-                    ]);
+                        $before = (int) $sub->remaining_washes;
+                        $after = $before - 1;
+
+                        $sub->update([
+                            'remaining_washes' => $after,
+                            'updated_at' => now(),
+                            'updated_by' => $user->id,
+                        ]);
+
+                        $meta['remaining_washes_before'] = $before;
+                        $meta['remaining_washes_after'] = $after;
+                        $meta['package_deducted'] = true;
+                        $meta['package_deducted_at'] = now()->toDateTimeString();
+                        $meta['package_deducted_by'] = $user->id;
+                    }
+
+                    // ── باقة غير محدودة: فحص cooldown بدون خصم ──
+                    if ($sub->package->type === 'unlimited' && $sub->package->cooldown_days) {
+                        $lastBooking = Booking::where('package_subscription_id', $sub->id)
+                            ->where('id', '!=', $b->id) // استثني الحجز الحالي
+                            ->whereNotIn('status', ['cancelled'])
+                            ->orderByDesc('booking_date')
+                            ->first();
+
+                        if ($lastBooking) {
+                            $minNextDate = Carbon::parse($lastBooking->booking_date)
+                                ->addDays($sub->package->cooldown_days);
+
+                            if (Carbon::parse($dbDate)->lt($minNextDate)) {
+                                throw ValidationException::withMessages([
+                                    'package_subscription_id' => [
+                                        __('packages.cooldown_not_passed', [
+                                            'days' => $sub->package->cooldown_days,
+                                            'date' => $minNextDate->format('Y-m-d'),
+                                        ])
+                                    ],
+                                ]);
+                            }
+                        }
+
+                        $meta['package_type'] = 'unlimited';
+                        $meta['cooldown_days'] = $sub->package->cooldown_days;
+                    }
 
                     $meta['package_covers_service'] = true;
                     $meta['package_subscription_id'] = (int) $sub->id;
                     $meta['package_id'] = (int) $sub->package_id;
-
-                    $meta['remaining_washes_before'] = $before;
-                    $meta['remaining_washes_after'] = $after;
-
-                    $meta['package_deducted'] = true;
-                    $meta['package_deducted_at'] = now()->toDateTimeString();
-                    $meta['package_deducted_by'] = $user->id;
                 }
             } else {
                 // لو ما عاد يستخدم باقة

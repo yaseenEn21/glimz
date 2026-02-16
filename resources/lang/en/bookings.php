@@ -67,6 +67,15 @@ return [
         'cancel' => 'Cancel',
         'moved_successfully' => 'Booking moved successfully',
         'cannot_move_status' => 'Cannot move a completed or cancelled booking',
+        'time_block_title' => 'Time Block',
+        'action' => 'Action',
+        'target_employees' => 'Target Employees',
+        'reason' => 'Reason',
+        'confirm_block' => 'Confirm Block',
+        'reason_placeholder' => 'Enter the reason for blocking...',
+        'block_time' => 'Block Time',
+        'time_block_created' => 'Time block created successfully',
+        'blocked' => 'Blocked'
     ],
 
     'tabs' => [

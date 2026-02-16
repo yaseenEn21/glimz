@@ -87,7 +87,8 @@ Route::middleware(['auth'])->group(function () {
             ->group(function () {
 
                 Route::get('calendar', [BookingCalendarController::class, 'index'])->name('calendar');
-
+                Route::post('calendar/block-slots', [BookingCalendarController::class, 'blockSlots'])->name('calendar.block-slots');
+                Route::delete('calendar/block-slots/{employeeTimeBlock}', [BookingCalendarController::class, 'destroyBlockSlot'])->name('calendar.block-slots.destroy');
                 Route::get('calendar/resources', [BookingCalendarController::class, 'resources'])->name('calendar.resources');
                 Route::get('calendar/events', [BookingCalendarController::class, 'events'])->name('calendar.events');
 

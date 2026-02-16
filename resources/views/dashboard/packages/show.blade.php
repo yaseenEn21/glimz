@@ -115,7 +115,7 @@
 
                         <div class="d-flex justify-content-between mb-2">
                             <span class="text-muted">{{ __('packages.washes_count') }}</span>
-                            <span class="fw-bold">{{ $package->washes_count }}</span>
+                            <span class="fw-bold">{{ $package->washes_count ?? __('packages.type_unlimited') }}</span>
                         </div>
 
                         <div class="d-flex justify-content-between">

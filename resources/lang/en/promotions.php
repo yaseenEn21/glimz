@@ -37,7 +37,15 @@ return [
         'period' => 'Period',
         'status' => 'Status',
         'coupons_count' => 'Coupons',
+        'is_visible_in_app' => 'App Visibility',
     ],
+
+    'visible_in_app_label' => 'Show in coupons list',
+    'visible_in_app_hint' => 'When enabled, this coupon will appear in the app\'s coupon list for customers',
+    'internal_notes' => 'Internal Notes',
+    'notes_placeholder' => 'Team-only notes (not visible to customers)...',
+    'notes_hint' => 'These notes are for internal use only and won\'t be shown to customers',
+
 
     'name_ar' => 'Arabic Name',
     'name_en' => 'English Name',

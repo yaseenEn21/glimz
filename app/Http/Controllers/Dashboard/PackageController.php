@@ -72,7 +72,14 @@ class PackageController extends Controller
                 ->editColumn('validity_days', function (Package $row) {
                     return $row->validity_days;
                 })
-                ->editColumn('washes_count', fn(Package $row) => $row->washes_count)
+                ->addColumn('washes_count', function (Package $row) {
+                    
+                    if ($row->washes_count !== null) {
+                        return $row->washes_count;
+                    }elseif($row->washes_count == null && $row->type == 'unlimited'){
+                        return __('packages.type_unlimited');     
+                    }
+                })
                 ->addColumn('is_active_badge', function (Package $row) {
                     if ($row->is_active) {
                         $label = __('packages.active');
@@ -98,8 +105,9 @@ class PackageController extends Controller
     public function create()
     {
         $services = Service::orderBy('sort_order')->orderBy('id')->get();
+        $package = null;
 
-        return view('dashboard.packages.create', compact('services'));
+        return view('dashboard.packages.create', compact('services', 'package'));
     }
 
     public function store(Request $request)
@@ -114,7 +122,9 @@ class PackageController extends Controller
             'price' => ['required', 'numeric', 'min:0'],
             'discounted_price' => ['nullable', 'numeric', 'min:0'],
             'validity_days' => ['required', 'integer', 'min:1'],
-            'washes_count' => ['required', 'integer', 'min:1'],
+            'type' => ['required', 'in:limited,unlimited'],
+            'washes_count' => ['required_if:type,limited', 'nullable', 'integer', 'min:1'],
+            'cooldown_days' => ['required_if:type,unlimited', 'nullable', 'integer', 'min:1'],
             'position' => ['nullable', 'integer', 'min:1'],
             'is_active' => ['nullable', 'boolean'],
             'image_ar' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:5048'],
@@ -143,9 +153,11 @@ class PackageController extends Controller
                 'price' => $data['price'],
                 'discounted_price' => $data['discounted_price'] ?? null,
                 'validity_days' => $data['validity_days'],
-                'washes_count' => $data['washes_count'],
                 'sort_order' => $desiredPosition,
                 'is_active' => $request->boolean('is_active', true),
+                'type' => $data['type'],
+                'washes_count' => $data['type'] === 'limited' ? $data['washes_count'] : null,
+                'cooldown_days' => $data['type'] === 'unlimited' ? $data['cooldown_days'] : null,
             ];
 
             $package = Package::create($payload);
@@ -215,11 +227,13 @@ class PackageController extends Controller
             'price' => ['required', 'numeric', 'min:0'],
             'discounted_price' => ['nullable', 'numeric', 'min:0'],
             'validity_days' => ['required', 'integer', 'min:1'],
-            'washes_count' => ['required', 'integer', 'min:1'],
+            'type' => ['required', 'in:limited,unlimited'],
+            'washes_count' => ['required_if:type,limited', 'nullable', 'integer', 'min:1'],
+            'cooldown_days' => ['required_if:type,unlimited', 'nullable', 'integer', 'min:1'],
             'position' => ['nullable', 'integer', 'min:1'],
             'is_active' => ['nullable', 'boolean'],
-            'image_ar' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:2048'],
-            'image_en' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:2048'],
+            'image_ar' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:5048'],
+            'image_en' => ['nullable', 'image', 'mimes:jpeg,jpg,png,webp', 'max:5048'],
             'services' => ['nullable', 'array'],
             'services.*' => ['integer', 'exists:services,id'],
         ]);
@@ -248,9 +262,11 @@ class PackageController extends Controller
                 'price' => $data['price'],
                 'discounted_price' => $data['discounted_price'] ?? null,
                 'validity_days' => $data['validity_days'],
-                'washes_count' => $data['washes_count'],
                 'sort_order' => $newPosition,
                 'is_active' => $request->boolean('is_active', true),
+                'type' => $data['type'],
+                'washes_count' => $data['type'] === 'limited' ? $data['washes_count'] : null,
+                'cooldown_days' => $data['type'] === 'unlimited' ? $data['cooldown_days'] : null,
             ];
 
             $package->update($payload);

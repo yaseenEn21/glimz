@@ -18,6 +18,7 @@ return [
     'remaining_washes' => 'الغسلات المتبقية / الإجمالي',
     'final_price' => 'السعر النهائي',
     'purchased_at' => 'تاريخ الشراء',
+    'used_washes' => 'تم استخدام :count غسلة',
 
     'status_active' => 'نشط',
     'status_expired' => 'منتهي',

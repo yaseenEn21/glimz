@@ -61,10 +61,6 @@ class SettingController extends Controller
 
     private function getTranslations(string $locale): array
     {
-        // ❌ نلغي الـ cache مؤقتاً عشان نشوف المشكلة
-        // $cacheKey = "translations.{$locale}";
-        // return Cache::remember($cacheKey, now()->addHours(24), function () use ($locale) {
-
         \Log::info('🔍 getTranslations started', ['locale' => $locale]);
 
         if (!$this->translationService) {
