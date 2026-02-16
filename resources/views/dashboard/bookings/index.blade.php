@@ -395,16 +395,6 @@
                 text += `\n\n📦 Products: No products`;
             }
 
-            if (lat && lng) {
-                text += `\n🗺 الخريطة: https://maps.google.com/?q=${lat},${lng}`;
-            }
-
-            if (products && products.trim() !== '') {
-                text += `\n\n📦 المنتجات: ${products}`;
-            } else {
-                text += `\n\n📦 المنتجات: لا توجد منتجات`;
-            }
-
             // ✅ نسخ للحافظة
             navigator.clipboard.writeText(text).then(function() {
                 const icon = btn.find('i');
