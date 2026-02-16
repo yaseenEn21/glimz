@@ -71,7 +71,7 @@ class ReviewController extends Controller
                     : '—';
             })
             ->addColumn('actions', function ($booking) {
-                return view('dashboard.reviews.partials._actions', compact('booking'));
+                return view('dashboard.reviews._actions', compact('booking'));
             })
             ->rawColumns(['customer', 'actions'])
             ->make(true);
