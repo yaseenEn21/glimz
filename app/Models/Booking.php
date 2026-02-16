@@ -38,6 +38,7 @@ class Booking extends Model
         'cancel_note',
         'rating',
         'rating_comment',
+        'rated_at',
         'meta',
         'created_by',
         'updated_by',
