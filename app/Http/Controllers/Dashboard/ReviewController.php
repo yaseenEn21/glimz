@@ -47,7 +47,7 @@ class ReviewController extends Controller
 
         return DataTables::of($query)
             ->addColumn('customer', function ($booking) {
-                return view('dashboard.bookings.partials._customer', ['user' => $booking->user]);
+                return view('dashboard.partials.user_cell', ['user' => $booking->user]);
             })
             ->addColumn('service_name', function ($booking) {
                 $name = is_array($booking->service?->name)
