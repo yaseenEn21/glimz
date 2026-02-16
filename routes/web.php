@@ -9,6 +9,7 @@ use App\Http\Controllers\Dashboard\CustomerController;
 use App\Http\Controllers\Dashboard\InvoicePaymentController;
 use App\Http\Controllers\Dashboard\PartnerController;
 use App\Http\Controllers\Dashboard\PromotionalNotificationController;
+use App\Http\Controllers\Dashboard\ReviewController;
 use App\Http\Controllers\Dashboard\RoleController;
 use App\Http\Controllers\Dashboard\UserController;
 use App\Http\Controllers\Dashboard\ServiceController;
@@ -418,6 +419,10 @@ Route::middleware(['auth'])->group(function () {
             Route::post('{partner}/store-assignments', [PartnerController::class, 'storeAssignments'])
                 ->name('store-assignments');
         });
+
+        Route::get('reviews', [ReviewController::class, 'index'])->name('reviews.index');
+        Route::get('reviews/datatable', [ReviewController::class, 'datatable'])->name('reviews.datatable');
+        Route::delete('reviews/{booking}', [ReviewController::class, 'destroy'])->name('reviews.destroy');
 
     });
 

@@ -61,6 +61,19 @@
                                 <span class="menu-title">{{ t(key: 'bookings.calendar.title') }}</span>
                             </a>
                         </div>
+
+                        @can('reviews.view')
+                            <div class="menu-item">
+                                <a class="menu-link {{ $is('dashboard.reviews.*') ? 'active' : '' }}"
+                                    href="{{ route('dashboard.reviews.index') }}">
+                                    <span class="menu-icon">
+                                        <i class="fas fa-star-half-alt fs-2"></i>
+                                    </span>
+                                    <span class="menu-title">{{ t(key: 'reviews.title') }}</span>
+                                </a>
+                            </div>
+                        @endcan
+                        
                     @endcan
 
                     {{-- ===================== الكتالوج ===================== --}}

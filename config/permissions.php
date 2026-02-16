@@ -24,5 +24,6 @@ return [
   'partners'   => ['create', 'edit', 'delete', 'view', 'assign_services'],
   'promotional_notifications'   => ['create', 'edit', 'delete', 'view', 'send'],
   'app_pages'   => ['create', 'edit', 'delete', 'view'],
-  'faqs'   => ['create', 'edit', 'delete', 'view']
+  'faqs'   => ['create', 'edit', 'delete', 'view'],
+  'reviews'   => ['create', 'edit', 'delete', 'view'],
 ];
