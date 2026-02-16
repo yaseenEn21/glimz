@@ -5,6 +5,11 @@
 
     $mobileClean = $mobile ? preg_replace('/\s+/', '', $mobile) : null;
     $waNumber = $mobileClean ? preg_replace('/[^0-9]/', '', $mobileClean) : null;
+
+    // استبدال الصفر الأول بـ 966 لرابط الواتساب
+    if ($waNumber && str_starts_with($waNumber, '0')) {
+        $waNumber = '966' . substr($waNumber, 1);
+    }
 @endphp
 
 <div class="d-flex flex-column">
