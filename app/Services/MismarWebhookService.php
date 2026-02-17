@@ -59,7 +59,7 @@ class MismarWebhookService
             // 4. Send request
             $response = Http::timeout(10)
                 ->withHeaders([
-                    'X-auth-token' => $partner->api_token, // استخدام token الشريك
+                    'X-auth-token' => '728ed815-acb0-4984-abbc-425e74d2ac81',//$partner->api_token, // استخدام token الشريك
                     'Content-Type' => 'application/json',
                 ])
                 ->put($url, $payload);

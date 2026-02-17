@@ -77,7 +77,15 @@ return [
         'remove_block_text' => 'هل تريد إزالة الحظر عن',
         'confirm_remove' => 'نعم، أزل الحظر',
         'time_block_removed' => 'تم إزالة الحظر بنجاح',
-        'please_wait' => 'انتظر..'
+        'please_wait' => 'انتظر..',
+        'change_status' => 'تغيير الحالة',
+        'view_details' => 'عرض التفاصيل',
+        'save_status' => 'حفظ الحالة',
+        'close' => 'إغلاق',
+        'booking' => 'حجز',
+        'popup_customer' => 'العميل',
+        'popup_service' => 'الخدمة',
+        'popup_time' => 'الوقت',
     ],
 
     'tabs' => [

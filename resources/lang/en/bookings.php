@@ -75,7 +75,15 @@ return [
         'reason_placeholder' => 'Enter the reason for blocking...',
         'block_time' => 'Block Time',
         'time_block_created' => 'Time block created successfully',
-        'blocked' => 'Blocked'
+        'blocked' => 'Blocked',
+        'booking' => 'Booking',
+        'popup_customer' => 'Customer',
+        'popup_service' => 'Service',
+        'popup_time' => 'Time',
+        'change_status' => 'Change Status',
+        'view_details' => 'View Details',
+        'save_status' => 'Save Status',
+        'close' => 'Close',
     ],
 
     'tabs' => [

@@ -31,6 +31,10 @@
             background: #fafafa !important;
         }
 
+        .swal2-container .swal2-html-container {
+            max-height: 500px !important;
+        }
+
         /* ── Event Base ── */
         .fc-event {
             /* border-radius: 6px !important; */
@@ -314,7 +318,6 @@
                     if (info.event.extendedProps?.type === 'time_block') {
                         info.jsEvent.preventDefault();
 
-                        // استخرج ID الحقيقي (بدون tb_)
                         const blockId = info.event.id.replace('tb_', '');
                         const resourceTitle = info.event.getResources()?.[0]?.title || '';
 
@@ -342,7 +345,7 @@
                                         title: "{{ __('bookings.calendar.done') }}",
                                         text: res.message,
                                         timer: 2000,
-                                        showConfirmButton: false,
+                                        showConfirmButton: false
                                     });
                                     calendar.refetchEvents();
                                 },
@@ -355,11 +358,202 @@
                         return;
                     }
 
-                    // الحجوزات العادية
-                    if (info.event.url) {
-                        info.jsEvent.preventDefault();
-                        window.open(info.event.url, '_self');
+                    // ✅ الحجوزات العادية — popup بخيارين
+                    // ✅ الحجوزات العادية — popup
+                    info.jsEvent.preventDefault();
+
+                    const ev = info.event;
+                    const props = ev.extendedProps || {};
+                    const bookingId = ev.id;
+                    const status = props.status || 'pending';
+                    const customerName = props.customer_name || '—';
+                    const serviceName = props.service_name || '—';
+                    const startTime = ev.start ? ev.start.toTimeString().slice(0, 5) : '';
+                    const endTime = ev.end ? ev.end.toTimeString().slice(0, 5) : '';
+                    const bookingDate = ev.start ? ev.start.toISOString().slice(0, 10) : '';
+
+                    const statusLabels = {
+                        pending: "{{ __('bookings.status.pending') }}",
+                        confirmed: "{{ __('bookings.status.confirmed') }}",
+                        moving: "{{ __('bookings.status.moving') }}",
+                        arrived: "{{ __('bookings.status.arrived') }}",
+                        completed: "{{ __('bookings.status.completed') }}",
+                        cancelled: "{{ __('bookings.status.cancelled') }}",
+                    };
+
+                    const statusColors = {
+                        pending: {
+                            bg: '#FFF8DD',
+                            color: '#7E6700',
+                            border: '#FFA800'
+                        },
+                        confirmed: {
+                            bg: '#E1F0FF',
+                            color: '#005A8F',
+                            border: '#009EF7'
+                        },
+                        moving: {
+                            bg: '#F1E6FF',
+                            color: '#4A1FA0',
+                            border: '#7239EA'
+                        },
+                        arrived: {
+                            bg: '#D6F5F5',
+                            color: '#006060',
+                            border: '#00A3A1'
+                        },
+                        completed: {
+                            bg: '#E8FFF3',
+                            color: '#1B6B3E',
+                            border: '#50CD89'
+                        },
+                        cancelled: {
+                            bg: '#FFE2E5',
+                            color: '#A0203C',
+                            border: '#F1416C'
+                        },
+                    };
+
+                    const locked = ['completed', 'cancelled'].includes(status);
+                    const sc = statusColors[status] || statusColors.pending;
+
+                    const statuses = ['pending', 'confirmed', 'moving', 'arrived', 'completed',
+                        'cancelled'
+                    ];
+
+                    let statusSelectHtml = '';
+                    if (!locked) {
+                        const options = statuses.map(s =>
+                            `<option value="${s}" ${s === status ? 'selected' : ''}>${statusLabels[s]}</option>`
+                        ).join('');
+                        statusSelectHtml = `
+        <div class="mt-5 pt-5" style="border-top: 1px dashed #E4E6EF;">
+            <label class="form-label fw-bold text-gray-700 mb-2">{{ __('bookings.calendar.change_status') }}</label>
+            <select id="swal_status_select" class="form-select form-select-solid">${options}</select>
+            <div id="swal_cancel_reason_wrap"></div>
+        </div>`;
                     }
+
+                    Swal.fire({
+                        html: `
+    <div style="text-align: start;">
+        <!-- Header -->
+        <div class="d-flex align-items-center justify-content-between mb-4 p-4">
+            <div>
+                <div class="fs-3 fw-bolder text-gray-900">{{ __('bookings.calendar.booking') }} #${bookingId}</div>
+                <div class="text-gray-500 fs-7">${bookingDate}</div>
+            </div>
+            <span style="
+                background: ${sc.bg};
+                color: ${sc.color};
+                border: 1px solid ${sc.border};
+                padding: 5px 14px;
+                border-radius: 6px;
+                font-size: 0.8rem;
+                font-weight: 600;
+            ">${statusLabels[status]}</span>
+        </div>
+
+        <!-- Info Cards — 3 columns -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+            <div style="background: #F9F9F9; border-radius: 8px; padding: 12px;">
+                <div class="text-gray-500 fs-8 fw-semibold mb-1">{{ __('bookings.calendar.popup_customer') }}</div>
+                <div class="fw-bold text-gray-800 fs-7">${customerName}</div>
+            </div>
+            <div style="background: #F9F9F9; border-radius: 8px; padding: 12px;">
+                <div class="text-gray-500 fs-8 fw-semibold mb-1">{{ __('bookings.calendar.popup_service') }}</div>
+                <div class="fw-bold text-gray-800 fs-7">${serviceName}</div>
+            </div>
+            <div style="background: #F9F9F9; border-radius: 8px; padding: 12px;">
+                <div class="text-gray-500 fs-8 fw-semibold mb-1">{{ __('bookings.calendar.popup_time') }}</div>
+                <div class="fw-bold text-gray-800 fs-7">${startTime} — ${endTime}</div>
+            </div>
+        </div>
+
+        ${statusSelectHtml}
+    </div>
+`,
+                        showCancelButton: false,
+                        showDenyButton: !locked,
+                        confirmButtonText: "{{ __('bookings.calendar.view_details') }}",
+                        denyButtonText: "{{ __('bookings.calendar.save_status') }}",
+                        // cancelButtonText: "{{ __('bookings.calendar.close') }}",
+                        confirmButtonColor: '#009EF7',
+                        denyButtonColor: '#50CD89',
+                        width: '600px',
+                        height: 'auto',
+                        padding: '1rem',
+                        showCloseButton: true,
+                        customClass: {
+                            popup: 'rounded-3',
+                            confirmButton: 'btn btn-primary px-6',
+                            denyButton: 'btn btn-success px-6',
+                            cancelButton: 'btn btn-light px-6',
+                        },
+                        buttonsStyling: false,
+                        didOpen: () => {
+                            const sel = document.getElementById('swal_status_select');
+                            if (sel) {
+                                sel.addEventListener('change', function() {
+                                    const wrap = document.getElementById(
+                                        'swal_cancel_reason_wrap');
+                                    if (this.value === 'cancelled') {
+                                        wrap.innerHTML = `
+                        <div class="mt-4">
+                            <label class="form-label fw-bold text-gray-700 mb-2">{{ __('bookings.cancel_reason_title') }}</label>
+                            <textarea id="swal_cancel_reason" class="form-control form-control-solid" rows="2"
+                                placeholder="{{ __('bookings.cancel_reason_placeholder') }}"></textarea>
+                        </div>`;
+                                    } else {
+                                        wrap.innerHTML = '';
+                                    }
+                                });
+                            }
+                        }
+                    }).then((result) => {
+                        if (result.isConfirmed) {
+                            window.location.href = ev.url || ("{{ url('/dashboard/bookings') }}/" +
+                                bookingId);
+                            return;
+                        }
+
+                        if (result.isDenied) {
+                            const newStatus = document.getElementById('swal_status_select')?.value;
+                            if (!newStatus || newStatus === status) return;
+
+                            let payload = {
+                                _token: "{{ csrf_token() }}",
+                                status: newStatus,
+                            };
+
+                            if (newStatus === 'cancelled') {
+                                const reason = document.getElementById('swal_cancel_reason')?.value
+                                    ?.trim();
+                                if (reason) payload.cancel_reason = reason;
+                            }
+
+                            $.ajax({
+                                url: "{{ url('/dashboard/bookings') }}/" + bookingId +
+                                    "/status",
+                                method: "PATCH",
+                                data: payload,
+                                success: function(res) {
+                                    if (res.ok) {
+                                        toastr.success(res.message ||
+                                            "{{ __('bookings.status_updated') }}");
+                                        calendar.refetchEvents();
+                                    } else {
+                                        toastr.error(res.message || 'Error');
+                                    }
+                                },
+                                error: function(xhr) {
+                                    toastr.error(xhr.responseJSON?.message ||
+                                        "{{ __('bookings.status_update_failed') }}"
+                                    );
+                                }
+                            });
+                        }
+                    });
                 },
 
                 select: function(info) {

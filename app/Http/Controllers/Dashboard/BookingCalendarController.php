@@ -95,6 +95,10 @@ class BookingCalendarController extends Controller
                     'status' => (string) $b->status,
                     'total' => (float) ($b->total_snapshot ?? 0),
                     'type' => 'booking',
+                    'customer_name' => (string) ($b->user?->name ?? '—'),
+                    'service_name' => is_array($b->service?->name)
+                        ? ($b->service->name[app()->getLocale()] ?? $b->service->name['ar'] ?? collect($b->service->name)->first() ?? '—')
+                        : ($b->service?->name ?? '—'),
                 ],
             ];
         });
@@ -122,6 +126,10 @@ class BookingCalendarController extends Controller
                     'type' => 'time_block',
                     'reason' => $tb->reason,
                     'status' => 'blocked',
+                    'customer_name' => (string) ($tb->user?->name ?? '—'),
+                    'service_name' => is_array($tb->service?->name)
+                        ? ($tb->service->name[app()->getLocale()] ?? $tb->service->name['ar'] ?? collect($tb->service->name)->first() ?? '—')
+                        : ($tb->service?->name ?? '—'),
                 ],
             ];
         });
