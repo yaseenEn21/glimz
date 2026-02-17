@@ -64,41 +64,63 @@ class PartnerBookingService
                 // 5. إنشاء/تحديث العنوان
                 $address = $this->createOrUpdateAddress($customer, $data['address']);
 
-                // 6. تحويل التاريخ والوقت
-                $day = Carbon::createFromFormat('d-m-Y', $data['date']);
-                $dbDate = $day->toDateString();
-                $startTime = $data['start_time'];
+                // 6. متغيرات أساسية
+                $requestedStartTime = $data['start_time']; // الوقت المطلوب الأصلي
                 $duration = (int) $service->duration_minutes;
+
+                // ✅ 7. جلب السلوتات المتاحة
+                $slotsData = $this->slotService->getPartnerSlotsWithEmployees(
+                    $data['date'],
+                    $service->id,
+                    (float) $address->lat,
+                    (float) $address->lng,
+                    $partner->id
+                );
+
+                if (empty($slotsData['slots'])) {
+                    return [
+                        'success' => false,
+                        'error' => 'No slots available for the selected date',
+                        'error_code' => $slotsData['error_code'] ?? 'NO_SLOTS_AVAILABLE',
+                    ];
+                }
+
+                // ✅ 8. مطابقة الوقت — exact match أو أقرب موعد خلال 60 دقيقة
+                $slot = $this->findSlotWithFallback(collect($slotsData['slots']), $requestedStartTime);
+
+                if (!$slot) {
+                    return [
+                        'success' => false,
+                        'error' => "No available slot within 60 minutes after ({$requestedStartTime})",
+                        'error_code' => 'NO_SLOT_WITHIN_RANGE',
+                    ];
+                }
+
+                // ✅ 9. الوقت والتاريخ الفعلي من الـ slot
+                $startTime = $slot['start_time'];
+                $dbDate = $slot['booking_date'];
                 $endTime = Carbon::createFromFormat('Y-m-d H:i', $dbDate . ' ' . $startTime)
                     ->addMinutes($duration)
                     ->format('H:i');
 
-                // ✅ 7. اختيار الموظف المتاح تلقائياً
-                $employeeId = $this->findAvailableEmployee(
-                    $partner->id,
-                    $service->id,
-                    $data['date'],
-                    $startTime,
-                    (float) $address->lat,
-                    (float) $address->lng,
-                    $duration
-                );
-
-                if (!$employeeId) {
+                // ✅ 10. اختيار موظف من المتاحين بالسلوت
+                $employees = $slot['employees'] ?? [];
+                if (empty($employees)) {
                     return [
                         'success' => false,
-                        'error' => 'No available employee for the selected time',
+                        'error' => 'No employee available for this slot',
                         'error_code' => 'NO_EMPLOYEE_AVAILABLE',
                     ];
                 }
+                $employeeId = (int) $employees[0]['employee_id'];
 
-                // 8. Pricing
+                // 11. Pricing
                 $pricing = app(BookingPricingService::class)
                     ->resolve($service, $customer, $address, $startTime);
 
                 $finalUnitPrice = (float) $pricing['final_unit_price'];
 
-                // 9. إنشاء الحجز
+                // 12. إنشاء الحجز
                 $booking = Booking::create([
                     'partner_id' => $partner->id,
                     'external_id' => $data['external_id'],
@@ -107,7 +129,7 @@ class PartnerBookingService
                     'car_id' => $car->id,
                     'address_id' => $address->id,
                     'service_id' => $service->id,
-                    'employee_id' => $employeeId, // ✅ تلقائي
+                    'employee_id' => $employeeId,
 
                     'zone_id' => $pricing['zone_id'],
                     'time_period' => $pricing['time_period'],
@@ -144,21 +166,29 @@ class PartnerBookingService
                         'partner_name' => $partner->name,
                         'customer_notes' => $data['notes'] ?? null,
                         'auto_assigned_employee' => true,
+                        'original_requested_time' => $requestedStartTime,
+                        'slot_matched' => $requestedStartTime === $startTime ? 'exact' : 'fallback',
+                        'mid_night' => $slot['mid_night'] ?? false,
                     ],
 
                     'created_by' => null,
                     'updated_by' => null,
                 ]);
 
-                // 10. تحديث Cache للحد اليومي
+                // 13. تحديث Cache للحد اليومي
                 $cacheKey = "partner_{$partner->id}_daily_bookings_" . now()->format('Y-m-d');
                 \Cache::forget($cacheKey);
 
-                Log::info('Partner booking created with auto-assigned employee', [
+                Log::info('Partner booking created', [
                     'partner_id' => $partner->id,
                     'booking_id' => $booking->id,
                     'external_id' => $data['external_id'],
                     'employee_id' => $employeeId,
+                    'requested_time' => $requestedStartTime,
+                    'actual_time' => $startTime,
+                    'booking_date' => $dbDate,
+                    'mid_night' => $slot['mid_night'] ?? false,
+                    'slot_matched' => $requestedStartTime === $startTime ? 'exact' : 'fallback',
                 ]);
 
                 return [
@@ -179,109 +209,6 @@ class PartnerBookingService
                 'error_code' => 'BOOKING_CREATE_FAILED',
             ];
         }
-    }
-
-    /**
-     * ✅ اختيار موظف متاح تلقائياً
-     */
-    protected function findAvailableEmployee(
-        int $partnerId,
-        int $serviceId,
-        string $date,
-        string $startTime,
-        float $lat,
-        float $lng,
-        int $duration,
-        ?int $excludeBookingId = null // ✅ جديد
-    ): ?int {
-        // جلب السلوتات مع الموظفين
-        $slotsData = $this->slotService->getPartnerSlotsWithEmployees(
-            $date,
-            $serviceId,
-            $lat,
-            $lng,
-            $partnerId,
-            $excludeBookingId // ✅ تمرير excludeBookingId
-        );
-
-        if (empty($slotsData['slots'])) {
-            Log::warning('No slots available', [
-                'partner_id' => $partnerId,
-                'service_id' => $serviceId,
-                'date' => $date,
-                'start_time' => $startTime,
-                'exclude_booking_id' => $excludeBookingId,
-            ]);
-            return null;
-        }
-
-        // البحث عن السلوت المطلوب
-        $targetSlot = collect($slotsData['slots'])->first(function ($slot) use ($startTime) {
-            return $slot['start_time'] === $startTime;
-        });
-
-        if (!$targetSlot || empty($targetSlot['employees'])) {
-            Log::warning('No employees available for requested time', [
-                'partner_id' => $partnerId,
-                'service_id' => $serviceId,
-                'date' => $date,
-                'start_time' => $startTime,
-                'exclude_booking_id' => $excludeBookingId,
-            ]);
-            return null;
-        }
-
-        // ✅ Double-check: تأكد أن الموظف ما عنده حجز متزامن
-        $day = Carbon::createFromFormat('d-m-Y', $date);
-        $dbDate = $day->toDateString();
-        $endTime = Carbon::createFromFormat('Y-m-d H:i', $dbDate . ' ' . $startTime)
-            ->addMinutes($duration)
-            ->format('H:i');
-
-        foreach ($targetSlot['employees'] as $emp) {
-            $employeeId = $emp['employee_id'];
-
-            // تحقق من عدم وجود حجز متداخل (مع استثناء الحجز الحالي)
-            $hasConflict = Booking::query()
-                ->where('employee_id', $employeeId)
-                ->where('booking_date', $dbDate)
-                ->whereNotIn('status', ['cancelled'])
-                ->when($excludeBookingId, fn($q) => $q->where('id', '!=', (int) $excludeBookingId)) // ✅ استثناء
-                ->where(function ($q) use ($startTime, $endTime) {
-                    $q->where(function ($q2) use ($startTime, $endTime) {
-                        $q2->where('start_time', '<=', $startTime)
-                            ->where('end_time', '>', $startTime);
-                    })
-                        ->orWhere(function ($q2) use ($startTime, $endTime) {
-                            $q2->where('start_time', '<', $endTime)
-                                ->where('end_time', '>=', $endTime);
-                        })
-                        ->orWhere(function ($q2) use ($startTime, $endTime) {
-                            $q2->where('start_time', '>=', $startTime)
-                                ->where('end_time', '<=', $endTime);
-                        });
-                })
-                ->exists();
-
-            if (!$hasConflict) {
-                Log::info('Employee auto-assigned', [
-                    'employee_id' => $employeeId,
-                    'date' => $date,
-                    'start_time' => $startTime,
-                    'exclude_booking_id' => $excludeBookingId,
-                ]);
-                return $employeeId;
-            }
-        }
-
-        Log::warning('All employees have conflicting bookings', [
-            'partner_id' => $partnerId,
-            'date' => $date,
-            'start_time' => $startTime,
-            'exclude_booking_id' => $excludeBookingId,
-        ]);
-
-        return null;
     }
 
     /**
@@ -323,42 +250,63 @@ class PartnerBookingService
             }
 
             // 3. تحضير البيانات
-            $day = Carbon::createFromFormat('d-m-Y', $data['date']);
-            $dbDate = $day->toDateString();
-            $startTime = $data['start_time'];
+            $requestedStartTime = $data['start_time'];
             $duration = (int) $booking->duration_minutes;
-            $endTime = Carbon::createFromFormat('Y-m-d H:i', $dbDate . ' ' . $startTime)
-                ->addMinutes($duration)
-                ->format('H:i');
 
             // 4. تحديد الموقع
             $address = $booking->address;
-
             if (isset($data['location'])) {
                 $address = $this->createOrUpdateAddress($booking->user, $data['location']);
             }
 
-            // 5. ✅ اختيار موظف متاح (مع استثناء الحجز الحالي)
-            $employeeId = $this->findAvailableEmployee(
-                $partner->id,
-                $booking->service_id,
+            // ✅ 5. جلب السلوتات المتاحة (مع استثناء الحجز الحالي)
+            $slotsData = $this->slotService->getPartnerSlotsWithEmployees(
                 $data['date'],
-                $startTime,
+                $booking->service_id,
                 (float) $address->lat,
                 (float) $address->lng,
-                $duration,
+                $booking->partner_id,
                 $booking->id // ✅ استثناء الحجز الحالي
             );
 
-            if (!$employeeId) {
+            if (empty($slotsData['slots'])) {
                 return [
                     'success' => false,
-                    'error' => 'No available employee for the selected time and location',
-                    'error_code' => 'NO_EMPLOYEE_AVAILABLE',
+                    'error' => 'No slots available for the selected date',
+                    'error_code' => $slotsData['error_code'] ?? 'NO_SLOTS_AVAILABLE',
                 ];
             }
 
-            // 6. التحديث
+            // ✅ 6. مطابقة الوقت — exact match أو أقرب موعد خلال 60 دقيقة
+            $slot = $this->findSlotWithFallback(collect($slotsData['slots']), $requestedStartTime);
+
+            if (!$slot) {
+                return [
+                    'success' => false,
+                    'error' => "No available slot within 60 minutes after ({$requestedStartTime})",
+                    'error_code' => 'NO_SLOT_WITHIN_RANGE',
+                ];
+            }
+
+            // ✅ 7. الوقت والتاريخ الفعلي من الـ slot
+            $startTime = $slot['start_time'];
+            $dbDate = $slot['booking_date'];
+            $endTime = Carbon::createFromFormat('Y-m-d H:i', $dbDate . ' ' . $startTime)
+                ->addMinutes($duration)
+                ->format('H:i');
+
+            // ✅ اختيار موظف
+            $employees = $slot['employees'] ?? [];
+            if (empty($employees)) {
+                return [
+                    'success' => false,
+                    'error' => 'No employee available for this slot',
+                    'error_code' => 'NO_EMPLOYEE_AVAILABLE',
+                ];
+            }
+            $employeeId = (int) $employees[0]['employee_id'];
+
+            // 8. التحديث
             $booking->update([
                 'address_id' => $address->id,
                 'booking_date' => $dbDate,
@@ -371,7 +319,12 @@ class PartnerBookingService
                 'partner_id' => $partner->id,
                 'booking_id' => $booking->id,
                 'external_id' => $externalId,
-                'new_employee_id' => $employeeId,
+                'employee_id' => $employeeId,
+                'requested_time' => $requestedStartTime,
+                'actual_time' => $startTime,
+                'booking_date' => $dbDate,
+                'mid_night' => $slot['mid_night'] ?? false,
+                'slot_matched' => $requestedStartTime === $startTime ? 'exact' : 'fallback',
             ]);
 
             return [
@@ -452,12 +405,55 @@ class PartnerBookingService
         }
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    //  SLOT MATCHING
+    // ═══════════════════════════════════════════════════════════════
+
+    /**
+     * ✅ البحث عن slot — exact match أولاً، ثم أقرب موعد خلال 60 دقيقة
+     */
+    protected function findSlotWithFallback(\Illuminate\Support\Collection $allSlots, string $requestedTime): ?array
+    {
+        // 1. Exact match
+        $slot = $allSlots->first(fn($s) => $s['start_time'] === $requestedTime);
+        if ($slot) {
+            return $slot;
+        }
+
+        // 2. Fallback: أقرب موعد بعد المطلوب خلال 60 دقيقة
+        $reqMin = $this->timeToMinutes($requestedTime);
+
+        return $allSlots->first(function ($s) use ($reqMin) {
+            $slotMin = $this->timeToMinutes($s['start_time']);
+
+            // ✅ لو السلوت بعد منتصف الليل والمطلوب مساءً — نضيف 1440 للسلوت
+            if ($slotMin < 360 && $reqMin > 720) {
+                $slotMin += 1440;
+            }
+
+            $diff = $slotMin - $reqMin;
+            return $diff > 0 && $diff <= 60;
+        });
+    }
+
+    /**
+     * تحويل "HH:MM" إلى دقائق
+     */
+    protected function timeToMinutes(string $time): int
+    {
+        [$h, $m] = array_map('intval', explode(':', substr($time, 0, 5)));
+        return $h * 60 + $m;
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    //  CUSTOMER / CAR / ADDRESS HELPERS
+    // ═══════════════════════════════════════════════════════════════
+
     /**
      * إنشاء/تحديث العميل
      */
     protected function createOrUpdateCustomer(array $data): User
     {
-        // تنسيق رقم الموبايل
         $mobile = $this->formatMobile($data['mobile']);
 
         $user = User::query()
@@ -465,18 +461,16 @@ class PartnerBookingService
             ->first();
 
         if ($user) {
-            // تحديث البيانات إذا تغيرت
             $user->update([
                 'name' => $data['name'],
                 'email' => $data['email'] ?? $user->email,
             ]);
         } else {
-            // إنشاء عميل جديد
             $user = User::create([
                 'name' => $data['name'],
                 'mobile' => $mobile,
                 'email' => $data['email'] ?? null,
-                'password' => bcrypt(\Str::random(16)), // رقم سري عشوائي
+                'password' => bcrypt(\Str::random(16)),
                 'user_type' => 'customer',
                 'is_active' => true,
                 'notification' => true,
@@ -491,13 +485,9 @@ class PartnerBookingService
      */
     protected function createOrUpdateCar(User $user, array $data): Car
     {
-        // 1. فصل plate_number و plate_letters
         $plateParts = $this->parsePlateNumber($data['plate_number']);
-
-        // 2. البحث عن vehicle_make_id و vehicle_model_id
         $vehicleIds = $this->resolveVehicleIds($data['model'] ?? null);
 
-        // 3. البحث عن السيارة الموجودة
         $car = Car::query()
             ->where('user_id', $user->id)
             ->where('plate_number', $plateParts['number'])
@@ -505,14 +495,12 @@ class PartnerBookingService
             ->first();
 
         if ($car) {
-            // تحديث السيارة الموجودة
             $car->update([
                 'color' => $data['color'] ?? $car->color,
                 'vehicle_make_id' => $vehicleIds['make_id'] ?? $car->vehicle_make_id,
                 'vehicle_model_id' => $vehicleIds['model_id'] ?? $car->vehicle_model_id,
             ]);
         } else {
-            // إنشاء سيارة جديدة
             $car = Car::create([
                 'user_id' => $user->id,
                 'vehicle_make_id' => $vehicleIds['make_id'],
@@ -533,21 +521,14 @@ class PartnerBookingService
      */
     protected function parsePlateNumber(string $plateNumber): array
     {
-        // إزالة المسافات الزائدة
         $plateNumber = trim($plateNumber);
 
-        // فصل الحروف عن الأرقام
-        // مثال: "أ ب ج 1234" أو "ABC 1234"
-
-        // استخراج الأرقام
         preg_match_all('/\d+/', $plateNumber, $numbersMatch);
         $numbers = implode('', $numbersMatch[0] ?? []);
 
-        // استخراج الحروف (عربي وإنجليزي)
         preg_match_all('/[\x{0600}-\x{06FF}a-zA-Z]+/u', $plateNumber, $lettersMatch);
         $letters = implode(' ', $lettersMatch[0] ?? []);
 
-        // تحديد إذا كانت الحروف عربية
         $isArabic = preg_match('/[\x{0600}-\x{06FF}]/u', $letters);
 
         return [
@@ -566,6 +547,7 @@ class PartnerBookingService
             return $this->getUnknownVehicleIds();
         }
 
+        // استراتيجية 1: بحث مباشر بالموديل
         $model = VehicleModel::query()
             ->where('is_active', true)
             ->whereRaw('LOWER(JSON_UNQUOTE(JSON_EXTRACT(name, "$.ar"))) LIKE ?', ['%' . mb_strtolower($modelString) . '%'])
@@ -579,8 +561,7 @@ class PartnerBookingService
             ];
         }
 
-        // استراتيجية 2: محاولة فصل Make و Model
-        // مثال: "تويوتا كامري" → make: "تويوتا", model: "كامري"
+        // استراتيجية 2: فصل Make و Model
         $parts = preg_split('/\s+/', trim($modelString), 2);
 
         if (count($parts) >= 2) {
@@ -608,7 +589,6 @@ class PartnerBookingService
                     ];
                 }
 
-                // لو لقينا Make بس، نستخدم أول موديل منه
                 $firstModel = VehicleModel::query()
                     ->where('vehicle_make_id', $make->id)
                     ->where('is_active', true)
@@ -646,7 +626,6 @@ class PartnerBookingService
             }
         }
 
-        // إذا ما لقينا: استخدام Unknown
         return $this->getUnknownVehicleIds();
     }
 
@@ -659,7 +638,6 @@ class PartnerBookingService
         static $unknownModel = null;
 
         if ($unknownMake === null) {
-            // البحث أو إنشاء "Unknown" make
             $unknownMake = VehicleMake::query()
                 ->whereRaw('JSON_UNQUOTE(JSON_EXTRACT(name, "$.en")) = ?', ['Unknown'])
                 ->first();
@@ -675,7 +653,6 @@ class PartnerBookingService
         }
 
         if ($unknownModel === null) {
-
             $unknownModel = VehicleModel::query()
                 ->where('vehicle_make_id', $unknownMake->id)
                 ->whereRaw('JSON_UNQUOTE(JSON_EXTRACT(name, "$.en")) = ?', ['Unknown'])
@@ -690,7 +667,6 @@ class PartnerBookingService
                     'sort_order' => 9999,
                 ]);
             }
-
         }
 
         return [
@@ -707,7 +683,6 @@ class PartnerBookingService
         $lat = (float) $data['lat'];
         $lng = (float) $data['lng'];
 
-        // البحث عن عنوان قريب جداً (نفس الإحداثيات تقريباً)
         $address = Address::query()
             ->where('user_id', $user->id)
             ->whereRaw('ABS(lat - ?) < 0.0001', [$lat])
@@ -735,20 +710,16 @@ class PartnerBookingService
      */
     protected function formatMobile(string $mobile): string
     {
-        // إزالة كل شيء غير الأرقام
         $mobile = preg_replace('/[^0-9]/', '', $mobile);
 
-        // إزالة 0 من البداية
         if (substr($mobile, 0, 1) === '0') {
             $mobile = substr($mobile, 1);
         }
 
-        // إزالة 966 من البداية إذا موجودة
         if (substr($mobile, 0, 3) === '966') {
             $mobile = substr($mobile, 3);
         }
 
-        // إرجاع الرقم بصيغة دولية
         return '0' . $mobile;
     }
 }
