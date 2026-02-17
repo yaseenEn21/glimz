@@ -281,8 +281,70 @@
                 editable: false,
                 selectable: true,
                 selectMirror: true,
-                slotMinTime: "06:00:00",
-                slotMaxTime: "23:59:00",
+                slotMinTime: "12:00:00",
+                slotMaxTime: "27:00:00",
+                scrollTime: "12:00:00",
+
+                events: function(info, successCallback, failureCallback) {
+                    // نمدد النطاق يوم إضافي عشان نجيب حجوزات بعد منتصف الليل
+                    const extraEnd = new Date(info.end);
+                    extraEnd.setDate(extraEnd.getDate() + 1);
+                    const extraEndStr = extraEnd.toISOString().slice(0, 10);
+
+                    $.ajax({
+                        url: "{{ route('dashboard.bookings.calendar.events') }}",
+                        method: "GET",
+                        data: {
+                            start: info.startStr,
+                            end: extraEndStr,
+                            employee_id: $('#filter_employee').val() || ''
+                        },
+                        success: function(events) {
+                            const transformed = events.map(function(ev) {
+                                if (!ev.start || typeof ev.start !== 'string')
+                            return ev;
+
+                                var match = ev.start.match(
+                                    /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+                                if (!match) return ev;
+
+                                var hour = parseInt(match[4]);
+                                if (hour >= 5) return ev; // حجز عادي — ما نلمسه
+
+                                // ✅ حجز بعد منتصف الليل — نرجعه لليوم السابق بساعة 24+
+                                var y = parseInt(match[1]);
+                                var m = parseInt(match[2]) - 1;
+                                var d = parseInt(match[3]);
+                                var prev = new Date(y, m, d);
+                                prev.setDate(prev.getDate() - 1);
+                                var prevStr = prev.getFullYear() + '-' +
+                                    String(prev.getMonth() + 1).padStart(2, '0') + '-' +
+                                    String(prev.getDate()).padStart(2, '0');
+
+                                ev.start = prevStr + 'T' + String(hour + 24).padStart(2,
+                                    '0') + ':' + match[5] + ':00';
+
+                                if (ev.end && typeof ev.end === 'string') {
+                                    var endMatch = ev.end.match(
+                                        /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/
+                                        );
+                                    if (endMatch) {
+                                        var endHour = parseInt(endMatch[4]);
+                                        if (endHour < 5) endHour += 24;
+                                        ev.end = prevStr + 'T' + String(endHour)
+                                            .padStart(2, '0') + ':' + endMatch[5] +
+                                            ':00';
+                                    }
+                                }
+
+                                return ev;
+                            });
+
+                            successCallback(transformed);
+                        },
+                        error: failureCallback
+                    });
+                },
                 expandRows: true,
                 stickyHeaderDates: true,
                 eventStartEditable: false, // يسمح بتحريك البداية (drag)
@@ -303,15 +365,15 @@
                     }
                 },
 
-                events: {
-                    url: "{{ route('dashboard.bookings.calendar.events') }}",
-                    method: "GET",
-                    extraParams: function() {
-                        return {
-                            employee_id: document.getElementById('filter_employee').value || null
-                        };
-                    }
-                },
+                // events: {
+                //     url: "{{ route('dashboard.bookings.calendar.events') }}",
+                //     method: "GET",
+                //     extraParams: function() {
+                //         return {
+                //             employee_id: document.getElementById('filter_employee').value || null
+                //         };
+                //     }
+                // },
 
                 eventClick: function(info) {
                     // ✅ لو ضغط على حدث حجب

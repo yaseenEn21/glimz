@@ -598,15 +598,9 @@ class BookingController extends Controller
             ->firstOrFail();
 
         $duration = (int) $service->duration_minutes;
+        $startTime = $data['start_time']; // H:i (24h)
 
-        $dbDate = Carbon::createFromFormat('Y-m-d', $data['booking_date'])->toDateString();
-        $startTime = $data['start_time']; // H:i
-
-        $endTime = Carbon::createFromFormat('Y-m-d H:i', $dbDate . ' ' . $startTime)
-            ->addMinutes($duration)
-            ->format('H:i');
-
-        // ✅ Validate slot again (fresh)
+        // ✅ نستخدم التاريخ المرسل من الفورم لجلب الـ slots
         $apiDate = Carbon::createFromFormat('Y-m-d', $data['booking_date'])->format('d-m-Y');
 
         $slots = $slotService->getSlots(
@@ -633,6 +627,7 @@ class BookingController extends Controller
             ], 422);
         }
 
+        // ✅ نطابق بالـ start_time (24h format)
         $slot = collect($slots['items'])->first(fn($s) => ($s['start_time'] ?? null) === $startTime);
         if (!$slot) {
             return response()->json([
@@ -641,6 +636,11 @@ class BookingController extends Controller
                 'errors' => ['start_time' => [__('bookings.time_not_available')]],
             ], 422);
         }
+
+        // ✅ التاريخ الفعلي للحجز (من الـ slot — قد يكون اليوم التالي)
+        $dbDate = $slot['booking_date'];
+        // ✅ وقت النهاية (من الـ slot — يتعامل مع منتصف الليل صح)
+        $endTime = $slot['end_time'];
 
         $employees = $slot['employees'] ?? [];
         if (empty($employees)) {

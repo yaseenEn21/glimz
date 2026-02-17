@@ -649,12 +649,14 @@ class EmployeeController extends Controller
                             ? 'يجب تحديد وقت بداية ونهاية الدوام لليوم النشط.'
                             : 'Work start/end time is required for active day.'
                         );
-                    } elseif ($workEnd <= $workStart) {
+                    } elseif ($workEnd === $workStart) {
+                        // ✅ فقط نرفض لو البداية = النهاية (دوام 0 دقيقة)
+                        // لو النهاية أصغر من البداية = دوام ليلي وهذا مسموح
                         $validator->errors()->add(
                             "work.$day.end_time",
                             app()->getLocale() === 'ar'
-                            ? 'وقت نهاية الدوام يجب أن يكون بعد وقت البداية.'
-                            : 'Work end time must be after start time.'
+                            ? 'وقت نهاية الدوام لا يمكن أن يساوي وقت البداية.'
+                            : 'Work end time cannot equal start time.'
                         );
                     }
                 }
@@ -671,17 +673,18 @@ class EmployeeController extends Controller
                             ? 'يجب تحديد وقت بداية ونهاية الاستراحة عند تفعيلها أو تعبئة أحد الحقول.'
                             : 'Break start and end time are required when break is active or set.'
                         );
-                    } elseif ($breakEnd <= $breakStart) {
+                    } elseif ($breakEnd === $breakStart) {
                         $validator->errors()->add(
                             "break.$day.end_time",
                             app()->getLocale() === 'ar'
-                            ? 'وقت نهاية الاستراحة يجب أن يكون بعد وقت البداية.'
-                            : 'Break end time must be after start time.'
+                            ? 'وقت نهاية الاستراحة لا يمكن أن يساوي وقت البداية.'
+                            : 'Break end time cannot equal start time.'
                         );
                     }
 
+                    // ✅ تحقق أن الاستراحة داخل فترة الدوام (مع دعم الدوام الليلي)
                     if ($workActive && $workStart && $workEnd && $breakStart && $breakEnd) {
-                        if (!($breakStart >= $workStart && $breakEnd <= $workEnd)) {
+                        if (!$this->isIntervalWithin($breakStart, $breakEnd, $workStart, $workEnd)) {
                             $validator->errors()->add(
                                 "break.$day.start_time",
                                 app()->getLocale() === 'ar'
@@ -689,46 +692,6 @@ class EmployeeController extends Controller
                                 : 'Break interval must be within working interval.'
                             );
                         }
-                    }
-                }
-            }
-
-            $polyStr = $request->input('work_area_polygon');
-            if ($polyStr) {
-                $coords = json_decode($polyStr, true);
-
-                if (!is_array($coords)) {
-                    $validator->errors()->add(
-                        'work_area_polygon',
-                        app()->getLocale() === 'ar'
-                        ? 'صيغة منطقة العمل غير صحيحة.'
-                        : 'Invalid work area polygon format.'
-                    );
-                    return;
-                }
-
-                if (count($coords) < 3) {
-                    $validator->errors()->add(
-                        'work_area_polygon',
-                        app()->getLocale() === 'ar'
-                        ? 'يجب أن يحتوي المضلع على 3 نقاط على الأقل.'
-                        : 'Polygon must contain at least 3 points.'
-                    );
-                    return;
-                }
-
-                foreach ($coords as $pt) {
-                    if (
-                        !isset($pt['lat'], $pt['lng']) ||
-                        !is_numeric($pt['lat']) || !is_numeric($pt['lng'])
-                    ) {
-                        $validator->errors()->add(
-                            'work_area_polygon',
-                            app()->getLocale() === 'ar'
-                            ? 'إحداثيات منطقة العمل غير صحيحة.'
-                            : 'Invalid coordinates in work area polygon.'
-                        );
-                        break;
                     }
                 }
             }
@@ -897,6 +860,38 @@ class EmployeeController extends Controller
             ->route('dashboard.employees.show', $employee->id)
             ->with('success', __('employees.updated_successfully'));
     }
+
+    /**
+     * ✅ تحقق هل interval الاستراحة داخل interval الدوام
+     * مع دعم الدوام الليلي (يتعدى منتصف الليل)
+     */
+    private function isIntervalWithin(string $innerStart, string $innerEnd, string $outerStart, string $outerEnd): bool
+    {
+        $toMin = function (string $time): int {
+            [$h, $m] = array_map('intval', explode(':', substr($time, 0, 5)));
+            return $h * 60 + $m;
+        };
+
+        $is = $toMin($innerStart);
+        $ie = $toMin($innerEnd);
+        $os = $toMin($outerStart);
+        $oe = $toMin($outerEnd);
+
+        // لو النهاية أصغر من البداية = يتعدى منتصف الليل → نضيف 1440
+        if ($ie <= $is)
+            $ie += 1440;
+        if ($oe <= $os)
+            $oe += 1440;
+
+        // لو بداية الاستراحة قبل بداية الدوام (يعني بعد منتصف الليل)
+        if ($is < $os)
+            $is += 1440;
+        if ($ie < $os)
+            $ie += 1440;
+
+        return $is >= $os && $ie <= $oe;
+    }
+    
 
     public function destroy(Employee $employee, Request $request)
     {

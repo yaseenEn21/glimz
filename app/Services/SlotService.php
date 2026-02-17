@@ -15,6 +15,7 @@ class SlotService
         $tz = config('app.timezone', 'UTC');
         $day = Carbon::createFromFormat('d-m-Y', $date, $tz);
         $dbDate = $day->toDateString();
+        $nextDbDate = $day->copy()->addDay()->toDateString();
 
         $service = Service::query()
             ->where('id', $serviceId)
@@ -40,7 +41,6 @@ class SlotService
 
         $now = Carbon::now($tz)->startOfMinute();
 
-        // ✅ 1) تاريخ بالماضي؟ ممنوع
         if ($day->lt($now->copy()->startOfDay())) {
             return [
                 'items' => [],
@@ -53,20 +53,14 @@ class SlotService
             ];
         }
 
-        // ✅ 2) لو اليوم نفسه: اعمل cutoff للآن (مع تقريب للـ step)
         $cutoffMinutes = null;
         if ($day->isSameDay($now)) {
             $nowMinutes = ($now->hour * 60) + $now->minute;
-
-            // اختياري: مهلة قبل الحجز (مثلاً 10 دقائق)
             $lead = (int) config('booking.min_lead_minutes', 0);
             $nowMinutes += $lead;
-
-            // قرّب لبداية السلووت التالي حسب step
             $cutoffMinutes = (int) (ceil($nowMinutes / $step) * $step);
         }
 
-        // ✅ base query (بدون bbox/polygon)
         $baseQuery = Employee::query()
             ->where('is_active', true)
             ->whereHas('user', fn($q) => $q->where('is_active', true)->where('user_type', 'biker'))
@@ -75,7 +69,6 @@ class SlotService
                     ->where('employee_services.is_active', 1);
             });
 
-        // ✅ فلتر الشريك: فقط الموظفين المخصصين له
         if ($partnerId) {
             $baseQuery->whereHas('partnerAssignments', function ($q) use ($partnerId, $serviceId) {
                 $q->where('partner_id', $partnerId)
@@ -85,7 +78,6 @@ class SlotService
 
         $employeesForServiceCount = (clone $baseQuery)->count();
 
-        // ✅ bbox filter
         $employees = (clone $baseQuery)
             ->whereHas('workArea', function ($q) use ($lat, $lng) {
                 $q->where('is_active', true)
@@ -124,7 +116,6 @@ class SlotService
             ];
         }
 
-        // ✅ polygon filter
         $candidates = $employees->filter(function ($emp) use ($lat, $lng) {
             $poly = $emp->workArea?->polygon ?? [];
             return $this->pointInPolygon($lat, $lng, $poly);
@@ -150,7 +141,6 @@ class SlotService
 
         $grouped = [];
         $noWorkCount = 0;
-        $totalGeneratedSlots = 0;
 
         foreach ($candidates as $emp) {
             $work = $emp->weeklyIntervals->where('type', 'work')->values();
@@ -161,10 +151,9 @@ class SlotService
                 continue;
             }
 
-            $workIntervals = $work->map(fn($i) => [$this->timeToMinutes($i->start_time), $this->timeToMinutes($i->end_time)])->all();
-            $breakIntervals = $breaks->map(fn($i) => [$this->timeToMinutes($i->start_time), $this->timeToMinutes($i->end_time)])->all();
-
-            $blockIntervals = $emp->timeBlocks->map(fn($b) => [$this->timeToMinutes($b->start_time), $this->timeToMinutes($b->end_time)])->all();
+            $workIntervals = $work->map(fn($i) => $this->resolveInterval($i->start_time, $i->end_time))->all();
+            $breakIntervals = $breaks->map(fn($i) => $this->resolveInterval($i->start_time, $i->end_time))->all();
+            $blockIntervals = $emp->timeBlocks->map(fn($b) => $this->resolveInterval($b->start_time, $b->end_time))->all();
 
             $available = $this->subtractIntervals($workIntervals, $breakIntervals);
             $available = $this->subtractIntervals($available, $blockIntervals);
@@ -173,35 +162,34 @@ class SlotService
                 $available = $this->subtractIntervals($available, [[0, $cutoffMinutes]]);
             }
 
-            $bookingIntervals = Booking::query()
-                ->where('employee_id', $emp->id)
-                ->where('booking_date', $dbDate)
-                ->whereNotIn('status', ['cancelled'])
-                ->when($excludeBookingId, fn($q) => $q->where('id', '!=', (int) $excludeBookingId))
-                ->get(['start_time', 'end_time'])
-                ->map(fn($b) => [$this->timeToMinutes($b->start_time), $this->timeToMinutes($b->end_time)])
-                ->all();
-
+            $bookingIntervals = $this->getBookingIntervals($emp->id, $dbDate, $nextDbDate, $excludeBookingId);
             $available = $this->subtractIntervals($available, $bookingIntervals);
 
+            // ✅ generateSlots يرجع raw_start (دقائق خام بدون التفاف)
             $slots = $this->generateSlots($available, $duration, $step, $mode);
 
-            foreach ($slots as $s) {
+            foreach ($slots as $slot) {
+                $rawStart = $slot['raw_start'];
+                $rawEnd = $slot['raw_end'];
 
-                // ✅ فلترة السلووتات القديمة لليوم الحالي
-                if ($cutoffMinutes !== null) {
-                    $startMin = $this->timeToMinutes($s['start_time']);
-                    if ($startMin < $cutoffMinutes) {
-                        continue;
-                    }
+                if ($cutoffMinutes !== null && $rawStart < $cutoffMinutes) {
+                    continue;
                 }
 
-                $totalGeneratedSlots++;
-                $key = $s['start_time'] . '|' . $s['end_time'];
+                // ✅ لو raw_start >= 1440 = بعد منتصف الليل = تاريخ اليوم التالي
+                $slotBookingDate = $rawStart >= 1440 ? $nextDbDate : $dbDate;
+
+                $startTime = $this->minutesToTime($rawStart);
+                $endTime = $this->minutesToTime($rawEnd);
+                $key = $startTime . '|' . $endTime;
+
                 if (!isset($grouped[$key])) {
                     $grouped[$key] = [
-                        'start_time' => $s['start_time'],
-                        'end_time' => $s['end_time'],
+                        'start_time' => $startTime,
+                        'end_time' => $endTime,
+                        'booking_date' => $slotBookingDate, // ✅ جديد
+                        'mid_night' => $rawStart >= 1440,
+                        'raw_start' => $rawStart,
                         'employees' => [],
                     ];
                 }
@@ -215,9 +203,15 @@ class SlotService
         }
 
         $items = array_values($grouped);
-        usort($items, fn($a, $b) => strcmp($a['start_time'], $b['start_time']));
+        // ✅ ترتيب بالدقائق الخام
+        usort($items, fn($a, $b) => $a['raw_start'] <=> $b['raw_start']);
 
-        // ✅ لو ما طلع ولا slot: حدّد السبب
+        // ✅ نشيل raw_start من الـ output
+        $items = array_map(function ($item) {
+            unset($item['raw_start']);
+            return $item;
+        }, $items);
+
         $meta = [
             'date' => $date,
             'day' => $weekday,
@@ -250,6 +244,7 @@ class SlotService
         $tz = config('app.timezone', 'Asia/Riyadh');
         $day = Carbon::createFromFormat('d-m-Y', $date, $tz);
         $dbDate = $day->toDateString();
+        $nextDbDate = $day->copy()->addDay()->toDateString();
 
         $service = Service::query()
             ->where('id', $serviceId)
@@ -270,12 +265,11 @@ class SlotService
         }
 
         $duration = (int) $service->duration_minutes;
-        $step = $stepMinutes ?? $duration; // ✅ استخدام مدة الخدمة كـ step
+        $step = $stepMinutes ?? $duration;
         $weekday = $this->carbonToDayEnum($day);
 
         $now = Carbon::now($tz)->startOfMinute();
 
-        // ✅ 1) تاريخ بالماضي؟ ممنوع
         if ($day->lt($now->copy()->startOfDay())) {
             return [
                 'items' => [],
@@ -288,7 +282,6 @@ class SlotService
             ];
         }
 
-        // ✅ 2) لو اليوم نفسه: اعمل cutoff للآن (مع تقريب للـ step)
         $cutoffMinutes = null;
         if ($day->isSameDay($now)) {
             $nowMinutes = ($now->hour * 60) + $now->minute;
@@ -297,19 +290,16 @@ class SlotService
             $cutoffMinutes = (int) (ceil($nowMinutes / $step) * $step);
         }
 
-        // ✅ base query - فقط الموظفين النشطين
         $baseQuery = Employee::query()
             ->where('is_active', true)
             ->whereHas('user', fn($q) => $q->where('is_active', true)->where('user_type', 'biker'));
 
-        // ✅ للشريك: فقط الموظفين المخصصين له في هذه الخدمة
         if ($partnerId) {
             $baseQuery->whereHas('partnerAssignments', function ($q) use ($partnerId, $serviceId) {
                 $q->where('partner_id', $partnerId)
                     ->where('service_id', $serviceId);
             });
         } else {
-            // ✅ للموبايل العادي: لازم الموظف عنده الخدمة
             $baseQuery->whereHas('services', function ($q) use ($serviceId) {
                 $q->where('services.id', $serviceId)
                     ->where('employee_services.is_active', 1);
@@ -318,7 +308,6 @@ class SlotService
 
         $employeesForServiceCount = (clone $baseQuery)->count();
 
-        // ✅ bbox filter
         $employees = (clone $baseQuery)
             ->whereHas('workArea', function ($q) use ($lat, $lng) {
                 $q->where('is_active', true)
@@ -357,7 +346,6 @@ class SlotService
             ];
         }
 
-        // ✅ polygon filter
         $candidates = $employees->filter(function ($emp) use ($lat, $lng) {
             $poly = $emp->workArea?->polygon ?? [];
             return $this->pointInPolygon($lat, $lng, $poly);
@@ -383,7 +371,6 @@ class SlotService
 
         $grouped = [];
         $noWorkCount = 0;
-        $totalGeneratedSlots = 0;
 
         foreach ($candidates as $emp) {
             $work = $emp->weeklyIntervals->where('type', 'work')->values();
@@ -394,9 +381,9 @@ class SlotService
                 continue;
             }
 
-            $workIntervals = $work->map(fn($i) => [$this->timeToMinutes($i->start_time), $this->timeToMinutes($i->end_time)])->all();
-            $breakIntervals = $breaks->map(fn($i) => [$this->timeToMinutes($i->start_time), $this->timeToMinutes($i->end_time)])->all();
-            $blockIntervals = $emp->timeBlocks->map(fn($b) => [$this->timeToMinutes($b->start_time), $this->timeToMinutes($b->end_time)])->all();
+            $workIntervals = $work->map(fn($i) => $this->resolveInterval($i->start_time, $i->end_time))->all();
+            $breakIntervals = $breaks->map(fn($i) => $this->resolveInterval($i->start_time, $i->end_time))->all();
+            $blockIntervals = $emp->timeBlocks->map(fn($b) => $this->resolveInterval($b->start_time, $b->end_time))->all();
 
             $available = $this->subtractIntervals($workIntervals, $breakIntervals);
             $available = $this->subtractIntervals($available, $blockIntervals);
@@ -405,39 +392,37 @@ class SlotService
                 $available = $this->subtractIntervals($available, [[0, $cutoffMinutes]]);
             }
 
-            $bookingIntervals = Booking::query()
-                ->where('employee_id', $emp->id)
-                ->where('booking_date', $dbDate)
-                ->whereNotIn('status', ['cancelled'])
-                ->when($excludeBookingId, fn($q) => $q->where('id', '!=', (int) $excludeBookingId))
-                ->get(['start_time', 'end_time'])
-                ->map(fn($b) => [$this->timeToMinutes($b->start_time), $this->timeToMinutes($b->end_time)])
-                ->all();
-
+            $bookingIntervals = $this->getBookingIntervals($emp->id, $dbDate, $nextDbDate, $excludeBookingId);
             $available = $this->subtractIntervals($available, $bookingIntervals);
 
             $slots = $this->generateSlots($available, $duration, $step, $mode);
 
-            foreach ($slots as $s) {
-                if ($cutoffMinutes !== null) {
-                    $startMin = $this->timeToMinutes($s['start_time']);
-                    if ($startMin < $cutoffMinutes) {
-                        continue;
-                    }
+            foreach ($slots as $slot) {
+                if ($cutoffMinutes !== null && $slot['raw_start'] < $cutoffMinutes) {
+                    continue;
                 }
 
-                $totalGeneratedSlots++;
-                $key = $s['start_time'] . '|' . $s['end_time'];
+                $startTime = $this->minutesToTime($slot['raw_start']);
+                $key = $startTime;
+
                 if (!isset($grouped[$key])) {
                     $grouped[$key] = [
-                        'start_time' => $s['start_time'],
+                        'start_time' => $startTime,
+                        'booking_date' => $slot['raw_start'] >= 1440 ? $nextDbDate : $dbDate, // ✅
+                        'mid_night' => $slot['raw_start'] >= 1440, // ✅
+                        'raw_start' => $slot['raw_start'],
                     ];
                 }
             }
         }
 
         $items = array_values($grouped);
-        usort($items, fn($a, $b) => strcmp($a['start_time'], $b['start_time']));
+        usort($items, fn($a, $b) => $a['raw_start'] <=> $b['raw_start']);
+
+        $items = array_map(function ($item) {
+            unset($item['raw_start']);
+            return $item;
+        }, $items);
 
         $meta = [
             'date' => $dbDate,
@@ -470,11 +455,12 @@ class SlotService
         float $lat,
         float $lng,
         ?int $partnerId = null,
-        ?int $excludeBookingId = null // ✅ جديد
+        ?int $excludeBookingId = null
     ): array {
         $tz = config('app.timezone', 'Asia/Riyadh');
         $day = Carbon::createFromFormat('d-m-Y', $date, $tz);
         $dbDate = $day->toDateString();
+        $nextDbDate = $day->copy()->addDay()->toDateString();
 
         $service = Service::query()
             ->where('id', $serviceId)
@@ -574,9 +560,9 @@ class SlotService
                 continue;
             }
 
-            $workIntervals = $work->map(fn($i) => [$this->timeToMinutes($i->start_time), $this->timeToMinutes($i->end_time)])->all();
-            $breakIntervals = $breaks->map(fn($i) => [$this->timeToMinutes($i->start_time), $this->timeToMinutes($i->end_time)])->all();
-            $blockIntervals = $emp->timeBlocks->map(fn($b) => [$this->timeToMinutes($b->start_time), $this->timeToMinutes($b->end_time)])->all();
+            $workIntervals = $work->map(fn($i) => $this->resolveInterval($i->start_time, $i->end_time))->all();
+            $breakIntervals = $breaks->map(fn($i) => $this->resolveInterval($i->start_time, $i->end_time))->all();
+            $blockIntervals = $emp->timeBlocks->map(fn($b) => $this->resolveInterval($b->start_time, $b->end_time))->all();
 
             $available = $this->subtractIntervals($workIntervals, $breakIntervals);
             $available = $this->subtractIntervals($available, $blockIntervals);
@@ -585,18 +571,10 @@ class SlotService
                 $available = $this->subtractIntervals($available, [[0, $cutoffMinutes]]);
             }
 
-            // ✅ جلب حجوزات الموظف (مع استثناء الحجز الحالي)
-            $bookingIntervals = Booking::query()
-                ->where('employee_id', $emp->id)
-                ->where('booking_date', $dbDate)
-                ->whereNotIn('status', ['cancelled'])
-                ->when($excludeBookingId, fn($q) => $q->where('id', '!=', (int) $excludeBookingId)) // ✅ استثناء
-                ->get(['start_time', 'end_time'])
-                ->map(fn($b) => [$this->timeToMinutes($b->start_time), $this->timeToMinutes($b->end_time)])
-                ->all();
-
+            $bookingIntervals = $this->getBookingIntervals($emp->id, $dbDate, $nextDbDate, $excludeBookingId);
             $available = $this->subtractIntervals($available, $bookingIntervals);
 
+            // ✅ نولد السلوتات بالدقائق الخام
             foreach ($available as [$startMin, $endMin]) {
                 $slotStart = $startMin;
                 while ($slotStart + $duration <= $endMin) {
@@ -605,6 +583,9 @@ class SlotService
                     if (!isset($slotsByTime[$timeKey])) {
                         $slotsByTime[$timeKey] = [
                             'start_time' => $timeKey,
+                            'booking_date' => $slotStart >= 1440 ? $nextDbDate : $dbDate, // ✅
+                            'mid_night' => $slotStart >= 1440, // ✅
+                            'raw_start' => $slotStart,
                             'employees' => [],
                         ];
                     }
@@ -620,7 +601,13 @@ class SlotService
         }
 
         $slots = array_values($slotsByTime);
-        usort($slots, fn($a, $b) => strcmp($a['start_time'], $b['start_time']));
+        // ✅ ترتيب بالدقائق الخام
+        usort($slots, fn($a, $b) => $a['raw_start'] <=> $b['raw_start']);
+
+        $slots = array_map(function ($slot) {
+            unset($slot['raw_start']);
+            return $slot;
+        }, $slots);
 
         return [
             'slots' => $slots,
@@ -628,9 +615,12 @@ class SlotService
         ];
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    //  HELPER METHODS
+    // ═══════════════════════════════════════════════════════════════
+
     private function carbonToDayEnum(Carbon $day): string
     {
-        // Carbon: 0=Sunday .. 6=Saturday
         return match ($day->dayOfWeek) {
             0 => 'sunday',
             1 => 'monday',
@@ -642,25 +632,113 @@ class SlotService
         };
     }
 
+    /**
+     * تحويل وقت "HH:MM" أو "HH:MM:SS" إلى دقائق (0-1439)
+     */
     private function timeToMinutes(string $time): int
     {
-        // "HH:MM:SS" أو "HH:MM"
         [$h, $m] = array_map('intval', explode(':', substr($time, 0, 5)));
         return $h * 60 + $m;
     }
 
+    /**
+     * ✅ تحويل interval لدقائق خام — لو النهاية ≤ البداية = يتعدى منتصف الليل
+     */
+    private function resolveInterval(string $startTime, string $endTime): array
+    {
+        $s = $this->timeToMinutes($startTime);
+        $e = $this->timeToMinutes($endTime);
+
+        if ($e <= $s) {
+            $e += 1440;
+        }
+
+        return [$s, $e];
+    }
+
+    /**
+     * ✅ تحويل دقائق خام إلى "HH:MM" مع التفاف آمن
+     */
     private function minutesToTime(int $minutes): string
     {
-        $minutes = max(0, min(24 * 60, $minutes));
-        $h = intdiv($minutes, 60);
-        $m = $minutes % 60;
+        $wrapped = (($minutes % 1440) + 1440) % 1440;
+        $h = intdiv($wrapped, 60);
+        $m = $wrapped % 60;
         return str_pad((string) $h, 2, '0', STR_PAD_LEFT) . ':' . str_pad((string) $m, 2, '0', STR_PAD_LEFT);
     }
 
     /**
-     * subtract many intervals (blocked) from base intervals
-     * intervals are [startMin, endMin] with start < end
+     * ✅ جلب حجوزات اليوم + التالي (للدوام الليلي)
      */
+    private function getBookingIntervals(int $employeeId, string $dbDate, string $nextDbDate, ?int $excludeBookingId = null): array
+    {
+        $todayBookings = Booking::query()
+            ->where('employee_id', $employeeId)
+            ->where('booking_date', $dbDate)
+            ->whereNotIn('status', ['cancelled'])
+            ->when($excludeBookingId, fn($q) => $q->where('id', '!=', (int) $excludeBookingId))
+            ->get(['start_time', 'end_time'])
+            ->map(fn($b) => $this->resolveInterval($b->start_time, $b->end_time))
+            ->all();
+
+        $tomorrowBookings = Booking::query()
+            ->where('employee_id', $employeeId)
+            ->where('booking_date', $nextDbDate)
+            ->whereNotIn('status', ['cancelled'])
+            ->when($excludeBookingId, fn($q) => $q->where('id', '!=', (int) $excludeBookingId))
+            ->get(['start_time', 'end_time'])
+            ->map(function ($b) {
+                $s = $this->timeToMinutes($b->start_time) + 1440;
+                $e = $this->timeToMinutes($b->end_time) + 1440;
+                if ($e <= $s) {
+                    $e += 1440;
+                }
+                return [$s, $e];
+            })
+            ->all();
+
+        return array_merge($todayBookings, $tomorrowBookings);
+    }
+
+    /**
+     * ✅ توليد السلوتات — يرجع raw_start و raw_end (دقائق خام)
+     */
+    private function generateSlots(array $available, int $durationMinutes, int $stepMinutes, string $mode = 'rolling'): array
+    {
+        $slots = [];
+
+        foreach ($available as [$s, $e]) {
+
+            if ($mode === 'blocks') {
+                $t = $s;
+                while ($t + $durationMinutes <= $e) {
+                    $slots[] = [
+                        'start_time' => $this->minutesToTime($t),
+                        'end_time' => $this->minutesToTime($t + $durationMinutes),
+                        'raw_start' => $t,
+                        'raw_end' => $t + $durationMinutes,
+                    ];
+                    $t += $durationMinutes;
+                }
+                continue;
+            }
+
+            // rolling
+            $t = $this->ceilToStep($s, $stepMinutes);
+            while ($t + $durationMinutes <= $e) {
+                $slots[] = [
+                    'start_time' => $this->minutesToTime($t),
+                    'end_time' => $this->minutesToTime($t + $durationMinutes),
+                    'raw_start' => $t,
+                    'raw_end' => $t + $durationMinutes,
+                ];
+                $t += $stepMinutes;
+            }
+        }
+
+        return $slots;
+    }
+
     private function subtractIntervals(array $base, array $subtract): array
     {
         $base = $this->normalizeIntervals($base);
@@ -671,16 +749,13 @@ class SlotService
         foreach ($subtract as [$bs, $be]) {
             $new = [];
             foreach ($result as [$s, $e]) {
-                // no overlap
                 if ($be <= $s || $bs >= $e) {
                     $new[] = [$s, $e];
                     continue;
                 }
-                // cut left
                 if ($bs > $s) {
                     $new[] = [$s, $bs];
                 }
-                // cut right
                 if ($be < $e) {
                     $new[] = [$be, $e];
                 }
@@ -706,7 +781,6 @@ class SlotService
 
         usort($clean, fn($a, $b) => $a[0] <=> $b[0]);
 
-        // merge overlaps
         $merged = [];
         foreach ($clean as [$s, $e]) {
             if (empty($merged)) {
@@ -726,39 +800,6 @@ class SlotService
         return $merged;
     }
 
-    private function generateSlots(array $available, int $durationMinutes, int $stepMinutes, string $mode = 'rolling'): array
-    {
-        $slots = [];
-
-        foreach ($available as [$s, $e]) {
-
-            if ($mode === 'blocks') {
-                // ✅ يبدأ من بداية الدوام مباشرة، ويقفز كل مدة خدمة
-                $t = $s;
-                while ($t + $durationMinutes <= $e) {
-                    $slots[] = [
-                        'start_time' => $this->minutesToTime($t),
-                        'end_time' => $this->minutesToTime($t + $durationMinutes),
-                    ];
-                    $t += $durationMinutes; // ✅ قفز 90 دقيقة
-                }
-                continue;
-            }
-
-            // rolling (الحالي)
-            $t = $this->ceilToStep($s, $stepMinutes);
-            while ($t + $durationMinutes <= $e) {
-                $slots[] = [
-                    'start_time' => $this->minutesToTime($t),
-                    'end_time' => $this->minutesToTime($t + $durationMinutes),
-                ];
-                $t += $stepMinutes; // ✅ قفز 15 دقيقة
-            }
-        }
-
-        return $slots;
-    }
-
     private function ceilToStep(int $minutes, int $step): int
     {
         if ($step <= 1)
@@ -769,7 +810,6 @@ class SlotService
 
     /**
      * Ray-casting point in polygon
-     * polygon: array of ['lat'=>..,'lng'=>..]
      */
     private function pointInPolygon(float $lat, float $lng, array $polygon): bool
     {
