@@ -8,7 +8,7 @@
 @section('top-btns')
     <div>
         <a href="{{ route('dashboard.bookings.create') }}" class="btn btn-primary"> {{ __('bookings.create.title') }} </a>
-        <button type="button" class="btn btn-light-success" data-bs-toggle="modal" data-bs-target="#exportBookingsModal">
+        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#exportBookingsModal">
             <i class="fa-solid fa-file-excel me-1"></i>
             {{ __('bookings.export_excel') }}
         </button>
