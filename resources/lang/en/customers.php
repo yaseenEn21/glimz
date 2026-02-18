@@ -12,6 +12,7 @@ return [
     'save_changes' => 'Save Changes',
     'actions' => 'Actions',
     'none' => 'None',
+    'export_excel' => 'Export Excel',
 
     'create_title' => 'Create Customer',
     'edit_title' => 'Edit Customer',

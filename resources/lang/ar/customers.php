@@ -12,7 +12,7 @@ return [
     'save_changes' => 'حفظ التغييرات',
     'actions' => 'إجراءات',
     'none' => 'بدون',
-
+    'export_excel' => 'تصدير اكسل',
     'create_title' => 'إضافة عميل',
     'edit_title' => 'تعديل عميل',
     'profile_title' => 'بروفايل العميل',

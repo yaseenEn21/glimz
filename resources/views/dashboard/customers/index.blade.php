@@ -13,7 +13,7 @@
     @can('customers.view')
         <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#exportCustomersModal">
             <i class="fa-solid fa-file-excel me-1"></i>
-            تصدير Excel
+            {{ __('customers.export_excel') }}
         </button>
     @endcan
 @endsection
