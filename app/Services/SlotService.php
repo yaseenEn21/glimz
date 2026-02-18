@@ -1,11 +1,22 @@
 <?php
 
-namespace App\Services;
-
-use App\Models\Booking;
-use App\Models\Employee;
-use App\Models\Service;
-use Carbon\Carbon;
+/**
+ * SlotService - Fixed Version
+ *
+ * الإصلاح الرئيسي:
+ * المشكلة: في blocks mode، السلوتات كانت تبدأ من بداية الـ interval المتاح ($s)
+ *          مباشرة. لما يُحذف block (مثل 19:00-20:00)، الـ interval المتبقي يبدأ
+ *          من 20:00، فيتولد سلوت عند 20:00 بدل 20:30.
+ *
+ * الحل: تمرير work intervals كـ grid anchors حتى يُحسَب أول سلوت على grid الأصلي
+ *       (من بداية الدوام) بدلاً من بداية الـ interval المقطوع.
+ *
+ * أماكن الإصلاح:
+ *   1. generateSlots() → أضفنا $gridAnchors وحسبنا أول t على grid
+ *   2. getSlots()      → نمرر workIntervals لـ generateSlots
+ *   3. getPartnerSlots() → نمرر workIntervals لـ generateSlots
+ *   4. getPartnerSlotsWithEmployees() → أصلحنا الـ loop الـ inline
+ */
 
 class SlotService
 {
@@ -165,8 +176,8 @@ class SlotService
             $bookingIntervals = $this->getBookingIntervals($emp->id, $dbDate, $nextDbDate, $excludeBookingId);
             $available = $this->subtractIntervals($available, $bookingIntervals);
 
-            // ✅ generateSlots يرجع raw_start (دقائق خام بدون التفاف)
-            $slots = $this->generateSlots($available, $duration, $step, $mode);
+            // ✅ FIX: نمرر workIntervals كـ grid anchors
+            $slots = $this->generateSlots($available, $duration, $step, $mode, $workIntervals);
 
             foreach ($slots as $slot) {
                 $rawStart = $slot['raw_start'];
@@ -176,7 +187,6 @@ class SlotService
                     continue;
                 }
 
-                // ✅ لو raw_start >= 1440 = بعد منتصف الليل = تاريخ اليوم التالي
                 $slotBookingDate = $rawStart >= 1440 ? $nextDbDate : $dbDate;
 
                 $startTime = $this->minutesToTime($rawStart);
@@ -187,7 +197,7 @@ class SlotService
                     $grouped[$key] = [
                         'start_time' => $startTime,
                         'end_time' => $endTime,
-                        'booking_date' => $slotBookingDate, // ✅ جديد
+                        'booking_date' => $slotBookingDate,
                         'mid_night' => $rawStart >= 1440,
                         'raw_start' => $rawStart,
                         'employees' => [],
@@ -203,10 +213,8 @@ class SlotService
         }
 
         $items = array_values($grouped);
-        // ✅ ترتيب بالدقائق الخام
         usort($items, fn($a, $b) => $a['raw_start'] <=> $b['raw_start']);
 
-        // ✅ نشيل raw_start من الـ output
         $items = array_map(function ($item) {
             unset($item['raw_start']);
             return $item;
@@ -395,7 +403,6 @@ class SlotService
             $bookingIntervals = $this->getBookingIntervals($emp->id, $dbDate, $nextDbDate, $excludeBookingId);
             $available = $this->subtractIntervals($available, $bookingIntervals);
 
-            // ✅ أضف هنا
             \Log::debug('[SlotService] Employee available intervals', [
                 'employee_id' => $emp->id,
                 'employee_name' => $emp->user?->name,
@@ -407,7 +414,8 @@ class SlotService
                 'final_available' => $available,
             ]);
 
-            $slots = $this->generateSlots($available, $duration, $step, $mode);
+            // ✅ FIX: نمرر workIntervals كـ grid anchors
+            $slots = $this->generateSlots($available, $duration, $step, $mode, $workIntervals);
 
             foreach ($slots as $slot) {
                 if ($cutoffMinutes !== null && $slot['raw_start'] < $cutoffMinutes) {
@@ -420,8 +428,8 @@ class SlotService
                 if (!isset($grouped[$key])) {
                     $grouped[$key] = [
                         'start_time' => $startTime,
-                        'booking_date' => $slot['raw_start'] >= 1440 ? $nextDbDate : $dbDate, // ✅
-                        'mid_night' => $slot['raw_start'] >= 1440, // ✅
+                        'booking_date' => $slot['raw_start'] >= 1440 ? $nextDbDate : $dbDate,
+                        'mid_night' => $slot['raw_start'] >= 1440,
                         'raw_start' => $slot['raw_start'],
                     ];
                 }
@@ -586,17 +594,19 @@ class SlotService
             $bookingIntervals = $this->getBookingIntervals($emp->id, $dbDate, $nextDbDate, $excludeBookingId);
             $available = $this->subtractIntervals($available, $bookingIntervals);
 
-            // ✅ نولد السلوتات بالدقائق الخام
+            // ✅ FIX: بدل ما نبدأ من $startMin مباشرة، نوجد أول slot على grid الأصلي
             foreach ($available as [$startMin, $endMin]) {
-                $slotStart = $startMin;
+                // نحسب أول نقطة على grid (من work interval المناسب) >= startMin
+                $slotStart = $this->alignToGrid($startMin, $workIntervals, $duration);
+
                 while ($slotStart + $duration <= $endMin) {
                     $timeKey = $this->minutesToTime($slotStart);
 
                     if (!isset($slotsByTime[$timeKey])) {
                         $slotsByTime[$timeKey] = [
                             'start_time' => $timeKey,
-                            'booking_date' => $slotStart >= 1440 ? $nextDbDate : $dbDate, // ✅
-                            'mid_night' => $slotStart >= 1440, // ✅
+                            'booking_date' => $slotStart >= 1440 ? $nextDbDate : $dbDate,
+                            'mid_night' => $slotStart >= 1440,
                             'raw_start' => $slotStart,
                             'employees' => [],
                         ];
@@ -613,7 +623,6 @@ class SlotService
         }
 
         $slots = array_values($slotsByTime);
-        // ✅ ترتيب بالدقائق الخام
         usort($slots, fn($a, $b) => $a['raw_start'] <=> $b['raw_start']);
 
         $slots = array_map(function ($slot) {
@@ -644,18 +653,12 @@ class SlotService
         };
     }
 
-    /**
-     * تحويل وقت "HH:MM" أو "HH:MM:SS" إلى دقائق (0-1439)
-     */
     private function timeToMinutes(string $time): int
     {
         [$h, $m] = array_map('intval', explode(':', substr($time, 0, 5)));
         return $h * 60 + $m;
     }
 
-    /**
-     * ✅ تحويل interval لدقائق خام — لو النهاية ≤ البداية = يتعدى منتصف الليل
-     */
     private function resolveInterval(string $startTime, string $endTime): array
     {
         $s = $this->timeToMinutes($startTime);
@@ -668,9 +671,6 @@ class SlotService
         return [$s, $e];
     }
 
-    /**
-     * ✅ تحويل دقائق خام إلى "HH:MM" مع التفاف آمن
-     */
     private function minutesToTime(int $minutes): string
     {
         $wrapped = (($minutes % 1440) + 1440) % 1440;
@@ -679,9 +679,6 @@ class SlotService
         return str_pad((string) $h, 2, '0', STR_PAD_LEFT) . ':' . str_pad((string) $m, 2, '0', STR_PAD_LEFT);
     }
 
-    /**
-     * ✅ جلب حجوزات اليوم + التالي (للدوام الليلي)
-     */
     private function getBookingIntervals(int $employeeId, string $dbDate, string $nextDbDate, ?int $excludeBookingId = null): array
     {
         $todayBookings = Booking::query()
@@ -713,16 +710,28 @@ class SlotService
     }
 
     /**
-     * ✅ توليد السلوتات — يرجع raw_start و raw_end (دقائق خام)
+     * ✅ FIXED: توليد السلوتات مع دعم grid anchors
+     *
+     * @param array $available    الفترات المتاحة بعد كل الطرحات
+     * @param int $durationMinutes مدة الخدمة
+     * @param int $stepMinutes    الخطوة بين السلوتات
+     * @param string $mode        'blocks' أو 'rolling'
+     * @param array $gridAnchors  ✅ جديد: work intervals الأصلية لحساب بداية الـ grid
+     *
+     * في blocks mode: بدل ما نبدأ السلوت من بداية الـ interval المتاح ($s)،
+     * نحسب أول سلوت على grid الأصلي (من بداية الدوام) >= $s.
+     * هذا يضمن أن البلوكات والكسرات لا تُغير توزيع السلوتات.
      */
-    private function generateSlots(array $available, int $durationMinutes, int $stepMinutes, string $mode = 'rolling'): array
+    private function generateSlots(array $available, int $durationMinutes, int $stepMinutes, string $mode = 'rolling', array $gridAnchors = []): array
     {
         $slots = [];
 
         foreach ($available as [$s, $e]) {
 
             if ($mode === 'blocks') {
-                $t = $s;
+                // ✅ FIX: أوجد أول نقطة على grid >= $s
+                $t = $this->alignToGrid($s, $gridAnchors, $durationMinutes);
+
                 while ($t + $durationMinutes <= $e) {
                     $slots[] = [
                         'start_time' => $this->minutesToTime($t),
@@ -735,7 +744,7 @@ class SlotService
                 continue;
             }
 
-            // rolling
+            // rolling (لم يتغير)
             $t = $this->ceilToStep($s, $stepMinutes);
             while ($t + $durationMinutes <= $e) {
                 $slots[] = [
@@ -749,6 +758,48 @@ class SlotService
         }
 
         return $slots;
+    }
+
+    /**
+     * ✅ دالة جديدة: إيجاد أول نقطة على grid الأصلي >= $minutes
+     *
+     * المنطق:
+     *   - نبحث عن الـ work interval اللي يحتوي على $minutes (أو أقرب واحد قبله)
+     *   - نحسب grid من بدايته: anchor, anchor+step, anchor+2*step, ...
+     *   - نرجع أول قيمة >= $minutes
+     *
+     * @param int $minutes     الدقيقة اللي نريد أول slot >= منها
+     * @param array $anchors   work intervals [[start, end], ...]
+     * @param int $step        خطوة الـ grid (duration في blocks mode)
+     * @return int             أول نقطة على الـ grid >= $minutes
+     */
+    private function alignToGrid(int $minutes, array $anchors, int $step): int
+    {
+        // لو ما في anchors، ارجع $minutes كما هو (fallback)
+        if (empty($anchors) || $step <= 0) {
+            return $minutes;
+        }
+
+        $best = null;
+
+        foreach ($anchors as [$anchorStart, $anchorEnd]) {
+            // نستخدم هذا الـ anchor لو:
+            // 1. يبدأ قبل أو عند $minutes (الـ interval يحتوي أو يسبق النقطة)
+            // 2. أو هو أقرب anchor مستقبلي (حالة ما في interval يحتوي النقطة)
+            if ($anchorStart <= $minutes) {
+                // حساب أول slot على grid من هذا الـ anchor >= $minutes
+                $n = (int) ceil(($minutes - $anchorStart) / $step);
+                $candidate = $anchorStart + $n * $step;
+
+                // خذ الأصغر (أقرب slot)
+                if ($best === null || $candidate < $best) {
+                    $best = $candidate;
+                }
+            }
+        }
+
+        // لو ما وجدنا anchor مناسب (مثلاً $minutes قبل كل الـ anchors)، ارجع $minutes
+        return $best ?? $minutes;
     }
 
     private function subtractIntervals(array $base, array $subtract): array
