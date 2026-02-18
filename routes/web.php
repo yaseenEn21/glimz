@@ -100,7 +100,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('cancel-reasons/datatable', [BookingCancelReasonController::class, 'datatable'])
             ->name('bookings.cancel-reasons.datatable');
 
-
+        Route::get('bookings/export', [BookingController::class, 'export'])->name('bookings.export');
         Route::resource('bookings/cancel-reasons', BookingCancelReasonController::class)
             ->except(['show'])
             ->names('bookings.cancel-reasons')

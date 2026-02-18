@@ -8,6 +8,7 @@ return [
     'edit' => 'Edit',
     'save_changes' => 'Save changes',
     'copy_info' => 'Copy info',
+    'export_excel' => 'Export Excel',
 
     'create' => [
         'title' => 'Create Booking',

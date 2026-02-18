@@ -1,3 +1,4 @@
+{{-- resources/views/dashboard/bookings/index.blade.php --}}
 @extends('base.layout.app')
 
 @section('title', __('bookings.title'))
@@ -5,8 +6,14 @@
 @section('content')
 
 @section('top-btns')
-    {{-- لاحقاً: زر create --}}
-    <a href="{{ route('dashboard.bookings.create') }}" class="btn btn-primary"> {{ __('bookings.create.title') }} </a>
+    <div>
+        <a href="{{ route('dashboard.bookings.create') }}" class="btn btn-primary"> {{ __('bookings.create.title') }} </a>
+        <button type="button" class="btn btn-light-success" data-bs-toggle="modal" data-bs-target="#exportBookingsModal">
+            <i class="fa-solid fa-file-excel me-1"></i>
+            {{ __('bookings.export_excel') }}
+        </button>
+    </div>
+
 @endsection
 
 <div class="card mb-5">
@@ -124,6 +131,47 @@
                     {{ __('bookings.confirm_cancel') }}
                 </button>
             </div>
+        </div>
+    </div>
+</div>
+
+{{-- ─── Modal ─────────────────────────────────────────────────────── --}}
+<div class="modal fade" id="exportBookingsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fa-solid fa-file-excel text-success me-2"></i>
+                    تصدير الحجوزات - Excel
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <div class="row g-4">
+                    <div class="col-6">
+                        <label class="form-label fw-bold">من تاريخ</label>
+                        <input type="date" id="exportFrom" class="form-control"
+                            value="{{ now()->startOfMonth()->format('Y-m-d') }}">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-bold">إلى تاريخ</label>
+                        <input type="date" id="exportTo" class="form-control" value="{{ now()->format('Y-m-d') }}">
+                    </div>
+                </div>
+
+                <div id="exportError" class="alert alert-danger mt-3 d-none"></div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">إلغاء</button>
+                <button type="button" class="btn btn-success" id="doExportBtn">
+                    <i class="fa-solid fa-download me-1"></i>
+                    تصدير
+                </button>
+            </div>
+
         </div>
     </div>
 </div>
@@ -434,6 +482,35 @@
 
                 document.body.removeChild(textarea);
             });
+        });
+
+        document.getElementById('doExportBtn').addEventListener('click', function() {
+            const from = document.getElementById('exportFrom').value;
+            const to = document.getElementById('exportTo').value;
+            const err = document.getElementById('exportError');
+
+            err.classList.add('d-none');
+
+            if (!from || !to) {
+                err.textContent = 'الرجاء تحديد التاريخين';
+                err.classList.remove('d-none');
+                return;
+            }
+
+            if (from > to) {
+                err.textContent = 'تاريخ البداية يجب أن يكون قبل تاريخ النهاية';
+                err.classList.remove('d-none');
+                return;
+            }
+
+            // تحميل مباشر
+            const url = "{{ route('dashboard.bookings.export') }}" + `?from=${from}&to=${to}`;
+            window.location.href = url;
+
+            // أغلق المودال بعد ثانية
+            setTimeout(() => bootstrap.Modal.getInstance(document.getElementById('exportBookingsModal'))
+                ?.hide(),
+                800);
         });
     })();
 </script>

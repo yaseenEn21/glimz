@@ -31,6 +31,11 @@ use Illuminate\Validation\ValidationException;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Services\BookingDeletionService;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\{Fill, Font, Alignment, Border};
+use PhpOffice\PhpSpreadsheet\Cell\Hyperlink;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class BookingController extends Controller
 {
@@ -1419,5 +1424,199 @@ class BookingController extends Controller
         $class = $map[$status] ?? 'badge-light';
 
         return '<span class="badge ' . e($class) . '">' . e(__('bookings.status.' . $status)) . '</span>';
+    }
+
+    public function export(Request $request): StreamedResponse
+    {
+        $this->middleware('can:bookings.view');
+
+        $request->validate([
+            'from' => ['required', 'date_format:Y-m-d'],
+            'to'   => ['required', 'date_format:Y-m-d', 'after_or_equal:from'],
+        ]);
+
+        $from = $request->input('from');
+        $to   = $request->input('to');
+
+        $bookings = Booking::query()
+            ->whereBetween('booking_date', [$from, $to])
+            ->with([
+                'user:id,name,mobile',
+                'car.vehicleMake:id,name',
+                'car.vehicleModel:id,name',
+                'address:id,lat,lng,address_line,city,area',
+                'employee.user:id,name',
+                'service:id,name',
+            ])
+            ->orderBy('booking_date')
+            ->orderBy('start_time')
+            ->get();
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('الحجوزات');
+        $sheet->setRightToLeft(true);
+
+        // ── Headers ──────────────────────────────────────────────
+        $headers = [
+            'A' => ['label' => '# الحجز',       'width' => 10],
+            'B' => ['label' => 'اسم الزبون',     'width' => 25],
+            'C' => ['label' => 'رقم الجوال',     'width' => 18],
+            'D' => ['label' => 'نوع السيارة',    'width' => 28],
+            'E' => ['label' => 'رقم اللوحة',     'width' => 16],
+            'F' => ['label' => 'الموقع',         'width' => 45],
+            'G' => ['label' => 'تاريخ الحجز',    'width' => 15],
+            'H' => ['label' => 'وقت الحجز',      'width' => 12],
+            'I' => ['label' => 'الموظف',         'width' => 25],
+        ];
+
+        $headerFill = [
+            'fillType'  => Fill::FILL_SOLID,
+            'startColor' => ['rgb' => '1F4E79'],
+        ];
+        $headerFont = [
+            'bold'  => true,
+            'color' => ['rgb' => 'FFFFFF'],
+            'name'  => 'Arial',
+            'size'  => 11,
+        ];
+        $centerAlign = [
+            'horizontal' => Alignment::HORIZONTAL_CENTER,
+            'vertical'   => Alignment::VERTICAL_CENTER,
+        ];
+        $thinBorder = [
+            'borderStyle' => Border::BORDER_THIN,
+            'color'       => ['rgb' => 'CCCCCC'],
+        ];
+
+        foreach ($headers as $col => $def) {
+            $cell = $sheet->getCell("{$col}1");
+            $cell->setValue($def['label']);
+            $cell->getStyle()->applyFromArray([
+                'fill'   => $headerFill,
+                'font'   => $headerFont,
+                'alignment' => $centerAlign,
+                'borders' => [
+                    'allBorders' => $thinBorder,
+                ],
+            ]);
+            $sheet->getColumnDimension($col)->setWidth($def['width']);
+        }
+
+        $sheet->getRowDimension(1)->setRowHeight(28);
+        $sheet->freezePane('A2');
+
+        // ── Rows ─────────────────────────────────────────────────
+        $rowIndex = 2;
+        $oddFill = ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F5F8FF']];
+        $evenFill = ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFFFFF']];
+
+        foreach ($bookings as $booking) {
+            $fill = ($rowIndex % 2 === 0) ? $evenFill : $oddFill;
+
+            // نوع السيارة
+            $makeName  = is_array($booking->car?->vehicleMake?->name)
+                ? ($booking->car->vehicleMake->name['ar'] ?? collect($booking->car->vehicleMake->name)->first() ?? '')
+                : ($booking->car?->vehicleMake?->name ?? '');
+
+            $modelName = is_array($booking->car?->vehicleModel?->name)
+                ? ($booking->car->vehicleModel->name['ar'] ?? collect($booking->car->vehicleModel->name)->first() ?? '')
+                : ($booking->car?->vehicleModel?->name ?? '');
+
+            $carType = trim("{$makeName} {$modelName}");
+
+            // اللوحة
+            $plate = trim(($booking->car?->plate_letters ?? '') . ' ' . ($booking->car?->plate_number ?? ''));
+
+            // الموقع — رابط جوجل مابس
+            $lat = $booking->address?->lat;
+            $lng = $booking->address?->lng;
+            $mapsUrl = ($lat && $lng) ? "https://maps.google.com/?q={$lat},{$lng}" : '';
+
+            $row = [
+                'A' => $booking->id,
+                'B' => $booking->user?->name ?? '—',
+                'C' => $booking->user?->mobile ?? '—',
+                'D' => $carType ?: '—',
+                'E' => $plate ?: '—',
+                'F' => $mapsUrl,            // هيتحول لـ hyperlink أدناه
+                'G' => $booking->booking_date,
+                'H' => substr((string) $booking->start_time, 0, 5),
+                'I' => $booking->employee?->user?->name ?? '—',
+            ];
+
+            foreach ($row as $col => $value) {
+                $cell = $sheet->getCell("{$col}{$rowIndex}");
+                $cell->setValue($value);
+                $cell->getStyle()->applyFromArray([
+                    'fill' => $fill,
+                    'font' => ['name' => 'Arial', 'size' => 10],
+                    'alignment' => [
+                        'horizontal' => Alignment::HORIZONTAL_RIGHT,
+                        'vertical'   => Alignment::VERTICAL_CENTER,
+                    ],
+                    'borders' => ['allBorders' => $thinBorder],
+                ]);
+            }
+
+            // ── رابط الموقع كـ Hyperlink ──────────────────────────
+            if ($mapsUrl) {
+                $locationCell = $sheet->getCell("F{$rowIndex}");
+                $locationCell->setHyperlink(new Hyperlink($mapsUrl));
+                $locationCell->setValue('📍 فتح الموقع');
+                $locationCell->getStyle()->applyFromArray([
+                    'font' => [
+                        'color'     => ['rgb' => '0563C1'],
+                        'underline' => Font::UNDERLINE_SINGLE,
+                        'name'      => 'Arial',
+                        'size'      => 10,
+                    ],
+                    'alignment' => [
+                        'horizontal' => Alignment::HORIZONTAL_CENTER,
+                        'vertical'   => Alignment::VERTICAL_CENTER,
+                    ],
+                ]);
+            }
+
+            // ── تنسيق العمود A (رقم الحجز) بالوسط ───────────────
+            $sheet->getCell("A{$rowIndex}")->getStyle()->getAlignment()
+                ->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+            $sheet->getRowDimension($rowIndex)->setRowHeight(22);
+            $rowIndex++;
+        }
+
+        // ── Summary row ──────────────────────────────────────────
+        $totalRow = $rowIndex;
+        $sheet->getCell("A{$totalRow}")->setValue('إجمالي الحجوزات');
+        $sheet->getCell("B{$totalRow}")->setValue("=COUNTA(A2:A" . ($totalRow - 1) . ")");
+        $sheet->getStyle("A{$totalRow}:I{$totalRow}")->applyFromArray([
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'E2EFDA']],
+            'font' => ['bold' => true, 'name' => 'Arial', 'size' => 10],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+        ]);
+
+        // ── Metadata ─────────────────────────────────────────────
+        $spreadsheet->getProperties()
+            ->setTitle("الحجوزات {$from} – {$to}")
+            ->setCreator('Dashboard')
+            ->setLastModifiedBy('Dashboard');
+
+        // ── Stream ───────────────────────────────────────────────
+        $filename = "bookings_{$from}_{$to}.xlsx";
+
+        $writer = new Xlsx($spreadsheet);
+
+        return response()->streamDownload(
+            function () use ($writer) {
+                $writer->save('php://output');
+            },
+            $filename,
+            [
+                'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+                'Cache-Control'       => 'max-age=0',
+            ]
+        );
     }
 }

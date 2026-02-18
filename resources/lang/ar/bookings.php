@@ -8,6 +8,7 @@ return [
     'edit' => 'تعديل',
     'save_changes' => 'حفظ التغييرات',
     'copy_info' => 'نسخ المعلومات',
+    'export_excel' => 'تصدير اكسل',
 
     'delete' => 'حذف',
     'delete_confirm_title' => 'تأكيد الحذف',
