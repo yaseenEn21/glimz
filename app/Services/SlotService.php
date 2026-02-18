@@ -1,22 +1,11 @@
 <?php
 
-/**
- * SlotService - Fixed Version
- *
- * الإصلاح الرئيسي:
- * المشكلة: في blocks mode، السلوتات كانت تبدأ من بداية الـ interval المتاح ($s)
- *          مباشرة. لما يُحذف block (مثل 19:00-20:00)، الـ interval المتبقي يبدأ
- *          من 20:00، فيتولد سلوت عند 20:00 بدل 20:30.
- *
- * الحل: تمرير work intervals كـ grid anchors حتى يُحسَب أول سلوت على grid الأصلي
- *       (من بداية الدوام) بدلاً من بداية الـ interval المقطوع.
- *
- * أماكن الإصلاح:
- *   1. generateSlots() → أضفنا $gridAnchors وحسبنا أول t على grid
- *   2. getSlots()      → نمرر workIntervals لـ generateSlots
- *   3. getPartnerSlots() → نمرر workIntervals لـ generateSlots
- *   4. getPartnerSlotsWithEmployees() → أصلحنا الـ loop الـ inline
- */
+namespace App\Services;
+
+use App\Models\Booking;
+use App\Models\Employee;
+use App\Models\Service;
+use Carbon\Carbon;
 
 class SlotService
 {
