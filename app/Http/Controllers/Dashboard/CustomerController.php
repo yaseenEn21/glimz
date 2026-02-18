@@ -410,7 +410,10 @@ class CustomerController extends Controller
             ->where('user_type', 'customer')
             ->whereDate('created_at', '>=', $from)
             ->whereDate('created_at', '<=', $to)
-            ->withCount(['bookings', 'cars'])
+            ->withCount([
+                'cars',
+                'bookings' => fn($q) => $q->whereNotIn('status', ['cancelled']),
+            ])
             ->orderBy('created_at')
             ->get();
 

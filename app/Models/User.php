@@ -97,4 +97,9 @@ class User extends Authenticatable implements HasMedia
         return $this->user_type === 'biker' && $this->employee !== null;
     }
 
+    public function bookings()
+    {
+        return $this->hasMany(Booking::class);
+    }
+
 }
