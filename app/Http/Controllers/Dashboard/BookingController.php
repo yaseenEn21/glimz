@@ -1442,8 +1442,8 @@ class BookingController extends Controller
             ->whereBetween('booking_date', [$from, $to])
             ->with([
                 'user:id,name,mobile',
-                'car.vehicleMake:id,name',
-                'car.vehicleModel:id,name',
+                'car.make:id,name',
+                'car.model:id,name',
                 'address:id,lat,lng,address_line,city,area',
                 'employee.user:id,name',
                 'service:id,name',
@@ -1515,13 +1515,13 @@ class BookingController extends Controller
             $fill = ($rowIndex % 2 === 0) ? $evenFill : $oddFill;
 
             // نوع السيارة
-            $makeName  = is_array($booking->car?->vehicleMake?->name)
-                ? ($booking->car->vehicleMake->name['ar'] ?? collect($booking->car->vehicleMake->name)->first() ?? '')
-                : ($booking->car?->vehicleMake?->name ?? '');
+            $makeName  = is_array($booking->car?->make?->name)
+                ? ($booking->car->make->name['ar'] ?? collect($booking->car->make->name)->first() ?? '')
+                : ($booking->car?->make?->name ?? '');
 
-            $modelName = is_array($booking->car?->vehicleModel?->name)
-                ? ($booking->car->vehicleModel->name['ar'] ?? collect($booking->car->vehicleModel->name)->first() ?? '')
-                : ($booking->car?->vehicleModel?->name ?? '');
+            $modelName = is_array($booking->car?->model?->name)
+                ? ($booking->car->model->name['ar'] ?? collect($booking->car->model->name)->first() ?? '')
+                : ($booking->car?->model?->name ?? '');
 
             $carType = trim("{$makeName} {$modelName}");
 
