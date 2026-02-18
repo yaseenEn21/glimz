@@ -453,6 +453,9 @@ class PartnerBookingService
     /**
      * ✅ البحث عن slot — exact match أولاً، ثم أقرب موعد خلال 60 دقيقة
      */
+    /**
+     * ✅ البحث عن slot — exact match أولاً، ثم أقرب موعد ±60 دقيقة (قبل أو بعد)
+     */
     protected function findSlotWithFallback(\Illuminate\Support\Collection $allSlots, string $requestedTime): ?array
     {
         // 1. Exact match
@@ -461,20 +464,33 @@ class PartnerBookingService
             return $slot;
         }
 
-        // 2. Fallback: أقرب موعد بعد المطلوب خلال 60 دقيقة
+        // 2. Fallback: أقرب موعد قبل أو بعد المطلوب خلال 60 دقيقة
         $reqMin = $this->timeToMinutes($requestedTime);
 
-        return $allSlots->first(function ($s) use ($reqMin) {
+        $candidates = $allSlots->filter(function ($s) use ($reqMin) {
             $slotMin = $this->timeToMinutes($s['start_time']);
 
-            // ✅ لو السلوت بعد منتصف الليل والمطلوب مساءً — نضيف 1440 للسلوت
+            // لو السلوت بعد منتصف الليل والمطلوب مساءً — نضيف 1440 للسلوت
             if ($slotMin < 360 && $reqMin > 720) {
                 $slotMin += 1440;
             }
 
-            $diff = $slotMin - $reqMin;
+            $diff = abs($slotMin - $reqMin);
             return $diff > 0 && $diff <= 60;
         });
+
+        if ($candidates->isEmpty()) {
+            return null;
+        }
+
+        // نختار الأقرب زمنياً للوقت المطلوب
+        return $candidates->sortBy(function ($s) use ($reqMin) {
+            $slotMin = $this->timeToMinutes($s['start_time']);
+            if ($slotMin < 360 && $reqMin > 720) {
+                $slotMin += 1440;
+            }
+            return abs($slotMin - $reqMin);
+        })->first();
     }
 
     /**
