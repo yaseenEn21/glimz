@@ -155,8 +155,9 @@ class SlotService
             $breakIntervals = $breaks->map(fn($i) => $this->resolveInterval($i->start_time, $i->end_time))->all();
             $blockIntervals = $emp->timeBlocks->map(fn($b) => $this->resolveInterval($b->start_time, $b->end_time))->all();
 
-            $available = $this->subtractIntervals($workIntervals, $breakIntervals);
-            $available = $this->subtractIntervals($available, $blockIntervals);
+            // workAvailable = بعد طرح الـ breaks (هذه هي الـ anchors الصحيحة للـ grid)
+            $workAvailable = $this->subtractIntervals($workIntervals, $breakIntervals);
+            $available = $this->subtractIntervals($workAvailable, $blockIntervals);
 
             if ($cutoffMinutes !== null) {
                 $available = $this->subtractIntervals($available, [[0, $cutoffMinutes]]);
@@ -165,8 +166,9 @@ class SlotService
             $bookingIntervals = $this->getBookingIntervals($emp->id, $dbDate, $nextDbDate, $excludeBookingId);
             $available = $this->subtractIntervals($available, $bookingIntervals);
 
-            // ✅ FIX: نمرر workIntervals كـ grid anchors
-            $slots = $this->generateSlots($available, $duration, $step, $mode, $workIntervals);
+            // ✅ FIX: نمرر workAvailable كـ grid anchors (وليس workIntervals الخام)
+            // workAvailable تحتوي على حدود الـ breaks الطبيعية (مثل 19:15) كـ anchor مستقل
+            $slots = $this->generateSlots($available, $duration, $step, $mode, $workAvailable);
 
             foreach ($slots as $slot) {
                 $rawStart = $slot['raw_start'];
@@ -382,8 +384,8 @@ class SlotService
             $breakIntervals = $breaks->map(fn($i) => $this->resolveInterval($i->start_time, $i->end_time))->all();
             $blockIntervals = $emp->timeBlocks->map(fn($b) => $this->resolveInterval($b->start_time, $b->end_time))->all();
 
-            $available = $this->subtractIntervals($workIntervals, $breakIntervals);
-            $available = $this->subtractIntervals($available, $blockIntervals);
+            $workAvailable = $this->subtractIntervals($workIntervals, $breakIntervals);
+            $available = $this->subtractIntervals($workAvailable, $blockIntervals);
 
             if ($cutoffMinutes !== null) {
                 $available = $this->subtractIntervals($available, [[0, $cutoffMinutes]]);
@@ -397,14 +399,15 @@ class SlotService
                 'employee_name' => $emp->user?->name,
                 'date' => $dbDate,
                 'work_intervals' => $workIntervals,
+                'work_available' => $workAvailable,
                 'break_intervals' => $breakIntervals,
                 'block_intervals' => $blockIntervals,
                 'booking_intervals' => $bookingIntervals,
                 'final_available' => $available,
             ]);
 
-            // ✅ FIX: نمرر workIntervals كـ grid anchors
-            $slots = $this->generateSlots($available, $duration, $step, $mode, $workIntervals);
+            // ✅ FIX: نمرر workAvailable كـ grid anchors (بعد الـ breaks، قبل الـ blocks)
+            $slots = $this->generateSlots($available, $duration, $step, $mode, $workAvailable);
 
             foreach ($slots as $slot) {
                 if ($cutoffMinutes !== null && $slot['raw_start'] < $cutoffMinutes) {
@@ -573,8 +576,8 @@ class SlotService
             $breakIntervals = $breaks->map(fn($i) => $this->resolveInterval($i->start_time, $i->end_time))->all();
             $blockIntervals = $emp->timeBlocks->map(fn($b) => $this->resolveInterval($b->start_time, $b->end_time))->all();
 
-            $available = $this->subtractIntervals($workIntervals, $breakIntervals);
-            $available = $this->subtractIntervals($available, $blockIntervals);
+            $workAvailable = $this->subtractIntervals($workIntervals, $breakIntervals);
+            $available = $this->subtractIntervals($workAvailable, $blockIntervals);
 
             if ($cutoffMinutes !== null) {
                 $available = $this->subtractIntervals($available, [[0, $cutoffMinutes]]);
@@ -583,10 +586,9 @@ class SlotService
             $bookingIntervals = $this->getBookingIntervals($emp->id, $dbDate, $nextDbDate, $excludeBookingId);
             $available = $this->subtractIntervals($available, $bookingIntervals);
 
-            // ✅ FIX: بدل ما نبدأ من $startMin مباشرة، نوجد أول slot على grid الأصلي
+            // ✅ FIX: نستخدم workAvailable (بعد الـ breaks) كـ anchors للـ grid
             foreach ($available as [$startMin, $endMin]) {
-                // نحسب أول نقطة على grid (من work interval المناسب) >= startMin
-                $slotStart = $this->alignToGrid($startMin, $workIntervals, $duration);
+                $slotStart = $this->alignToGrid($startMin, $workAvailable, $duration);
 
                 while ($slotStart + $duration <= $endMin) {
                     $timeKey = $this->minutesToTime($slotStart);
