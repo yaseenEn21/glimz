@@ -77,6 +77,16 @@ class PartnerBookingService
                     $partner->id
                 );
 
+                // 👇 أضف هذا
+                Log::info('[PartnerBooking] Available slots', [
+                    'partner_id' => $partner->id,
+                    'date' => $data['date'],
+                    'requested_time' => $requestedStartTime,
+                    'slots_count' => count($slotsData['slots'] ?? []),
+                    'available_slots' => collect($slotsData['slots'] ?? [])->pluck('start_time')->toArray(),
+                    'error_code' => $slotsData['error_code'] ?? null,
+                ]);
+
                 if (empty($slotsData['slots'])) {
                     return [
                         'success' => false,
