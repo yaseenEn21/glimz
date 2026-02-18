@@ -305,7 +305,7 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/create', [CustomerController::class, 'create'])->name('create');
             Route::post('/', [CustomerController::class, 'store'])->name('store');
 
-            Route::get('/export', [CustomerController::class, 'export'])->name('customers.export');
+            Route::get('/export', [CustomerController::class, 'export'])->name('export');
 
             Route::get('/{customer}', [CustomerController::class, 'show'])->name('show');
 
