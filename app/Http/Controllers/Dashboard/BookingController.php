@@ -1448,6 +1448,7 @@ class BookingController extends Controller
                 'employee.user:id,name',
                 'service:id,name',
             ])
+            ->where('status', '!=', 'cancelled')
             ->orderBy('booking_date')
             ->orderBy('start_time')
             ->get();
@@ -1560,23 +1561,7 @@ class BookingController extends Controller
             }
 
             // ── رابط الموقع كـ Hyperlink ──────────────────────────
-            if ($mapsUrl) {
-                $locationCell = $sheet->getCell("F{$rowIndex}");
-                $locationCell->setHyperlink(new Hyperlink($mapsUrl));
-                $locationCell->setValue('📍 فتح الموقع');
-                $locationCell->getStyle()->applyFromArray([
-                    'font' => [
-                        'color'     => ['rgb' => '0563C1'],
-                        'underline' => Font::UNDERLINE_SINGLE,
-                        'name'      => 'Arial',
-                        'size'      => 10,
-                    ],
-                    'alignment' => [
-                        'horizontal' => Alignment::HORIZONTAL_CENTER,
-                        'vertical'   => Alignment::VERTICAL_CENTER,
-                    ],
-                ]);
-            }
+            $sheet->getCell("F{$rowIndex}")->setValue($mapsUrl);
 
             // ── تنسيق العمود A (رقم الحجز) بالوسط ───────────────
             $sheet->getCell("A{$rowIndex}")->getStyle()->getAlignment()
