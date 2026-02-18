@@ -26,6 +26,18 @@ class PartnerBookingService
      */
     public function createBooking(Partner $partner, array $data): array
     {
+
+        $lockKey = "booking_slot_{$partner->id}_{$data['date']}_{$data['start_time']}_s{$data['service_id']}";
+        $lock = \Cache::lock($lockKey, 15);
+
+        if (!$lock->get()) {
+            return [
+                'success' => false,
+                'error' => 'Slot is being processed, please retry',
+                'error_code' => 'SLOT_LOCKED',
+            ];
+        }
+
         try {
             return DB::transaction(function () use ($partner, $data) {
                 // 1. التحقق من الخدمة
@@ -124,6 +136,23 @@ class PartnerBookingService
                 }
                 $employeeId = (int) $employees[0]['employee_id'];
 
+                // 🔒 تأكد إن الموظف لسا متاح في هذا الوقت (قفل قراءة)
+                $conflict = Booking::query()
+                    ->where('employee_id', $employeeId)
+                    ->where('booking_date', $dbDate)
+                    ->where('start_time', $startTime)
+                    ->whereNotIn('status', ['cancelled'])
+                    ->lockForUpdate()
+                    ->exists();
+
+                if ($conflict) {
+                    return [
+                        'success' => false,
+                        'error' => 'Slot just taken by another booking',
+                        'error_code' => 'SLOT_TAKEN',
+                    ];
+                }
+
                 // 11. Pricing
                 $pricing = app(BookingPricingService::class)
                     ->resolve($service, $customer, $address, $startTime);
@@ -218,6 +247,8 @@ class PartnerBookingService
                 'error' => 'Failed to create booking: ' . $e->getMessage(),
                 'error_code' => 'BOOKING_CREATE_FAILED',
             ];
+        } finally {
+            $lock->release();
         }
     }
 
