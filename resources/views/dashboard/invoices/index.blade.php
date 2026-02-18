@@ -3,7 +3,7 @@
 @section('content')
 
 @section('top-btns')
-    <button type="button" class="btn btn-light-success" data-bs-toggle="modal" data-bs-target="#exportInvoicesModal">
+    <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#exportInvoicesModal">
         <i class="fa-solid fa-file-excel me-1"></i>
         {{ __('invoices.export_excel') }}
     </button>
