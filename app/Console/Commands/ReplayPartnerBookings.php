@@ -205,7 +205,7 @@ class ReplayPartnerBookings extends Command
 
         foreach ($requests as $req) {
             $promises[] = Http::withHeaders([
-                'X-Partner-Key' => $apiKey,
+                'Authorization' => 'Bearer ' . $apiKey,
                 'Accept'        => 'application/json',
             ])->async()->post("{$url}/api/partners/v1/bookings", $req['payload']);
         }
@@ -239,9 +239,10 @@ class ReplayPartnerBookings extends Command
     {
         try {
             $response = Http::withHeaders([
-                'X-Partner-Key' => $apiKey,
+                'Authorization' => 'Bearer ' . $apiKey,
                 'Accept'        => 'application/json',
-            ])->post("{$url}/api/partners/v1/bookings", $payload);
+            ])->post("{$url}/api/v1/partners/bookings", $payload);
+
 
             $body = $response->json();
 

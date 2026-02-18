@@ -395,6 +395,18 @@ class SlotService
             $bookingIntervals = $this->getBookingIntervals($emp->id, $dbDate, $nextDbDate, $excludeBookingId);
             $available = $this->subtractIntervals($available, $bookingIntervals);
 
+            // ✅ أضف هنا
+            \Log::debug('[SlotService] Employee available intervals', [
+                'employee_id' => $emp->id,
+                'employee_name' => $emp->user?->name,
+                'date' => $dbDate,
+                'work_intervals' => $workIntervals,
+                'break_intervals' => $breakIntervals,
+                'block_intervals' => $blockIntervals,
+                'booking_intervals' => $bookingIntervals,
+                'final_available' => $available,
+            ]);
+
             $slots = $this->generateSlots($available, $duration, $step, $mode);
 
             foreach ($slots as $slot) {
