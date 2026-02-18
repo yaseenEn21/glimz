@@ -19,6 +19,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Yajra\DataTables\DataTables;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+use PhpOffice\PhpSpreadsheet\Style\{Fill, Alignment, Border};
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class CustomerController extends Controller
 {
@@ -253,10 +257,10 @@ class CustomerController extends Controller
         $q = Booking::query()
             ->where('user_id', $customer->id)
             ->with([
-                    'service:id,name',
-                    'employee:id,user_id',
-                    'employee.user:id,name,mobile',
-                ])
+                'service:id,name',
+                'employee:id,user_id',
+                'employee.user:id,name,mobile',
+            ])
             ->select('bookings.*');
 
         return $datatable->eloquent($q)
@@ -390,5 +394,166 @@ class CustomerController extends Controller
 
         $q = Address::query()->where('user_id', $customer->id)->select('addresses.*');
         return $datatable->eloquent($q)->toJson();
+    }
+
+    public function export(Request $request): StreamedResponse
+    {
+        $request->validate([
+            'from' => ['required', 'date_format:Y-m-d'],
+            'to' => ['required', 'date_format:Y-m-d', 'after_or_equal:from'],
+        ]);
+
+        $from = $request->input('from');
+        $to = $request->input('to');
+
+        $customers = User::query()
+            ->where('user_type', 'customer')
+            ->whereDate('created_at', '>=', $from)
+            ->whereDate('created_at', '<=', $to)
+            ->withCount(['bookings', 'cars'])
+            ->orderBy('created_at')
+            ->get();
+
+        $spreadsheet = new Spreadsheet();
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('الزبائن');
+        $sheet->setRightToLeft(true);
+
+        // ── Headers ──────────────────────────────────────────────
+        $headers = [
+            'A' => ['label' => '# الزبون', 'width' => 10],
+            'B' => ['label' => 'الاسم', 'width' => 28],
+            'C' => ['label' => 'رقم الجوال', 'width' => 18],
+            'D' => ['label' => 'البريد الإلكتروني', 'width' => 30],
+            'E' => ['label' => 'الجنس', 'width' => 10],
+            'F' => ['label' => 'عدد الحجوزات', 'width' => 16],
+            'G' => ['label' => 'عدد السيارات', 'width' => 14],
+            'H' => ['label' => 'الحالة', 'width' => 12],
+            'I' => ['label' => 'تاريخ التسجيل', 'width' => 20],
+        ];
+
+        $headerFill = [
+            'fillType' => Fill::FILL_SOLID,
+            'startColor' => ['rgb' => '1F4E79'],
+        ];
+        $headerFont = [
+            'bold' => true,
+            'color' => ['rgb' => 'FFFFFF'],
+            'name' => 'Arial',
+            'size' => 11,
+        ];
+        $centerAlign = [
+            'horizontal' => Alignment::HORIZONTAL_CENTER,
+            'vertical' => Alignment::VERTICAL_CENTER,
+        ];
+        $thinBorder = [
+            'borderStyle' => Border::BORDER_THIN,
+            'color' => ['rgb' => 'CCCCCC'],
+        ];
+
+        foreach ($headers as $col => $def) {
+            $cell = $sheet->getCell("{$col}1");
+            $cell->setValue($def['label']);
+            $cell->getStyle()->applyFromArray([
+                'fill' => $headerFill,
+                'font' => $headerFont,
+                'alignment' => $centerAlign,
+                'borders' => ['allBorders' => $thinBorder],
+            ]);
+            $sheet->getColumnDimension($col)->setWidth($def['width']);
+        }
+
+        $sheet->getRowDimension(1)->setRowHeight(28);
+        $sheet->freezePane('A2');
+
+        // ── Rows ─────────────────────────────────────────────────
+        $rowIndex = 2;
+        $oddFill = ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F5F8FF']];
+        $evenFill = ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'FFFFFF']];
+
+        $genderMap = ['male' => 'ذكر', 'female' => 'أنثى'];
+
+        foreach ($customers as $customer) {
+            $fill = ($rowIndex % 2 === 0) ? $evenFill : $oddFill;
+
+            $row = [
+                'A' => $customer->id,
+                'B' => $customer->name,
+                'C' => $customer->mobile,
+                'D' => $customer->email ?? '—',
+                'E' => $genderMap[$customer->gender] ?? '—',
+                'F' => (int) $customer->bookings_count,
+                'G' => (int) $customer->cars_count,
+                'H' => $customer->is_active ? 'نشط' : 'غير نشط',
+                'I' => $customer->created_at?->format('Y-m-d H:i'),
+            ];
+
+            foreach ($row as $col => $value) {
+                $cell = $sheet->getCell("{$col}{$rowIndex}");
+                $cell->setValue($value);
+                $cell->getStyle()->applyFromArray([
+                    'fill' => $fill,
+                    'font' => ['name' => 'Arial', 'size' => 10],
+                    'alignment' => [
+                        'horizontal' => Alignment::HORIZONTAL_RIGHT,
+                        'vertical' => Alignment::VERTICAL_CENTER,
+                    ],
+                    'borders' => ['allBorders' => $thinBorder],
+                ]);
+            }
+
+            // رقم الزبون بالوسط
+            $sheet->getCell("A{$rowIndex}")->getStyle()
+                ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+            // عدد الحجوزات والسيارات بالوسط
+            foreach (['F', 'G'] as $col) {
+                $sheet->getCell("{$col}{$rowIndex}")->getStyle()
+                    ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+            }
+
+            // الحالة — لون مختلف
+            $isActive = $customer->is_active;
+            $sheet->getCell("H{$rowIndex}")->getStyle()->applyFromArray([
+                'font' => [
+                    'bold' => true,
+                    'color' => ['rgb' => $isActive ? '1F7A1F' : 'CC0000'],
+                ],
+                'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+            ]);
+
+            $sheet->getRowDimension($rowIndex)->setRowHeight(22);
+            $rowIndex++;
+        }
+
+        // ── Summary row ──────────────────────────────────────────
+        $totalRow = $rowIndex;
+        $sheet->getCell("A{$totalRow}")->setValue('إجمالي الزبائن');
+        $sheet->getCell("B{$totalRow}")->setValue('=COUNTA(A2:A' . ($totalRow - 1) . ')');
+        $sheet->getCell("F{$totalRow}")->setValue('=SUM(F2:F' . ($totalRow - 1) . ')');
+        $sheet->getStyle("A{$totalRow}:I{$totalRow}")->applyFromArray([
+            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'E2EFDA']],
+            'font' => ['bold' => true, 'name' => 'Arial', 'size' => 10],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER],
+        ]);
+
+        // ── Metadata ─────────────────────────────────────────────
+        $spreadsheet->getProperties()
+            ->setTitle("الزبائن {$from} – {$to}")
+            ->setCreator('Dashboard');
+
+        // ── Stream ───────────────────────────────────────────────
+        $filename = "customers_{$from}_{$to}.xlsx";
+        $writer = new Xlsx($spreadsheet);
+
+        return response()->streamDownload(
+            fn() => $writer->save('php://output'),
+            $filename,
+            [
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+                'Cache-Control' => 'max-age=0',
+            ]
+        );
     }
 }
