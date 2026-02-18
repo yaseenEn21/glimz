@@ -8,6 +8,7 @@ return [
     'print' => 'Print',
     'back_to_list' => 'Back to list',
     'actions_title' => 'Actions',
+    'export_excel' => 'Export Excel',
 
     'locked' => 'Locked',
     'copied' => 'Copied',

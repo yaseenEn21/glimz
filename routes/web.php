@@ -224,6 +224,7 @@ Route::middleware(['auth'])->group(function () {
             // ->middleware('can:invoices.pay_manually');
         });
 
+        Route::get('invoices/export', [InvoiceController::class, 'export'])->name('invoices.export');
         Route::get('invoices/datatable', [InvoiceController::class, 'datatable'])->name('invoices.datatable');
         Route::resource('invoices', InvoiceController::class)->only(['index', 'show']);
 

@@ -36,6 +36,7 @@ return [
             'name_en' => 'الاسم (إنجليزي)',
             'is_active' => 'الحالة',
             'sort' => 'الترتيب',
+            'status' => 'الحالة',
         ],
 
         'delete_confirm_title' => 'تأكيد الحذف',

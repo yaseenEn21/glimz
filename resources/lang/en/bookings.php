@@ -40,6 +40,7 @@ return [
             'name_en' => 'Name (EN)',
             'is_active' => 'Status',
             'sort' => 'Sort',
+            'status' => 'Status',
         ],
 
         'delete_confirm_title' => 'Delete confirmation',

@@ -12,6 +12,7 @@ return [
     'locked' => 'مقفلة',
     'copied' => 'تم النسخ',
     'copy_number' => 'نسخ رقم الفاتورة',
+    'export_excel' => 'تصدير اكسل',
 
     'filters' => [
         'search_placeholder' => 'بحث بالرقم / رقم الفاتورة / العميل...',
