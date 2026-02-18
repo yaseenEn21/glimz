@@ -128,6 +128,16 @@ class PartnerBookingController extends Controller
     {
         $partner = $request->input('partner');
 
+        // ✅ 1. تسجيل البيانات القادمة
+        \Log::info('[PartnerBooking] Incoming request', [
+            'partner_id' => $partner?->id,
+            'partner_name' => $partner?->name,
+            'ip' => $request->ip(),
+            'payload' => $request->except(['partner']), // كل البيانات ما عدا الـ partner object
+            'timestamp' => now()->toDateTimeString(),
+        ]);
+
+
         $validator = Validator::make($request->all(), [
             'external_booking_id' => [
                 'required',
@@ -175,8 +185,26 @@ class PartnerBookingController extends Controller
         $result = $this->partnerBookingService->createBooking($partner, $transformed);
 
         if (!$result['success']) {
+
+            // ✅ 3. رُفض من الـ Service
+            \Log::warning('[PartnerBooking] Booking rejected by service', [
+                'partner_id' => $partner?->id,
+                'external_booking_id' => $request->input('external_booking_id'),
+                'error_code' => $result['error_code'] ?? 'UNKNOWN',
+                'error' => $result['error'] ?? null,
+            ]);
+
             return response()->json($result, 422);
         }
+
+        // ✅ 4. نجح الحجز
+        \Log::info('[PartnerBooking] Booking created successfully', [
+            'partner_id' => $partner?->id,
+            'booking_id' => $result['booking']->id,
+            'external_booking_id' => $request->input('external_booking_id'),
+            'booking_date' => $result['booking']->booking_date,
+            'start_time' => $result['booking']->start_time,
+        ]);
 
         return response()->json([
             'success' => true,
