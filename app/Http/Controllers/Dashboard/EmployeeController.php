@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use App\Models\EmployeeWeeklyInterval;
 use App\Models\EmployeeWorkArea;
+use App\Models\Booking;
+use Carbon\Carbon;
 
 class EmployeeController extends Controller
 {
@@ -427,104 +429,191 @@ class EmployeeController extends Controller
             ->with('success', __('employees.created_successfully'));
     }
 
-    public function show(Employee $employee)
+    public function show(Employee $employee, Request $request)
     {
-        $employee->load([
-            'user',
-            'services',
-            'weeklyIntervals',
-            'workArea',
-        ]);
+        $employee->load(['user', 'services', 'weeklyIntervals', 'workArea']);
 
+        // ─── إحصائيات عامة (كل الوقت) ────────────────────────────
+        $allBase = Booking::where('employee_id', $employee->id);
+
+        $totalBookings = (int) $allBase->count();
+        $completedBookings = (int) (clone $allBase)->where('status', 'completed')->count();
+        $cancelledBookings = (int) (clone $allBase)->where('status', 'cancelled')->count();
+        $pendingBookings = (int) (clone $allBase)->whereIn('status', ['pending', 'confirmed', 'moving', 'arrived'])->count();
+        $totalRevenue = (float) (clone $allBase)->where('status', 'completed')->sum('total_snapshot');
+        $completionRate = $totalBookings > 0 ? round(($completedBookings / $totalBookings) * 100, 1) : 0;
+
+        // ─── هذا الشهر ───────────────────────────────────────────
+        $thisMonthStart = now()->startOfMonth()->toDateString();
+        $thisMonthEnd = now()->endOfMonth()->toDateString();
+
+        $thisMonthBase = Booking::where('employee_id', $employee->id)
+            ->whereBetween('booking_date', [$thisMonthStart, $thisMonthEnd]);
+        $thisMonthBookings = (int) $thisMonthBase->count();
+        $thisMonthRevenue = (float) (clone $thisMonthBase)->where('status', 'completed')->sum('total_snapshot');
+
+        // ─── آخر 6 أشهر (للرسم البياني) ─────────────────────────
+        $last6Months = collect(range(5, 0))->map(function ($i) use ($employee) {
+            $date = now()->subMonths($i);
+            $count = Booking::where('employee_id', $employee->id)
+                ->where('status', 'completed')
+                ->whereYear('booking_date', $date->year)
+                ->whereMonth('booking_date', $date->month)
+                ->count();
+
+            return [
+                'label' => $date->translatedFormat('M Y'),
+                'count' => $count,
+            ];
+        })->values();
+
+        // ─── التقييم ─────────────────────────────────────────────
+        $ratingAvg = round((float) ($employee->rating_avg ?? 0), 1);
+        $ratingCount = (int) ($employee->rating_count ?? 0);
+
+        // ─── جدول العمل الأسبوعي ─────────────────────────────────
         $days = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
-
         $weeklyByDay = [];
         foreach ($days as $day) {
             $weeklyByDay[$day] = ['work' => null, 'break' => null];
         }
-
         foreach ($employee->weeklyIntervals as $interval) {
             if (!array_key_exists($interval->day, $weeklyByDay))
                 continue;
-            $data = [
+            $weeklyByDay[$interval->day][$interval->type] = [
                 'start_time' => $interval->start_time,
                 'end_time' => $interval->end_time,
                 'is_active' => (bool) $interval->is_active,
             ];
-            $weeklyByDay[$interval->day][$interval->type] = $data;
         }
 
+        // ─── منطقة العمل ─────────────────────────────────────────
         $workAreaPolygon = null;
         if ($employee->workArea) {
             $polygon = $employee->workArea->polygon;
             $workAreaPolygon = is_string($polygon) ? json_decode($polygon, true) : $polygon;
         }
 
-        // ─── الإحصائيات ───────────────────────────────────────────
-        $baseQuery = fn() => \App\Models\Booking::where('employee_id', $employee->id);
-
-        $totalBookings = $baseQuery()->count();
-        $completedBookings = $baseQuery()->where('status', 'completed')->count();
-        $cancelledBookings = $baseQuery()->where('status', 'cancelled')->count();
-        $pendingBookings = $baseQuery()->whereIn('status', ['pending', 'confirmed', 'moving', 'arrived'])->count();
-
-        $totalRevenue = $baseQuery()
-            ->where('status', 'completed')
-            ->where('service_pricing_source', '!=', 'package')
-            ->sum('service_final_price_snapshot');
-
-        // هذا الشهر
-        $thisMonth = now()->startOfMonth();
-        $thisMonthBookings = $baseQuery()
-            ->where('booking_date', '>=', $thisMonth->toDateString())
-            ->count();
-        $thisMonthRevenue = $baseQuery()
-            ->where('status', 'completed')
-            ->where('service_pricing_source', '!=', 'package')
-            ->where('booking_date', '>=', $thisMonth->toDateString())
-            ->sum('service_final_price_snapshot');
-
-        // التقييم
-        $ratingAvg = $baseQuery()->where('status', 'completed')->whereNotNull('rating')->avg('rating');
-        $ratingCount = $baseQuery()->where('status', 'completed')->whereNotNull('rating')->count();
-
-        // نسبة الإنجاز
-        $completionRate = $totalBookings > 0
-            ? round(($completedBookings / $totalBookings) * 100, 1)
-            : 0;
-
-        // آخر 6 أشهر (للرسم البياني)
-        $last6Months = collect(range(5, 0))->map(function ($i) use ($employee) {
-            $month = now()->subMonths($i);
-            $count = \App\Models\Booking::where('employee_id', $employee->id)
-                ->where('status', 'completed')
-                ->whereYear('booking_date', $month->year)
-                ->whereMonth('booking_date', $month->month)
-                ->count();
-            return [
-                'label' => $month->translatedFormat('M Y'),
-                'count' => $count,
-            ];
-        });
-
-        return view('dashboard.employees.show', [
-            'employee' => $employee,
-            'weeklyByDay' => $weeklyByDay,
-            'workAreaPolygon' => $workAreaPolygon,
-
-            // stats
-            'totalBookings' => $totalBookings,
-            'completedBookings' => $completedBookings,
-            'cancelledBookings' => $cancelledBookings,
-            'pendingBookings' => $pendingBookings,
-            'totalRevenue' => $totalRevenue,
-            'thisMonthBookings' => $thisMonthBookings,
-            'thisMonthRevenue' => $thisMonthRevenue,
-            'ratingAvg' => round((float) $ratingAvg, 1),
-            'ratingCount' => $ratingCount,
-            'completionRate' => $completionRate,
-            'last6Months' => $last6Months,
+        view()->share([
+            'title' => __('employees.show'),
+            'page_title' => __('employees.show'),
         ]);
+
+        return view('dashboard.employees.show', compact(
+            'employee',
+            'totalBookings',
+            'completedBookings',
+            'cancelledBookings',
+            'pendingBookings',
+            'totalRevenue',
+            'completionRate',
+            'thisMonthBookings',
+            'thisMonthRevenue',
+            'last6Months',
+            'ratingAvg',
+            'ratingCount',
+            'weeklyByDay',
+            'workAreaPolygon',
+        ));
+    }
+
+    public function bookingsDatatable(Employee $employee, DataTables $datatable, Request $request)
+    {
+        [$fromDate, $toDate] = $this->resolveBookingDateRange($request);
+
+        $query = Booking::query()
+            ->where('employee_id', $employee->id)
+            ->whereBetween('booking_date', [$fromDate->toDateString(), $toDate->toDateString()])
+            ->with(['user', 'service'])
+            ->select('bookings.*');
+
+        if ($status = $request->get('status')) {
+            $query->where('status', $status);
+        }
+
+        return $datatable->eloquent($query)
+            ->addIndexColumn()
+            ->addColumn('customer', function (Booking $row) {
+                $name = $row->user?->name ?? '—';
+                $mobile = $row->user?->mobile ?? '';
+                return '<div class="fw-semibold">' . e($name) . '</div>'
+                    . '<div class="text-muted fs-7">' . e($mobile) . '</div>';
+            })
+            ->addColumn('service_name', function (Booking $row) {
+                if (!$row->service)
+                    return '—';
+                $locale = app()->getLocale();
+                $name = $row->service->name[$locale] ?? reset($row->service->name ?? []) ?? '—';
+                return e($name);
+            })
+            ->addColumn('schedule', function (Booking $row) {
+                return '<div class="fw-semibold">' . $row->booking_date . '</div>'
+                    . '<div class="text-muted fs-7">'
+                    . substr($row->start_time ?? '', 0, 5) . ' - '
+                    . substr($row->end_time ?? '', 0, 5)
+                    . '</div>';
+            })
+            ->addColumn('status_badge', function (Booking $row) {
+                $map = [
+                    'pending' => 'badge-light-warning',
+                    'confirmed' => 'badge-light-primary',
+                    'moving' => 'badge-light-info',
+                    'arrived' => 'badge-light-info',
+                    'completed' => 'badge-light-success',
+                    'cancelled' => 'badge-light-danger',
+                ];
+                $cls = $map[$row->status] ?? 'badge-light';
+                $label = __('bookings.status.' . $row->status);
+                return '<span class="badge ' . $cls . '">' . $label . '</span>';
+            })
+            ->addColumn('total', fn(Booking $row) => number_format((float) $row->total_snapshot, 2) . ' SAR')
+            ->addColumn('actions', function (Booking $row) {
+                return '<a href="' . route('dashboard.bookings.show', $row->id) . '" 
+                class="btn btn-sm btn-icon btn-light-info" title="عرض">
+                <i class="fa-solid fa-eye fs-5"></i>
+            </a>';
+            })
+            ->rawColumns(['customer', 'schedule', 'status_badge', 'actions'])
+            ->make(true);
+    }
+
+    public function bookingsStats(Employee $employee, Request $request)
+    {
+        [$fromDate, $toDate] = $this->resolveBookingDateRange($request);
+
+        $base = Booking::query()
+            ->where('employee_id', $employee->id)
+            ->whereBetween('booking_date', [$fromDate->toDateString(), $toDate->toDateString()]);
+
+        return response()->json([
+            'total' => (int) $base->count(),
+            'completed' => (int) (clone $base)->where('status', 'completed')->count(),
+            'cancelled' => (int) (clone $base)->where('status', 'cancelled')->count(),
+            'revenue' => round((float) (clone $base)->where('status', 'completed')->sum('total_snapshot'), 2),
+        ]);
+    }
+
+    private function resolveBookingDateRange(Request $request): array
+    {
+        $from = $request->query('from');
+        $to = $request->query('to');
+        $fromDate = now()->startOfMonth()->startOfDay();
+        $toDate = now()->endOfMonth()->endOfDay();
+
+        if ($from) {
+            try {
+                $fromDate = Carbon::createFromFormat('Y-m-d', $from)->startOfDay();
+            } catch (\Throwable $e) {
+            }
+        }
+        if ($to) {
+            try {
+                $toDate = Carbon::createFromFormat('Y-m-d', $to)->endOfDay();
+            } catch (\Throwable $e) {
+            }
+        }
+
+        return [$fromDate, $toDate, $fromDate->toDateString(), $toDate->toDateString()];
     }
 
     public function edit(Employee $employee)

@@ -3,22 +3,24 @@
 @section('title', __('employees.show_title', ['name' => $employee->user->name ?? '']))
 
 @push('custom-style')
-<style>
-    #employee_work_area_map_show {
-        width: 100%;
-        height: 320px;
-        border-radius: 0.75rem;
-        border: 1px solid #E4E6EF;
-        overflow: hidden;
-    }
-    .stat-card {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    .stat-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0,0,0,0.08) !important;
-    }
-</style>
+    <style>
+        #employee_work_area_map_show {
+            width: 100%;
+            height: 320px;
+            border-radius: 0.75rem;
+            border: 1px solid #E4E6EF;
+            overflow: hidden;
+        }
+
+        .stat-card {
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08) !important;
+        }
+    </style>
 @endpush
 
 @section('content')
@@ -33,8 +35,8 @@
 @endsection
 
 @php
-    $locale      = app()->getLocale();
-    $isActive    = $employee->is_active && ($employee->user->is_active ?? false);
+    $locale = app()->getLocale();
+    $isActive = $employee->is_active && ($employee->user->is_active ?? false);
     $ratingFilled = (int) round((float) $ratingAvg);
     $ratingFilled = max(0, min(5, $ratingFilled));
 @endphp
@@ -101,11 +103,13 @@
             <div class="text-muted fs-7 text-md-end">
                 <div class="mb-1">
                     <i class="fa-regular fa-calendar me-1"></i>
-                    {{ __('employees.created_at') }}: <span class="fw-semibold text-gray-700">{{ optional($employee->created_at)->format('Y-m-d') }}</span>
+                    {{ __('employees.created_at') }}: <span
+                        class="fw-semibold text-gray-700">{{ optional($employee->created_at)->format('Y-m-d') }}</span>
                 </div>
                 <div>
                     <i class="fa-regular fa-clock me-1"></i>
-                    {{ __('employees.last_update') }}: <span class="fw-semibold text-gray-700">{{ optional($employee->updated_at)->format('Y-m-d H:i') }}</span>
+                    {{ __('employees.last_update') }}: <span
+                        class="fw-semibold text-gray-700">{{ optional($employee->updated_at)->format('Y-m-d H:i') }}</span>
                 </div>
             </div>
         </div>
@@ -195,7 +199,12 @@
         <ul class="nav nav-tabs nav-line-tabs fs-6 mb-0">
             <li class="nav-item">
                 <a class="nav-link active" data-bs-toggle="tab" href="#tab_stats">
-                    <i class="fa-solid fa-chart-bar me-2"></i>الإحصائيات
+                    <i class="fa-solid fa-chart-bar me-2"></i>{{ __('employees.tab_stats') }}
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#tab_bookings">
+                    <i class="fa-solid fa-chart-bar me-2"></i> {{ __('employees.tab_bookings') }}
                 </a>
             </li>
             <li class="nav-item">
@@ -242,14 +251,14 @@
                                     <div class="card-body p-7">
                                         <div class="d-flex align-items-center justify-content-between mb-4">
                                             <div class="fw-bold fs-5 text-gray-700">نسبة الإنجاز</div>
-                                            <span class="badge badge-light-{{ $completionRate >= 80 ? 'success' : ($completionRate >= 50 ? 'warning' : 'danger') }} fs-6">
+                                            <span
+                                                class="badge badge-light-{{ $completionRate >= 80 ? 'success' : ($completionRate >= 50 ? 'warning' : 'danger') }} fs-6">
                                                 {{ $completionRate }}%
                                             </span>
                                         </div>
                                         <div class="progress mb-3" style="height: 12px; border-radius: 6px;">
                                             <div class="progress-bar bg-{{ $completionRate >= 80 ? 'success' : ($completionRate >= 50 ? 'warning' : 'danger') }}"
-                                                role="progressbar"
-                                                style="width: {{ $completionRate }}%"></div>
+                                                role="progressbar" style="width: {{ $completionRate }}%"></div>
                                         </div>
                                         <div class="d-flex justify-content-between text-muted fs-8">
                                             <span>{{ $completedBookings }} منجزة</span>
@@ -264,19 +273,20 @@
                                 <div class="card card-flush shadow-sm h-100">
                                     <div class="card-body p-7">
                                         @php
-                                            $cancelRate = $totalBookings > 0
-                                                ? round(($cancelledBookings / $totalBookings) * 100, 1)
-                                                : 0;
+                                            $cancelRate =
+                                                $totalBookings > 0
+                                                    ? round(($cancelledBookings / $totalBookings) * 100, 1)
+                                                    : 0;
                                         @endphp
                                         <div class="d-flex align-items-center justify-content-between mb-4">
                                             <div class="fw-bold fs-5 text-gray-700">نسبة الإلغاء</div>
-                                            <span class="badge badge-light-{{ $cancelRate <= 10 ? 'success' : ($cancelRate <= 25 ? 'warning' : 'danger') }} fs-6">
+                                            <span
+                                                class="badge badge-light-{{ $cancelRate <= 10 ? 'success' : ($cancelRate <= 25 ? 'warning' : 'danger') }} fs-6">
                                                 {{ $cancelRate }}%
                                             </span>
                                         </div>
                                         <div class="progress mb-3" style="height: 12px; border-radius: 6px;">
-                                            <div class="progress-bar bg-danger"
-                                                role="progressbar"
+                                            <div class="progress-bar bg-danger" role="progressbar"
                                                 style="width: {{ $cancelRate }}%"></div>
                                         </div>
                                         <div class="d-flex justify-content-between text-muted fs-8">
@@ -361,7 +371,8 @@
                                     </div>
                                     <div class="d-flex gap-1">
                                         @for ($i = 1; $i <= 5; $i++)
-                                            <i class="fa-solid fa-star fs-5 {{ $i <= $ratingFilled ? 'text-warning' : 'text-gray-300' }}"></i>
+                                            <i
+                                                class="fa-solid fa-star fs-5 {{ $i <= $ratingFilled ? 'text-warning' : 'text-gray-300' }}"></i>
                                         @endfor
                                     </div>
                                 </div>
@@ -373,10 +384,12 @@
                                             $pct = 0;
                                         @endphp
                                         <div class="d-flex align-items-center gap-2 mb-2">
-                                            <div class="text-muted fs-8" style="width: 20px;">{{ $star }}</div>
+                                            <div class="text-muted fs-8" style="width: 20px;">{{ $star }}
+                                            </div>
                                             <i class="fa-solid fa-star text-warning fs-8"></i>
                                             <div class="progress flex-grow-1" style="height: 6px;">
-                                                <div class="progress-bar bg-warning" style="width: {{ $pct }}%"></div>
+                                                <div class="progress-bar bg-warning"
+                                                    style="width: {{ $pct }}%"></div>
                                             </div>
                                         </div>
                                     @endforeach
@@ -404,12 +417,7 @@
                                 <h3 class="card-title fw-bold">{{ __('employees.basic_info') }}</h3>
                             </div>
                             <div class="card-body pt-0">
-                                @foreach ([
-                                    [__('employees.fields.name'),         $employee->user->name ?? '—'],
-                                    [__('employees.fields.mobile'),       $employee->user->mobile ?? '—'],
-                                    [__('employees.fields.email'),        $employee->user->email ?? '—'],
-                                    [__('employees.fields.birth_date'),   optional($employee->user->birth_date)->format('Y-m-d') ?? '—'],
-                                ] as [$label, $value])
+                                @foreach ([[__('employees.fields.name'), $employee->user->name ?? '—'], [__('employees.fields.mobile'), $employee->user->mobile ?? '—'], [__('employees.fields.email'), $employee->user->email ?? '—'], [__('employees.fields.birth_date'), optional($employee->user->birth_date)->format('Y-m-d') ?? '—']] as [$label, $value])
                                     <div class="mb-4">
                                         <div class="text-muted fs-8 mb-1">{{ $label }}</div>
                                         <div class="fw-semibold">{{ $value }}</div>
@@ -426,16 +434,19 @@
                                 <div class="mb-4">
                                     <div class="text-muted fs-8 mb-1">{{ __('employees.fields.is_active') }}</div>
                                     @if ($employee->is_active)
-                                        <span class="badge badge-light-success">{{ __('employees.status_active') }}</span>
+                                        <span
+                                            class="badge badge-light-success">{{ __('employees.status_active') }}</span>
                                     @else
-                                        <span class="badge badge-light-danger">{{ __('employees.status_inactive') }}</span>
+                                        <span
+                                            class="badge badge-light-danger">{{ __('employees.status_inactive') }}</span>
                                     @endif
                                 </div>
 
                                 <div>
                                     <div class="text-muted fs-8 mb-1">{{ __('employees.fields.notification') }}</div>
                                     @if ($employee->user->notification ?? false)
-                                        <span class="badge badge-light-primary">{{ __('employees.notification_on') }}</span>
+                                        <span
+                                            class="badge badge-light-primary">{{ __('employees.notification_on') }}</span>
                                     @else
                                         <span class="badge badge-light">{{ __('employees.notification_off') }}</span>
                                     @endif
@@ -459,9 +470,12 @@
                                     <div class="d-flex flex-wrap gap-2">
                                         @foreach ($employee->services as $service)
                                             @php
-                                                $sName = $service->name[$locale] ?? (is_array($service->name) ? reset($service->name) : $service->name);
+                                                $sName =
+                                                    $service->name[$locale] ??
+                                                    (is_array($service->name) ? reset($service->name) : $service->name);
                                             @endphp
-                                            <span class="badge badge-light-primary fw-semibold">{{ $sName }}</span>
+                                            <span
+                                                class="badge badge-light-primary fw-semibold">{{ $sName }}</span>
                                         @endforeach
                                     </div>
                                 @endif
@@ -493,13 +507,13 @@
                     <div class="card-body">
                         @php
                             $daysLabels = [
-                                'saturday'  => $locale === 'ar' ? 'السبت'    : 'Saturday',
-                                'sunday'    => $locale === 'ar' ? 'الأحد'    : 'Sunday',
-                                'monday'    => $locale === 'ar' ? 'الاثنين'  : 'Monday',
-                                'tuesday'   => $locale === 'ar' ? 'الثلاثاء' : 'Tuesday',
+                                'saturday' => $locale === 'ar' ? 'السبت' : 'Saturday',
+                                'sunday' => $locale === 'ar' ? 'الأحد' : 'Sunday',
+                                'monday' => $locale === 'ar' ? 'الاثنين' : 'Monday',
+                                'tuesday' => $locale === 'ar' ? 'الثلاثاء' : 'Tuesday',
                                 'wednesday' => $locale === 'ar' ? 'الأربعاء' : 'Wednesday',
-                                'thursday'  => $locale === 'ar' ? 'الخميس'  : 'Thursday',
-                                'friday'    => $locale === 'ar' ? 'الجمعة'   : 'Friday',
+                                'thursday' => $locale === 'ar' ? 'الخميس' : 'Thursday',
+                                'friday' => $locale === 'ar' ? 'الجمعة' : 'Friday',
                             ];
                         @endphp
 
@@ -516,7 +530,7 @@
                                 <tbody>
                                     @foreach ($daysLabels as $dayKey => $dayLabel)
                                         @php
-                                            $work  = $weeklyByDay[$dayKey]['work']  ?? null;
+                                            $work = $weeklyByDay[$dayKey]['work'] ?? null;
                                             $break = $weeklyByDay[$dayKey]['break'] ?? null;
                                             $isWorkDay = $work && ($work['is_active'] ?? false);
                                         @endphp
@@ -525,7 +539,8 @@
                                             <td>
                                                 @if ($isWorkDay)
                                                     <span class="badge badge-light-success fw-semibold">
-                                                        {{ $work['start_time'] ?? '--:--' }} – {{ $work['end_time'] ?? '--:--' }}
+                                                        {{ $work['start_time'] ?? '--:--' }} –
+                                                        {{ $work['end_time'] ?? '--:--' }}
                                                     </span>
                                                 @else
                                                     <span class="text-muted fs-8">{{ __('employees.off_day') }}</span>
@@ -534,10 +549,12 @@
                                             <td>
                                                 @if ($break && ($break['is_active'] ?? false))
                                                     <span class="badge badge-light-warning fw-semibold">
-                                                        {{ $break['start_time'] ?? '--:--' }} – {{ $break['end_time'] ?? '--:--' }}
+                                                        {{ $break['start_time'] ?? '--:--' }} –
+                                                        {{ $break['end_time'] ?? '--:--' }}
                                                     </span>
                                                 @else
-                                                    <span class="text-muted fs-8">{{ __('employees.no_break') }}</span>
+                                                    <span
+                                                        class="text-muted fs-8">{{ __('employees.no_break') }}</span>
                                                 @endif
                                             </td>
                                             <td>
@@ -556,6 +573,60 @@
                 </div>
             </div>
 
+            {{-- بعد tab_schedule tab-pane --}}
+            <div class="tab-pane fade" id="tab_bookings" role="tabpanel">
+
+                {{-- فلاتر --}}
+                <div class="row g-3 mb-6">
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">من تاريخ</label>
+                        <input type="date" id="filter_from" class="form-control"
+                            value="{{ now()->startOfMonth()->format('Y-m-d') }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">إلى تاريخ</label>
+                        <input type="date" id="filter_to" class="form-control"
+                            value="{{ now()->format('Y-m-d') }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-semibold">الحالة</label>
+                        <select id="filter_status" class="form-select">
+                            <option value="">كل الحالات</option>
+                            <option value="pending">{{ __('bookings.status.pending') }}</option>
+                            <option value="confirmed">{{ __('bookings.status.confirmed') }}</option>
+                            <option value="moving">{{ __('bookings.status.moving') }}</option>
+                            <option value="arrived">{{ __('bookings.status.arrived') }}</option>
+                            <option value="completed">{{ __('bookings.status.completed') }}</option>
+                            <option value="cancelled">{{ __('bookings.status.cancelled') }}</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3 d-flex align-items-end">
+                        <button type="button" id="apply_filters" class="btn btn-primary w-100">
+                            <i class="fa-solid fa-filter me-1"></i> تطبيق
+                        </button>
+                    </div>
+                </div>
+
+                {{-- الجدول --}}
+                <div class="table-responsive">
+                    <table id="employee_bookings_table" class="table align-middle table-row-dashed fs-6 gy-5">
+                        <thead>
+                            <tr class="text-start text-muted fw-bold fs-7 text-uppercase gs-0">
+                                <th>#</th>
+                                <th>{{ __('bookings.columns.customer') }}</th>
+                                <th>{{ __('bookings.columns.service') }}</th>
+                                <th>{{ __('bookings.columns.schedule') }}</th>
+                                <th>{{ __('bookings.columns.status_control') }}</th>
+                                <th>{{ __('bookings.columns.total') }}</th>
+                                <th class="text-end">{{ __('messages.actions') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-gray-600 fw-semibold"></tbody>
+                    </table>
+                </div>
+
+            </div>
+
         </div>
     </div>
 </div>
@@ -563,94 +634,191 @@
 @endsection
 
 @push('custom-script')
-
 {{-- Chart.js --}}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 
 <script>
-(function () {
+    (function() {
 
-    // ─── الرسم البياني ──────────────────────────────────────────
-    const chartData = @json($last6Months);
+        // ─── الرسم البياني ──────────────────────────────────────────
+        const chartData = @json($last6Months);
 
-    const ctx = document.getElementById('bookingsChart')?.getContext('2d');
-    if (ctx) {
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: chartData.map(d => d.label),
-                datasets: [{
-                    label: 'حجوزات منجزة',
-                    data: chartData.map(d => d.count),
-                    backgroundColor: 'rgba(59, 130, 246, 0.15)',
-                    borderColor: 'rgba(59, 130, 246, 0.8)',
-                    borderWidth: 2,
-                    borderRadius: 6,
-                    borderSkipped: false,
-                }]
-            },
-            options: {
-                responsive: true,
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: ctx => ` ${ctx.parsed.y} حجز`
+        const ctx = document.getElementById('bookingsChart')?.getContext('2d');
+        if (ctx) {
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: chartData.map(d => d.label),
+                    datasets: [{
+                        label: 'حجوزات منجزة',
+                        data: chartData.map(d => d.count),
+                        backgroundColor: 'rgba(59, 130, 246, 0.15)',
+                        borderColor: 'rgba(59, 130, 246, 0.8)',
+                        borderWidth: 2,
+                        borderRadius: 6,
+                        borderSkipped: false,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => ` ${ctx.parsed.y} حجز`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                stepSize: 1
+                            },
+                            grid: {
+                                color: 'rgba(0,0,0,0.04)'
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            }
                         }
                     }
-                },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: { stepSize: 1 },
-                        grid: { color: 'rgba(0,0,0,0.04)' }
-                    },
-                    x: {
-                        grid: { display: false }
-                    }
                 }
-            }
-        });
-    }
+            });
+        }
 
 
-    // ─── Google Maps ─────────────────────────────────────────────
-    const polygonData = @json($workAreaPolygon);
+        // ─── Google Maps ─────────────────────────────────────────────
+        const polygonData = @json($workAreaPolygon);
 
-    window.initEmployeeShowMap = function () {
-        const mapEl = document.getElementById('employee_work_area_map_show');
-        if (!mapEl) return;
+        window.initEmployeeShowMap = function() {
+            const mapEl = document.getElementById('employee_work_area_map_show');
+            if (!mapEl) return;
 
-        const map = new google.maps.Map(mapEl, {
-            center: { lat: 31.5, lng: 34.47 },
-            zoom: 11,
-        });
-
-        if (Array.isArray(polygonData) && polygonData.length >= 3) {
-            const path = polygonData.map(p => ({ lat: Number(p.lat), lng: Number(p.lng) }));
-
-            new google.maps.Polygon({
-                paths: path,
-                strokeColor: '#0d6efd',
-                strokeOpacity: 0.9,
-                strokeWeight: 2,
-                fillColor: '#0d6efd',
-                fillOpacity: 0.20,
-                clickable: false,
-                map,
+            const map = new google.maps.Map(mapEl, {
+                center: {
+                    lat: 31.5,
+                    lng: 34.47
+                },
+                zoom: 11,
             });
 
-            const bounds = new google.maps.LatLngBounds();
-            path.forEach(p => bounds.extend(p));
-            map.fitBounds(bounds);
-        }
-    };
+            if (Array.isArray(polygonData) && polygonData.length >= 3) {
+                const path = polygonData.map(p => ({
+                    lat: Number(p.lat),
+                    lng: Number(p.lng)
+                }));
 
-})();
+                new google.maps.Polygon({
+                    paths: path,
+                    strokeColor: '#0d6efd',
+                    strokeOpacity: 0.9,
+                    strokeWeight: 2,
+                    fillColor: '#0d6efd',
+                    fillOpacity: 0.20,
+                    clickable: false,
+                    map,
+                });
+
+                const bounds = new google.maps.LatLngBounds();
+                path.forEach(p => bounds.extend(p));
+                map.fitBounds(bounds);
+            }
+        };
+
+        // ─── جدول حجوزات الموظف ─────────────────────────────────────
+        let bookingsDtInitialized = false;
+        let bookingsDt = null;
+
+        function initBookingsDt() {
+            if (bookingsDtInitialized) return;
+            bookingsDtInitialized = true;
+
+            bookingsDt = $('#employee_bookings_table').DataTable({
+                processing: true,
+                serverSide: true,
+                searching: false,
+                pageLength: 10,
+                order: [
+                    [0, 'desc']
+                ],
+                language: {
+                    url: dtLangUrl
+                },
+                ajax: {
+                    url: "{{ route('dashboard.employees.bookings.datatable', $employee->id) }}",
+                    data: function(d) {
+                        d.from = $('#filter_from').val();
+                        d.to = $('#filter_to').val();
+                        d.status = $('#filter_status').val();
+                    }
+                },
+                columns: [{
+                        data: 'DT_RowIndex',
+                        orderable: false,
+                        searchable: false
+                    },
+                    {
+                        data: 'customer',
+                        orderable: false,
+                        searchable: false
+                    },
+                    {
+                        data: 'service_name',
+                        orderable: false,
+                        searchable: false
+                    },
+                    {
+                        data: 'schedule',
+                        orderable: false,
+                        searchable: false
+                    },
+                    {
+                        data: 'status_badge',
+                        orderable: false,
+                        searchable: false
+                    },
+                    {
+                        data: 'total',
+                        orderable: false,
+                        searchable: false
+                    },
+                    {
+                        data: 'actions',
+                        orderable: false,
+                        searchable: false,
+                        className: 'text-end'
+                    },
+                ],
+            });
+        }
+
+        // تفعيل الجدول عند فتح الـ tab
+        document.querySelectorAll('a[data-bs-toggle="tab"]').forEach(function(el) {
+            el.addEventListener('shown.bs.tab', function(e) {
+                if (e.target.getAttribute('href') === '#tab_bookings') {
+                    initBookingsDt();
+                }
+            });
+        });
+
+        // تطبيق الفلاتر
+        document.getElementById('apply_filters')?.addEventListener('click', function() {
+            if (!bookingsDtInitialized) {
+                initBookingsDt();
+            } else {
+                bookingsDt.ajax.reload();
+            }
+        });
+
+    })();
 </script>
 
 <script
     src="https://maps.googleapis.com/maps/api/js?key={{ config('services.google_maps.key') }}&callback=initEmployeeShowMap"
     async defer></script>
-
 @endpush
