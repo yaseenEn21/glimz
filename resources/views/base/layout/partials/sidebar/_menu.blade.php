@@ -367,6 +367,18 @@
                         </div>
                     @endcan
 
+                    @can('notifications_templates.view')
+                        <div class="menu-item">
+                            <a class="menu-link {{ $is('dashboard.notification-templates.*') ? 'active' : '' }}"
+                                href="{{ route('dashboard.notification-templates.index') }}">
+                                <span class="menu-icon">
+                                    <i class="fas fa-cogs fs-2"></i>
+                                </span>
+                                <span class="menu-title">{{ t(key: 'notifications_templates.title') }}</span>
+                            </a>
+                        </div>
+                    @endcan
+
                     @can('roles.view')
                         <div class="menu-item">
                             <a class="menu-link {{ $is('dashboard.roles.*') ? 'active' : '' }}"

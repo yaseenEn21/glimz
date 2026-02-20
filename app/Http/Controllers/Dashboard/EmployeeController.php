@@ -429,7 +429,6 @@ class EmployeeController extends Controller
 
     public function show(Employee $employee)
     {
-        // نحمل كل العلاقات اللي نحتاجها في صفحة الـ show
         $employee->load([
             'user',
             'services',
@@ -437,69 +436,94 @@ class EmployeeController extends Controller
             'workArea',
         ]);
 
-        // الأيام اللي مستخدمينها في الـ schema
-        $days = [
-            'saturday',
-            'sunday',
-            'monday',
-            'tuesday',
-            'wednesday',
-            'thursday',
-            'friday',
-        ];
+        $days = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
 
-        // نرتب السجلات حسب اليوم والنوع (work / break)
         $weeklyByDay = [];
-
         foreach ($days as $day) {
-            $weeklyByDay[$day] = [
-                'work' => null,
-                'break' => null,
-            ];
+            $weeklyByDay[$day] = ['work' => null, 'break' => null];
         }
 
         foreach ($employee->weeklyIntervals as $interval) {
-            $dayKey = $interval->day; // 'monday'..الخ
-
-            if (!array_key_exists($dayKey, $weeklyByDay)) {
+            if (!array_key_exists($interval->day, $weeklyByDay))
                 continue;
-            }
-
             $data = [
                 'start_time' => $interval->start_time,
                 'end_time' => $interval->end_time,
                 'is_active' => (bool) $interval->is_active,
             ];
-
-            if ($interval->type === 'work') {
-                $weeklyByDay[$dayKey]['work'] = $data;
-            } elseif ($interval->type === 'break') {
-                $weeklyByDay[$dayKey]['break'] = $data;
-            }
+            $weeklyByDay[$interval->day][$interval->type] = $data;
         }
 
-        // 🗺️ تجهيز الـ polygon لمنطقة العمل
         $workAreaPolygon = null;
-
         if ($employee->workArea) {
             $polygon = $employee->workArea->polygon;
-
-            // لو الـ polygon مخزن كـ JSON string
-            if (is_string($polygon)) {
-                $decoded = json_decode($polygon, true);
-                if (is_array($decoded)) {
-                    $workAreaPolygon = $decoded;
-                }
-            } elseif (is_array($polygon)) {
-                // لو عندك cast => 'polygon' => 'array' في الموديل
-                $workAreaPolygon = $polygon;
-            }
+            $workAreaPolygon = is_string($polygon) ? json_decode($polygon, true) : $polygon;
         }
+
+        // ─── الإحصائيات ───────────────────────────────────────────
+        $baseQuery = fn() => \App\Models\Booking::where('employee_id', $employee->id);
+
+        $totalBookings = $baseQuery()->count();
+        $completedBookings = $baseQuery()->where('status', 'completed')->count();
+        $cancelledBookings = $baseQuery()->where('status', 'cancelled')->count();
+        $pendingBookings = $baseQuery()->whereIn('status', ['pending', 'confirmed', 'moving', 'arrived'])->count();
+
+        $totalRevenue = $baseQuery()
+            ->where('status', 'completed')
+            ->where('service_pricing_source', '!=', 'package')
+            ->sum('service_final_price_snapshot');
+
+        // هذا الشهر
+        $thisMonth = now()->startOfMonth();
+        $thisMonthBookings = $baseQuery()
+            ->where('booking_date', '>=', $thisMonth->toDateString())
+            ->count();
+        $thisMonthRevenue = $baseQuery()
+            ->where('status', 'completed')
+            ->where('service_pricing_source', '!=', 'package')
+            ->where('booking_date', '>=', $thisMonth->toDateString())
+            ->sum('service_final_price_snapshot');
+
+        // التقييم
+        $ratingAvg = $baseQuery()->where('status', 'completed')->whereNotNull('rating')->avg('rating');
+        $ratingCount = $baseQuery()->where('status', 'completed')->whereNotNull('rating')->count();
+
+        // نسبة الإنجاز
+        $completionRate = $totalBookings > 0
+            ? round(($completedBookings / $totalBookings) * 100, 1)
+            : 0;
+
+        // آخر 6 أشهر (للرسم البياني)
+        $last6Months = collect(range(5, 0))->map(function ($i) use ($employee) {
+            $month = now()->subMonths($i);
+            $count = \App\Models\Booking::where('employee_id', $employee->id)
+                ->where('status', 'completed')
+                ->whereYear('booking_date', $month->year)
+                ->whereMonth('booking_date', $month->month)
+                ->count();
+            return [
+                'label' => $month->translatedFormat('M Y'),
+                'count' => $count,
+            ];
+        });
 
         return view('dashboard.employees.show', [
             'employee' => $employee,
             'weeklyByDay' => $weeklyByDay,
             'workAreaPolygon' => $workAreaPolygon,
+
+            // stats
+            'totalBookings' => $totalBookings,
+            'completedBookings' => $completedBookings,
+            'cancelledBookings' => $cancelledBookings,
+            'pendingBookings' => $pendingBookings,
+            'totalRevenue' => $totalRevenue,
+            'thisMonthBookings' => $thisMonthBookings,
+            'thisMonthRevenue' => $thisMonthRevenue,
+            'ratingAvg' => round((float) $ratingAvg, 1),
+            'ratingCount' => $ratingCount,
+            'completionRate' => $completionRate,
+            'last6Months' => $last6Months,
         ]);
     }
 
@@ -895,7 +919,7 @@ class EmployeeController extends Controller
 
         return $is >= $os && $ie <= $oe;
     }
-    
+
 
     public function destroy(Employee $employee, Request $request)
     {

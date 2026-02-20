@@ -21,6 +21,7 @@ return [
   'branches'   => ['create', 'edit', 'delete', 'view'],
   'carousel_items'   => ['create', 'edit', 'delete', 'view'],
   'notifications'   => ['create', 'edit', 'delete', 'view'],
+  'notifications_templates'   => ['create', 'edit', 'delete', 'view'],
   'partners'   => ['create', 'edit', 'delete', 'view', 'assign_services'],
   'promotional_notifications'   => ['create', 'edit', 'delete', 'view', 'send'],
   'app_pages'   => ['create', 'edit', 'delete', 'view'],
