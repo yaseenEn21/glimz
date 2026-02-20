@@ -2,20 +2,12 @@
 
 @push('custom-style')
     <style>
-        /* ── بعد ── */
-#booking_calendar {
-    min-height: 750px;
-    overflow: visible;       /* ✅ */
-    border: 1px solid #E4E6EF;
-    min-width: max-content;  /* ✅ يتمدد حسب عدد الموظفين */
-}
-
-/* ✅ أضف هذا — يمنع الـ FullCalendar من قطع المحتوى داخلياً */
-#booking_calendar .fc-view-harness,
-#booking_calendar .fc-scrollgrid,
-#booking_calendar .fc-scrollgrid-section-body > td {
-    overflow: visible !important;
-}
+        #booking_calendar {
+            min-height: 750px;
+            /* border-radius: 0.75rem; */
+            overflow: hidden;
+            border: 1px solid #E4E6EF;
+        }
 
         .fc .fc-toolbar-title {
             font-size: 1.15rem;
@@ -172,51 +164,6 @@
         html[dir="rtl"] .fc-event.time-block-event {
             border-right-color: #F1416C !important;
         }
-
-        /* ── Horizontal Scroll Wrapper ── */
-        .calendar-scroll-wrapper {
-            overflow-x: auto;
-            overflow-y: hidden;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .calendar-scroll-wrapper::-webkit-scrollbar {
-            height: 6px;
-        }
-
-        .calendar-scroll-wrapper::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 3px;
-        }
-
-        .calendar-scroll-wrapper::-webkit-scrollbar-thumb {
-            background: #c1c1c1;
-            border-radius: 3px;
-        }
-
-        .calendar-scroll-wrapper::-webkit-scrollbar-thumb:hover {
-            background: #a8a8a8;
-        }
-
-        /* ── عرض ثابت لكل عمود موظف ── */
-        #booking_calendar .fc-resource-timeline-lane,
-        #booking_calendar .fc-col-header-cell.fc-resource,
-        #booking_calendar .fc-timegrid-col[data-resource-id] {
-            min-width: 140px !important;
-            width: 140px !important;
-            max-width: 140px !important;
-        }
-
-        /* عرض التقويم الكلي = عرض الـ wrapper (يتمدد مع الأعمدة) */
-        #booking_calendar .fc-view-harness {
-            min-width: max-content;
-        }
-
-        #booking_calendar {
-            min-height: 750px;
-            overflow: hidden;
-            border: 1px solid #E4E6EF;
-        }
     </style>
 @endpush
 
@@ -256,11 +203,8 @@
             </div>
         </div>
 
-        {{-- بعد --}}
-        <div class="card-body p-0">
-            <div class="calendar-scroll-wrapper">
-                <div id="booking_calendar"></div>
-            </div>
+        <div class="card-body">
+            <div id="booking_calendar"></div>
         </div>
     </div>
     {{-- Modal حجب الموعد --}}
@@ -340,15 +284,6 @@
                 slotMinTime: "12:00:00",
                 slotMaxTime: "27:00:00",
                 scrollTime: "12:00:00",
-                resourceAreaWidth: '120px', // ✅ عرض عمود أسماء الموظفين
-                contentHeight: 750, // ✅ ارتفاع ثابت (السكرول العمودي داخلي)
-
-                // ✅ عرض ثابت لكل resource
-                resourceLabelDidMount: function(info) {
-                    info.el.style.minWidth = '140px';
-                    info.el.style.maxWidth = '140px';
-                },
-
 
                 events: function(info, successCallback, failureCallback) {
                     // نمدد النطاق يوم إضافي عشان نجيب حجوزات بعد منتصف الليل
@@ -367,7 +302,7 @@
                         success: function(events) {
                             const transformed = events.map(function(ev) {
                                 if (!ev.start || typeof ev.start !== 'string')
-                                    return ev;
+                            return ev;
 
                                 var match = ev.start.match(
                                     /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
@@ -378,7 +313,6 @@
 
                                 // ✅ حجز بعد منتصف الليل — نرجعه لليوم السابق بساعة 24+
                                 var y = parseInt(match[1]);
-
                                 var m = parseInt(match[2]) - 1;
                                 var d = parseInt(match[3]);
                                 var prev = new Date(y, m, d);
@@ -393,7 +327,7 @@
                                 if (ev.end && typeof ev.end === 'string') {
                                     var endMatch = ev.end.match(
                                         /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/
-                                    );
+                                        );
                                     if (endMatch) {
                                         var endHour = parseInt(endMatch[4]);
                                         if (endHour < 5) endHour += 24;
@@ -780,8 +714,6 @@
             }
 
             calendar.render();
-
-            
 
             // ══════════════════════════════
             //  Time Block Modal Logic
