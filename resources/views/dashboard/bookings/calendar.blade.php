@@ -2,12 +2,20 @@
 
 @push('custom-style')
     <style>
-        #booking_calendar {
-            min-height: 750px;
-            /* border-radius: 0.75rem; */
-            overflow: hidden;
-            border: 1px solid #E4E6EF;
-        }
+        /* ── بعد ── */
+#booking_calendar {
+    min-height: 750px;
+    overflow: visible;       /* ✅ */
+    border: 1px solid #E4E6EF;
+    min-width: max-content;  /* ✅ يتمدد حسب عدد الموظفين */
+}
+
+/* ✅ أضف هذا — يمنع الـ FullCalendar من قطع المحتوى داخلياً */
+#booking_calendar .fc-view-harness,
+#booking_calendar .fc-scrollgrid,
+#booking_calendar .fc-scrollgrid-section-body > td {
+    overflow: visible !important;
+}
 
         .fc .fc-toolbar-title {
             font-size: 1.15rem;
