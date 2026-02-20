@@ -29,6 +29,7 @@ return [
         'is_active' => 'نشط',
         'notification' => 'استقبال الإشعارات',
         'user_type' => 'نوع الحساب',
+        'area_name' => 'مكان التغطية'
     ],
 
     'status_active' => 'نشط',

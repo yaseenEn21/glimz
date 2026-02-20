@@ -69,8 +69,7 @@
                     <th>{{ __('datatable.lbl_id') }}</th>
                     <th>{{ __('employees.fields.name') }}</th>
                     <th>{{ __('employees.fields.mobile') }}</th>
-                    <th>{{ __('employees.fields.email') }}</th>
-                    <th>{{ __('employees.fields.gender') }}</th>
+                    <th>{{ __('employees.fields.area_name') }}</th>
                     <th>{{ __('employees.status') }}</th>
                     <th>{{ __('datatable.lbl_created_at') }}</th>
                     <th>{{ __('datatable.lbl_actions') }}</th>
@@ -101,8 +100,7 @@
                     {data: 'id', name: 'id'},
                     {data: 'name', name: 'user.name'},
                     {data: 'mobile', name: 'user.mobile'},
-                    {data: 'email', name: 'user.email'},
-                    {data: 'gender', name: 'user.gender'},
+                    {data: 'area_name', name: 'area_name'},
                     {data: 'status_badge', name: 'is_active', orderable: false, searchable: false},
                     {data: 'created_at', name: 'created_at'},
                     {

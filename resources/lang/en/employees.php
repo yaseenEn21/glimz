@@ -29,6 +29,7 @@ return [
         'is_active' => 'Active',
         'notification' => 'Receive notifications',
         'user_type' => 'Account type',
+        'area_name' => 'Area name',
     ],
 
     'status_active' => 'Active',
