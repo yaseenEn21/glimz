@@ -120,8 +120,13 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <textarea id="cancelReasonInput" class="form-control" rows="3"
-                    placeholder="{{ __('bookings.cancel_reason_placeholder') }}"></textarea>
+                <select id="cancelReasonInput" class="form-select" required>
+                    <option value="" disabled selected hidden>{{ __('bookings.cancel_reason_placeholder') }}
+                    </option>
+                    @foreach ($cancelReasons as $item)
+                        <option value="{{ $item }}">{{ $item }}</option>
+                    @endforeach
+                </select>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-light" data-bs-dismiss="modal">
@@ -307,10 +312,26 @@
         });
 
         // تأكيد الإلغاء من المودال
+        // تأكيد الإلغاء من المودال
         $('#confirmCancelBtn').on('click', function() {
             if (!pendingCancelSelect) return;
 
             const reason = $('#cancelReasonInput').val().trim();
+
+            // ✅ تحقق من اختيار السبب
+            if (!reason) {
+                $('#cancelReasonInput').addClass('is-invalid');
+                if (!$('#cancelReasonInput').next('.invalid-feedback').length) {
+                    $('#cancelReasonInput').after(
+                        '<div class="invalid-feedback">الرجاء اختيار سبب الإلغاء</div>');
+                }
+                return; // 🚫 أوقف التنفيذ
+            }
+
+            // ✅ أزل الخطأ لو اختار
+            $('#cancelReasonInput').removeClass('is-invalid');
+            $('#cancelReasonInput').next('.invalid-feedback').remove();
+
             sendStatusUpdate(pendingCancelSelect, 'cancelled', reason);
             cancelModal.hide();
             pendingCancelSelect = null;
@@ -318,6 +339,11 @@
 
         // لو أغلق المودال بدون تأكيد → رجّع القيمة القديمة
         $('#cancelBookingModal').on('hidden.bs.modal', function() {
+            // ✅ نظّف حالة الخطأ
+            $('#cancelReasonInput').removeClass('is-invalid');
+            $('#cancelReasonInput').next('.invalid-feedback').remove();
+            $('#cancelReasonInput').val('');
+
             if (pendingCancelSelect) {
                 pendingCancelSelect.val(previousStatus);
                 pendingCancelSelect = null;

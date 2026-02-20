@@ -335,8 +335,12 @@
                 </span>
             </h3>
         </div>
+
         <div class="card-body pt-0">
 
+            <div class="mb-3">
+                <input class="form-control" name="area_name" id="area_name" value="{{ old('area_name') }}" type="text" placeholder="{{ __('employees.area_name') }}">
+            </div>
             {{-- هنا نخزن الإحداثيات كـ JSON --}}
             <input type="hidden" name="work_area_polygon" id="work_area_polygon"
                 value="{{ old('work_area_polygon') }}">

@@ -29,6 +29,8 @@ class EmployeeResource extends JsonResource
             'work_area' => $this->relationLoaded('workArea') && $this->workArea
                 ? new EmployeeWorkAreaResource($this->workArea)
                 : null,
+
+            'area_name' => $this->area_name,
         ];
     }
 }

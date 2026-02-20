@@ -230,7 +230,7 @@ return [
     'cancel_reason' => 'سبب الإلغاء',
 
     'cancel_reason_title' => 'سبب الإلغاء',
-    'cancel_reason_placeholder' => 'اكتب سبب الإلغاء...',
+    'cancel_reason_placeholder' => 'حدد سبب الإلغاء',
     'cancel_modal_close' => 'إغلاق',
     'confirm_cancel' => 'تأكيد الإلغاء',
 

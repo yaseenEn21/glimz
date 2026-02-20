@@ -154,6 +154,7 @@ class EmployeeController extends Controller
 
             // الخريطة (JSON string)
             'work_area_polygon' => ['nullable', 'string'],
+            'area_name' => ['nullable', 'string', 'max:190'],
         ];
 
         // قواعد الوقت لكل يوم (work/break)
@@ -305,6 +306,7 @@ class EmployeeController extends Controller
             $employee = Employee::create([
                 'user_id' => $user->id,
                 'is_active' => $user->is_active,
+                'area_name' => $data['area_name'] ?? null,
             ]);
 
             // 3) ساعات العمل الأسبوعية (employee_weekly_intervals)
@@ -617,6 +619,7 @@ class EmployeeController extends Controller
             'break' => ['nullable', 'array'],
 
             'work_area_polygon' => ['nullable', 'string'],
+            'area_name' => ['nullable', 'string', 'max:100'],
         ];
 
         // foreach ($days as $day) {
@@ -722,6 +725,7 @@ class EmployeeController extends Controller
 
             // 2) تحديث الموظف
             $employee->is_active = $user->is_active;
+            $employee->area_name = $data['area_name'] ?? null;
             $employee->save();
 
             // 3) ساعات العمل الأسبوعية

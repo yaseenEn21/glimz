@@ -11,6 +11,7 @@ use App\Http\Controllers\Dashboard\PartnerController;
 use App\Http\Controllers\Dashboard\PromotionalNotificationController;
 use App\Http\Controllers\Dashboard\ReviewController;
 use App\Http\Controllers\Dashboard\RoleController;
+use App\Http\Controllers\Dashboard\ServiceCategoryController;
 use App\Http\Controllers\Dashboard\UserController;
 use App\Http\Controllers\Dashboard\ServiceController;
 use App\Http\Controllers\Dashboard\ProductController;
@@ -33,6 +34,7 @@ use App\Http\Controllers\Dashboard\NotificationTemplateController;
 use App\Http\Controllers\Dashboard\NotificationController;
 use App\Http\Controllers\Dashboard\AppPageController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Dashboard\SettingController;
 
 Route::get('/', function () {
     return redirect()->route('login');
@@ -137,6 +139,9 @@ Route::middleware(['auth'])->group(function () {
         // vehicle lookups for car modal
         Route::get('lookups/vehicle-makes', [BookingController::class, 'vehicleMakesLookup'])->name('lookups.vehicle_makes');
         Route::get('lookups/vehicle-models', [BookingController::class, 'vehicleModelsLookup'])->name('lookups.vehicle_models');
+
+        Route::get('service-categories/{serviceCategory}/services/datatable', [ServiceCategoryController::class, 'servicesDatatable'])->name('service-categories.services.datatable');
+        Route::resource('service-categories', ServiceCategoryController::class)->names('service-categories');
 
         Route::get('services/{service}/sales-lines', [ServiceController::class, 'salesLinesDatatable'])->name('services.salesLines');
         Route::get('services/{service}/sales-stats', [ServiceController::class, 'salesStats'])->name('services.salesStats');
@@ -426,6 +431,11 @@ Route::middleware(['auth'])->group(function () {
         Route::get('reviews', [ReviewController::class, 'index'])->name('reviews.index');
         Route::get('reviews/datatable', [ReviewController::class, 'datatable'])->name('reviews.datatable');
         Route::delete('reviews/{booking}', [ReviewController::class, 'destroy'])->name('reviews.destroy');
+
+        // Settings
+        Route::get('settings', [SettingController::class, 'index'])->name('settings.index');
+        Route::get('settings/{setting}/edit', [SettingController::class, 'edit'])->name('settings.edit');
+        Route::put('settings/{setting}', [SettingController::class, 'update'])->name('settings.update');
 
     });
 

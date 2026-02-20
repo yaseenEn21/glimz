@@ -92,12 +92,38 @@ class BookingController extends Controller
         $employees = Employee::query()->select('id')->get(); // إن عندك حقول اسم/موبايل اعرضهم بالواجهة
         $zones = class_exists(Zone::class) ? Zone::query()->select('id', 'name')->orderBy('sort_order')->get() : collect();
 
+        $raw = DB::table('settings')
+            ->where('key', 'bookings.cancel_reasons')
+            ->value('value');
+
+        $items = [];
+        if (is_string($raw) && $raw !== '') {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded)) {
+                $items = $decoded;
+            }
+        }
+
+        $locale = app()->getLocale() ?: 'en';
+        if (!in_array($locale, ['ar', 'en']))
+            $locale = 'en';
+
+        $cancelReasons = collect($items)->map(function ($r) use ($locale) {
+            $name = $r['name'] ?? [];
+            $label = is_array($name)
+                ? ($name[$locale] ?? $name['en'] ?? $name['ar'] ?? '')
+                : (string) $name;
+
+            return (string) $label;
+        })->filter(fn($label) => $label !== '')->values();
+
+
         view()->share([
             'title' => __('bookings.title'),
             'page_title' => __('bookings.title'),
         ]);
 
-        return view('dashboard.bookings.index', compact('services', 'employees', 'zones'));
+        return view('dashboard.bookings.index', compact('services', 'employees', 'zones', 'cancelReasons'));
     }
 
     public function datatable(DataTables $datatable, Request $request)
@@ -1432,11 +1458,11 @@ class BookingController extends Controller
 
         $request->validate([
             'from' => ['required', 'date_format:Y-m-d'],
-            'to'   => ['required', 'date_format:Y-m-d', 'after_or_equal:from'],
+            'to' => ['required', 'date_format:Y-m-d', 'after_or_equal:from'],
         ]);
 
         $from = $request->input('from');
-        $to   = $request->input('to');
+        $to = $request->input('to');
 
         $bookings = Booking::query()
             ->whereBetween('booking_date', [$from, $to])
@@ -1460,42 +1486,42 @@ class BookingController extends Controller
 
         // ── Headers ──────────────────────────────────────────────
         $headers = [
-            'A' => ['label' => '# الحجز',       'width' => 10],
-            'B' => ['label' => 'اسم الزبون',     'width' => 25],
-            'C' => ['label' => 'رقم الجوال',     'width' => 18],
-            'D' => ['label' => 'نوع السيارة',    'width' => 28],
-            'E' => ['label' => 'رقم اللوحة',     'width' => 16],
-            'F' => ['label' => 'الموقع',         'width' => 45],
-            'G' => ['label' => 'تاريخ الحجز',    'width' => 15],
-            'H' => ['label' => 'وقت الحجز',      'width' => 12],
-            'I' => ['label' => 'الموظف',         'width' => 25],
+            'A' => ['label' => '# الحجز', 'width' => 10],
+            'B' => ['label' => 'اسم الزبون', 'width' => 25],
+            'C' => ['label' => 'رقم الجوال', 'width' => 18],
+            'D' => ['label' => 'نوع السيارة', 'width' => 28],
+            'E' => ['label' => 'رقم اللوحة', 'width' => 16],
+            'F' => ['label' => 'الموقع', 'width' => 45],
+            'G' => ['label' => 'تاريخ الحجز', 'width' => 15],
+            'H' => ['label' => 'وقت الحجز', 'width' => 12],
+            'I' => ['label' => 'الموظف', 'width' => 25],
         ];
 
         $headerFill = [
-            'fillType'  => Fill::FILL_SOLID,
+            'fillType' => Fill::FILL_SOLID,
             'startColor' => ['rgb' => '1F4E79'],
         ];
         $headerFont = [
-            'bold'  => true,
+            'bold' => true,
             'color' => ['rgb' => 'FFFFFF'],
-            'name'  => 'Arial',
-            'size'  => 11,
+            'name' => 'Arial',
+            'size' => 11,
         ];
         $centerAlign = [
             'horizontal' => Alignment::HORIZONTAL_CENTER,
-            'vertical'   => Alignment::VERTICAL_CENTER,
+            'vertical' => Alignment::VERTICAL_CENTER,
         ];
         $thinBorder = [
             'borderStyle' => Border::BORDER_THIN,
-            'color'       => ['rgb' => 'CCCCCC'],
+            'color' => ['rgb' => 'CCCCCC'],
         ];
 
         foreach ($headers as $col => $def) {
             $cell = $sheet->getCell("{$col}1");
             $cell->setValue($def['label']);
             $cell->getStyle()->applyFromArray([
-                'fill'   => $headerFill,
-                'font'   => $headerFont,
+                'fill' => $headerFill,
+                'font' => $headerFont,
                 'alignment' => $centerAlign,
                 'borders' => [
                     'allBorders' => $thinBorder,
@@ -1516,7 +1542,7 @@ class BookingController extends Controller
             $fill = ($rowIndex % 2 === 0) ? $evenFill : $oddFill;
 
             // نوع السيارة
-            $makeName  = is_array($booking->car?->make?->name)
+            $makeName = is_array($booking->car?->make?->name)
                 ? ($booking->car->make->name['ar'] ?? collect($booking->car->make->name)->first() ?? '')
                 : ($booking->car?->make?->name ?? '');
 
@@ -1554,7 +1580,7 @@ class BookingController extends Controller
                     'font' => ['name' => 'Arial', 'size' => 10],
                     'alignment' => [
                         'horizontal' => Alignment::HORIZONTAL_RIGHT,
-                        'vertical'   => Alignment::VERTICAL_CENTER,
+                        'vertical' => Alignment::VERTICAL_CENTER,
                     ],
                     'borders' => ['allBorders' => $thinBorder],
                 ]);
@@ -1598,9 +1624,9 @@ class BookingController extends Controller
             },
             $filename,
             [
-                'Content-Type'        => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                 'Content-Disposition' => "attachment; filename=\"{$filename}\"",
-                'Cache-Control'       => 'max-age=0',
+                'Cache-Control' => 'max-age=0',
             ]
         );
     }

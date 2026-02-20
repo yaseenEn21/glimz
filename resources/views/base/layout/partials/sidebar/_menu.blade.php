@@ -73,7 +73,7 @@
                                 </a>
                             </div>
                         @endcan
-                        
+
                     @endcan
 
                     {{-- ===================== الكتالوج ===================== --}}
@@ -81,6 +81,18 @@
                         <span
                             class="menu-heading fw-bold text-uppercase fs-7">{{ __('sidebar.sections.catalog') }}</span>
                     </div>
+
+                    @can('service_categories.view')
+                        <div class="menu-item">
+                            <a class="menu-link {{ $is('dashboard.service-categories.*') ? 'active' : '' }}"
+                                href="{{ route('dashboard.service-categories.index') }}">
+                                <span class="menu-icon">
+                                    <i class="fa-solid fa-layer-group fs-2"></i>
+                                </span>
+                                <span class="menu-title">{{ __('service_categories.title') }}</span>
+                            </a>
+                        </div>
+                    @endcan
 
                     @can('services.view')
                         <div class="menu-item">
@@ -363,6 +375,18 @@
                                     <i class="fas fa-shield-alt fs-2"></i>
                                 </span>
                                 <span class="menu-title">{{ t(key: 'roles.title') }}</span>
+                            </a>
+                        </div>
+                    @endcan
+
+                    @can('settings.view')
+                        <div class="menu-item">
+                            <a class="menu-link {{ $is('dashboard.settings.*') ? 'active' : '' }}"
+                                href="{{ route('dashboard.settings.index') }}">
+                                <span class="menu-icon">
+                                    <i class="fa-solid fa-gear fs-2"></i>
+                                </span>
+                                <span class="menu-title">{{ __('settings.title') }}</span>
                             </a>
                         </div>
                     @endcan

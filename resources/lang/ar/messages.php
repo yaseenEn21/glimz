@@ -12,6 +12,8 @@ return [
     'create' => 'إنشاء',
     'delete' => 'حذف',
     'edit' => 'تعديل',
+    'update' => 'تحديث',
+    'actions' => 'الاجراءات',
     'view' => 'عرض',
     'back' => 'رجوع',
     'created_at' => 'تاريخ الإنشاء',

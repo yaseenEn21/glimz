@@ -43,6 +43,7 @@ class SettingController extends Controller
             'translations' => $this->getTranslations($locale),
             'carousel' => $this->getCarousel(),
             'popup' => $this->getPoup(),
+            'booking' => $this->getBookingConfig(),
             // 'app_config' => $this->getAppConfig(),
             // 'meta' => $this->getMeta(),
         ];
@@ -57,6 +58,34 @@ class SettingController extends Controller
         }
 
         return api_success($settings, 'Settings retrieved successfully');
+    }
+
+    private function getBookingConfig(): array
+    {
+        return Cache::remember('app.booking_config', now()->addHours(6), function () {
+            $keys = [
+                'bookings.cancel_allowed_minutes',
+                'bookings.edit_allowed_minutes',
+            ];
+
+            $settings = Setting::whereIn('key', $keys)->pluck('value', 'key');
+
+            $cancelMinutes = (int) ($settings['bookings.cancel_allowed_minutes'] ?? 1440);
+            $editMinutes = (int) ($settings['bookings.edit_allowed_minutes'] ?? 180);
+
+            return [
+                'cancel' => [
+                    'allowed_minutes' => $cancelMinutes,
+                    'allowed_hours' => round($cancelMinutes / 60, 1),
+                    'label' => "يمكن الإلغاء قبل {$cancelMinutes} دقيقة من الموعد",
+                ],
+                'edit' => [
+                    'allowed_minutes' => $editMinutes,
+                    'allowed_hours' => round($editMinutes / 60, 1),
+                    'label' => "يمكن التعديل قبل {$editMinutes} دقيقة من الموعد",
+                ],
+            ];
+        });
     }
 
     private function getTranslations(string $locale): array

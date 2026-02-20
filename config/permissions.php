@@ -26,4 +26,6 @@ return [
   'app_pages'   => ['create', 'edit', 'delete', 'view'],
   'faqs'   => ['create', 'edit', 'delete', 'view'],
   'reviews'   => ['create', 'edit', 'delete', 'view'],
+  'service_categories'   => ['create', 'edit', 'delete', 'view'],
+  'settings'   => ['create', 'edit', 'delete', 'view'],
 ];

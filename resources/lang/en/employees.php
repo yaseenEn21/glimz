@@ -12,6 +12,7 @@ return [
     'update' => 'Update',
     'view' => 'View employee',
     'delete' => 'Delete employee',
+    'area_name' => 'Area name (location of employee)',
 
     'biker_type_label' => 'Biker account (field employee)',
 

@@ -10,7 +10,7 @@ class Employee extends Model
 {
     use SoftDeletes, SyncableWithRekaz;
 
-    protected $fillable = ['user_id', 'is_active', 'created_by', 'updated_by'];
+    protected $fillable = ['user_id', 'is_active', 'created_by', 'updated_by', 'area_name'];
 
     protected $casts = ['is_active' => 'boolean', 'polygon' => 'array'];
 
