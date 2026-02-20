@@ -54,119 +54,87 @@ class BookingCalendarController extends Controller
     }
 
     public function events(Request $request)
-{
-    $start = Carbon::parse($request->query('start'));
-    $end   = Carbon::parse($request->query('end'));
-    $employeeId = $request->query('employee_id');
+    {
+        // FullCalendar يرسل start/end ISO
+        $start = Carbon::parse($request->query('start'));
+        $end = Carbon::parse($request->query('end'));
 
-    // ✅ بدون with() — نجيب البيانات يدوياً
-    $q = Booking::query()
-        ->where('status', '!=', 'cancelled')
-        ->whereDate('booking_date', '>=', $start->toDateString())
-        ->whereDate('booking_date', '<',  $end->toDateString())
-        ->whereNotNull('employee_id')
-        ->select([
-            'id', 'employee_id', 'user_id', 'service_id',
-            'booking_date', 'start_time', 'end_time',
-            'status', 'total_snapshot',
-        ]);
+        $employeeId = $request->query('employee_id');
 
-    if ($employeeId !== null && $employeeId !== '' && $employeeId !== 'null') {
-        $q->where('employee_id', (int) $employeeId);
-    }
+        $q = Booking::query()
+            ->where('status', '!=', 'cancelled')
+            ->with(['user:id,name', 'service:id,name', 'car:id,plate_number', 'address:id,address_line'])
+            ->whereDate('booking_date', '>=', $start->toDateString())
+            ->whereDate('booking_date', '<', $end->toDateString())
+            ->whereNotNull('employee_id');
 
-    $bookings = $q->orderBy('booking_date')->orderBy('start_time')->get();
-
-    // ✅ جلب العلاقات بشكل منفصل آمن
-    $userIds    = $bookings->pluck('user_id')->filter()->unique()->values();
-    $serviceIds = $bookings->pluck('service_id')->filter()->unique()->values();
-
-    $users = \App\Models\User::whereIn('id', $userIds)
-        ->select('id', 'name')
-        ->get()
-        ->keyBy('id');
-
-    $services = \App\Models\Service::whereIn('id', $serviceIds)
-        ->select('id', 'name')
-        ->get()
-        ->keyBy('id');
-
-    $locale = app()->getLocale();
-
-    $events = $bookings->map(function (Booking $b) use ($users, $services, $locale) {
-        $user    = $users->get($b->user_id);
-        $service = $services->get($b->service_id);
-
-        $serviceName = '';
-        if ($service) {
-            $name = $service->name;
-            $serviceName = is_array($name)
-                ? ($name[$locale] ?? $name['ar'] ?? $name['en'] ?? collect($name)->first() ?? '')
-                : (string) $name;
+        if ($employeeId !== null && $employeeId !== 'null') {
+            $q->where('employee_id', (int) $employeeId);
         }
 
-        $userName = $user?->name ?? '—';
-        $title    = collect([$userName, $serviceName])->filter()->implode(' - ');
+        $bookings = $q->orderBy('booking_date')->orderBy('start_time')->get();
 
-        // booking_date قد يكون Carbon أو string
-        $dateStr = $b->booking_date instanceof \Carbon\Carbon
-            ? $b->booking_date->format('Y-m-d')
-            : substr((string) $b->booking_date, 0, 10);
+        $events = $bookings->map(function (Booking $b) {
+            $titleParts = [
+                $b->user?->name,
+                $b->service ? (is_array($b->service->name) ? ($b->service->name['ar'] ?? $b->service->name['en'] ?? '') : $b->service->name) : null,
+            ];
+            $title = trim(collect($titleParts)->filter()->implode(' - '));
 
-        $bStart = $dateStr . 'T' . substr((string) $b->start_time, 0, 5) . ':00';
-        $bEnd   = $dateStr . 'T' . substr((string) $b->end_time,   0, 5) . ':00';
+            $bStart = $b->booking_date->format('Y-m-d') . 'T' . substr((string) $b->start_time, 0, 5) . ':00';
+            $bEnd = $b->booking_date->format('Y-m-d') . 'T' . substr((string) $b->end_time, 0, 5) . ':00';
 
-        return [
-            'id'           => (string) $b->id,
-            'resourceId'   => (string) $b->employee_id,
-            'title'        => $title ?: ('#' . $b->id),
-            'start'        => $bStart,
-            'end'          => $bEnd,
-            'url'          => route('dashboard.bookings.show', $b->id),
-            'extendedProps' => [
-                'status'        => (string) $b->status,
-                'total'         => (float) ($b->total_snapshot ?? 0),
-                'type'          => 'booking',
-                'customer_name' => $userName,
-                'service_name'  => $serviceName ?: '—',
-            ],
-        ];
-    });
+            return [
+                'id' => (string) $b->id,
+                'resourceId' => (string) $b->employee_id,
+                'title' => $title !== '' ? $title : ('#' . $b->id),
+                'start' => $bStart,
+                'end' => $bEnd,
+                'url' => route('dashboard.bookings.show', $b->id),
+                'extendedProps' => [
+                    'status' => (string) $b->status,
+                    'total' => (float) ($b->total_snapshot ?? 0),
+                    'type' => 'booking',
+                    'customer_name' => (string) ($b->user?->name ?? '—'),
+                    'service_name' => is_array($b->service?->name)
+                        ? ($b->service->name[app()->getLocale()] ?? $b->service->name['ar'] ?? collect($b->service->name)->first() ?? '—')
+                        : ($b->service?->name ?? '—'),
+                ],
+            ];
+        });
 
-    // ── فترات الحجب ──────────────────────────────────────────────
-    $tbQuery = EmployeeTimeBlock::where('is_active', true)
-        ->whereDate('date', '>=', $start->toDateString())
-        ->whereDate('date', '<',  $end->toDateString())
-        ->select(['id', 'employee_id', 'date', 'start_time', 'end_time', 'reason']);
+        // ── ✅ فترات الحجب ──
+        $tbQuery = EmployeeTimeBlock::where('is_active', true)
+            ->whereDate('date', '>=', $start->toDateString())
+            ->whereDate('date', '<', $end->toDateString());
 
-    if ($employeeId !== null && $employeeId !== '' && $employeeId !== 'null') {
-        $tbQuery->where('employee_id', (int) $employeeId);
+        if ($employeeId !== null && $employeeId !== 'null') {
+            $tbQuery->where('employee_id', (int) $employeeId);
+        }
+        // dd($tbQuery->get());
+        $timeBlocks = $tbQuery->get()->map(function ($tb) {
+            return [
+                'id' => 'tb_' . $tb->id,
+                'resourceId' => (string) $tb->employee_id,
+                'title' => '🚫 ' . ($tb->reason ?: __('bookings.calendar.blocked')),
+                'start' => Carbon::parse($tb->date)->format('Y-m-d') . 'T' . substr((string) $tb->start_time, 0, 5) . ':00',
+                'end' => Carbon::parse($tb->date)->format('Y-m-d') . 'T' . substr((string) $tb->end_time, 0, 5) . ':00',
+                'color' => '#f1416c',
+                'textColor' => '#fff',
+                'editable' => false,
+                'extendedProps' => [
+                    'type' => 'time_block',
+                    'reason' => $tb->reason,
+                    'status' => 'blocked',
+                    'customer_name' => (string) ($tb->user?->name ?? '—'),
+                    'service_name' => is_array($tb->service?->name)
+                        ? ($tb->service->name[app()->getLocale()] ?? $tb->service->name['ar'] ?? collect($tb->service->name)->first() ?? '—')
+                        : ($tb->service?->name ?? '—'),
+                ],
+            ];
+        });
+        return response()->json($events->merge($timeBlocks)->values());
     }
-
-    $timeBlocks = $tbQuery->get()->map(function ($tb) {
-        $dateStr = $tb->date instanceof \Carbon\Carbon
-            ? $tb->date->format('Y-m-d')
-            : substr((string) $tb->date, 0, 10);
-
-        return [
-            'id'         => 'tb_' . $tb->id,
-            'resourceId' => (string) $tb->employee_id,
-            'title'      => '🚫 ' . ($tb->reason ?: __('bookings.calendar.blocked')),
-            'start'      => $dateStr . 'T' . substr((string) $tb->start_time, 0, 5) . ':00',
-            'end'        => $dateStr . 'T' . substr((string) $tb->end_time,   0, 5) . ':00',
-            'color'      => '#f1416c',
-            'textColor'  => '#fff',
-            'editable'   => false,
-            'extendedProps' => [
-                'type'   => 'time_block',
-                'reason' => $tb->reason,
-                'status' => 'blocked',
-            ],
-        ];
-    });
-
-    return response()->json($events->merge($timeBlocks)->values());
-}
 
     public function blockSlots(Request $request)
     {
