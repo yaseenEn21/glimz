@@ -169,7 +169,7 @@ class ServiceController extends Controller
             'description' => $request->input('description', []),
             'duration_minutes' => $data['duration_minutes'],
             'price' => $data['price'],
-            'points' => $data['points'],
+            'points' => $data['points'] ?? 0,
             'discounted_price' => $data['discounted_price'] ?? null,
             'is_active' => $request->boolean('is_active', true),
             'sort_order' => $desiredPosition
@@ -256,7 +256,7 @@ class ServiceController extends Controller
             'description' => $request->input('description', []),
             'duration_minutes' => $data['duration_minutes'],
             'price' => $data['price'],
-            'points' => $data['points'],
+            'points' => $data['points'] ?? 0,
             'discounted_price' => $data['discounted_price'] ?? null,
             'is_active' => $request->boolean('is_active', true),
             'sort_order' => $newPosition,

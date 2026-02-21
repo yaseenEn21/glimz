@@ -3,19 +3,21 @@
 @push('custom-style')
     <style>
         /* ── بعد ── */
-#booking_calendar {
-    min-height: 750px;
-    overflow: visible;       /* ✅ */
-    border: 1px solid #E4E6EF;
-    min-width: max-content;  /* ✅ يتمدد حسب عدد الموظفين */
-}
+        #booking_calendar {
+            min-height: 750px;
+            overflow: visible;
+            /* ✅ */
+            border: 1px solid #E4E6EF;
+            min-width: max-content;
+            /* ✅ يتمدد حسب عدد الموظفين */
+        }
 
-/* ✅ أضف هذا — يمنع الـ FullCalendar من قطع المحتوى داخلياً */
-#booking_calendar .fc-view-harness,
-#booking_calendar .fc-scrollgrid,
-#booking_calendar .fc-scrollgrid-section-body > td {
-    overflow: visible !important;
-}
+        /* ✅ أضف هذا — يمنع الـ FullCalendar من قطع المحتوى داخلياً */
+        #booking_calendar .fc-view-harness,
+        #booking_calendar .fc-scrollgrid,
+        #booking_calendar .fc-scrollgrid-section-body>td {
+            overflow: visible !important;
+        }
 
         .fc .fc-toolbar-title {
             font-size: 1.15rem;
@@ -782,40 +784,40 @@
             calendar.render();
 
             // ✅ ضبط عرض التقويم ديناميكياً
-function adjustCalendarWidth(resourceCount) {
-    const resourceAreaWidth = 120;  // عرض عمود الأسماء
-    const columnWidth       = 160;  // عرض كل موظف
-    const minColumns        = 5;    // أقل عدد أعمدة
+            function adjustCalendarWidth(resourceCount) {
+                const resourceAreaWidth = 120; // عرض عمود الأسماء
+                const columnWidth = 160; // عرض كل موظف
+                const minColumns = 5; // أقل عدد أعمدة
 
-    const totalWidth = resourceAreaWidth + (Math.max(resourceCount, minColumns) * columnWidth);
-    document.getElementById('booking_calendar').style.minWidth = totalWidth + 'px';
-}
+                const totalWidth = resourceAreaWidth + (Math.max(resourceCount, minColumns) * columnWidth);
+                document.getElementById('booking_calendar').style.minWidth = totalWidth + 'px';
+            }
 
-// تحميل الموظفين + ضبط العرض
-$.get("{{ route('dashboard.bookings.calendar.resources') }}", function(res) {
-    allResources = res;
+            // تحميل الموظفين + ضبط العرض
+            $.get("{{ route('dashboard.bookings.calendar.resources') }}", function(res) {
+                allResources = res;
 
-    // ✅ ضبط العرض فور تحميل الموظفين
-    adjustCalendarWidth(res.length);
+                // ✅ ضبط العرض فور تحميل الموظفين
+                adjustCalendarWidth(res.length);
 
-    const $sel = $('#tb_employees');
-    const $filterSel = $('#filter_employee');
-    res.forEach(r => {
-        $sel.append(new Option(r.title, r.id, false, false));
-        $filterSel.append(`<option value="${r.id}">${r.title}</option>`);
-    });
-    if ($.fn.select2) $sel.trigger('change');
-});
+                const $sel = $('#tb_employees');
+                const $filterSel = $('#filter_employee');
+                res.forEach(r => {
+                    $sel.append(new Option(r.title, r.id, false, false));
+                    $filterSel.append(`<option value="${r.id}">${r.title}</option>`);
+                });
+                if ($.fn.select2) $sel.trigger('change');
+            });
 
-// ✅ إعادة الضبط عند تغيير فلتر الموظف
-$('#filter_employee').on('change', function() {
-    const selectedId = $(this).val();
-    const count      = selectedId ? 1 : allResources.length;
-    adjustCalendarWidth(count);
+            // ✅ إعادة الضبط عند تغيير فلتر الموظف
+            $('#filter_employee').on('change', function() {
+                const selectedId = $(this).val();
+                const count = selectedId ? 1 : allResources.length;
+                adjustCalendarWidth(count);
 
-    calendar.refetchResources();
-    calendar.refetchEvents();
-});
+                calendar.refetchResources();
+                calendar.refetchEvents();
+            });
 
             // ══════════════════════════════
             //  Time Block Modal Logic
