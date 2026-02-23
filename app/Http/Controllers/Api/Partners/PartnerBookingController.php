@@ -534,6 +534,15 @@ class PartnerBookingController extends Controller
             return response()->json(['success' => false, 'error' => 'Booking not found'], 404);
         }
 
+        if (in_array($booking->status, ['completed', 'cancelled'])) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Cannot update status of a completed or cancelled booking',
+                'error_code' => 'BOOKING_NOT_UPDATABLE',
+                'current_status' => $booking->status,
+            ], 422);
+        }
+
         $statusMap = [
             'InProgress' => 'moving',
             'Completed' => 'completed',
