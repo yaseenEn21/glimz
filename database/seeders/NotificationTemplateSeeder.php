@@ -11,6 +11,25 @@ class NotificationTemplateSeeder extends Seeder
     {
         $iconsBasePath = public_path('assets/media/icons/duotune/notifications');
 
+
+        /**
+         * ==========================
+         * Pending Booking Reminder
+         * ==========================
+         */
+        $pendingReminder = NotificationTemplate::updateOrCreate(
+            ['key' => 'booking_pending_reminder'],
+            [
+                'title' => 'لا تنسَ تأكيد حجزك ⏳',
+                'body' => 'حجزك #{booking_id} لخدمة {service_name} بتاريخ {booking_date} الساعة {start_time} لم يتم تأكيده بعد. أكمل الدفع الآن.',
+                'title_en' => 'Don\'t forget to confirm your booking ⏳',
+                'body_en' => 'Your booking #{booking_id} for {service_name} on {booking_date} at {start_time} is still pending. Complete payment now.',
+                'description' => 'للزبون: تذكير بتأكيد الحجز قبل الإلغاء التلقائي.',
+                'is_active' => true,
+            ]
+        );
+        $this->attachIcon($pendingReminder, $iconsBasePath . '/time.png');
+        
         /**
          * ==========================
          * Customer Booking Status Notifications

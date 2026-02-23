@@ -38,7 +38,7 @@ class AutoCancelPendingBookingJob implements ShouldQueue
 
         $cancelService->cancel(
             $booking,
-            'auto_cancel_unpaid',
+            'لم يتم تأكيد الحجز',
             null,
             $systemActorId,
             $walletService,

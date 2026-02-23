@@ -10,6 +10,7 @@ use App\Http\Requests\Api\BookingStoreRequest;
 use App\Http\Resources\Api\BookingProductResource;
 use App\Http\Resources\Api\BookingResource;
 use App\Http\Resources\Api\ProductResource;
+use App\Jobs\AutoRemindPendingBookingJob;
 use App\Jobs\AutoCancelPendingBookingJob;
 use App\Models\Address;
 use App\Models\Booking;
@@ -741,6 +742,9 @@ class BookingController extends Controller
                     ]);
                 } else {
                     $invoiceService->createBookingInvoice($booking->fresh(['service', 'products']), $user->id);
+
+                    AutoRemindPendingBookingJob::dispatch($booking->id)
+                        ->delay(now()->addMinutes((int) config('booking.pending_auto_remind_minutes', 5)));
 
                     AutoCancelPendingBookingJob::dispatch($booking->id)
                         ->delay(now()->addMinutes((int) config('booking.pending_auto_cancel_minutes', 10)));
