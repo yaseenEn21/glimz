@@ -100,7 +100,7 @@ class BookingController extends Controller
         return api_success(new BookingResource($booking), 'Booking');
     }
 
-    public function store(
+    public function store_old(
         BookingStoreRequest $request,
         SlotService $slotService,
         InvoiceService $invoiceService
@@ -314,18 +314,6 @@ class BookingController extends Controller
                 }
             }
 
-            $conflict = Booking::query()
-                ->where('employee_id', $pickedEmployeeId)
-                ->where('booking_date', $dbDate)
-                ->where('start_time', $startTime)
-                ->whereNotIn('status', ['cancelled'])
-                ->lockForUpdate()
-                ->exists();
-
-            if ($conflict) {
-                throw new \Exception('SLOT_TAKEN');
-            }
-            
             $booking = Booking::create([
                 'user_id' => $user->id,
                 'car_id' => $car->id,
@@ -445,6 +433,329 @@ class BookingController extends Controller
         //         ]);
         //     }
         // }
+
+        return api_success(new BookingResource($booking), 'Booking created', 201);
+    }
+
+    public function store(
+        BookingStoreRequest $request,
+        SlotService $slotService,
+        InvoiceService $invoiceService
+    ) {
+        $user = $request->user();
+        if (!$user)
+            return api_error('Unauthenticated', 401);
+
+        $data = $request->validated();
+
+        $car = Car::query()
+            ->where('id', (int) $data['car_id'])
+            ->where('user_id', $user->id)
+            ->first();
+        if (!$car)
+            return api_error('Car not found', 404);
+
+        $address = Address::query()
+            ->where('id', (int) $data['address_id'])
+            ->where('user_id', $user->id)
+            ->first();
+        if (!$address)
+            return api_error('Address not found', 404);
+
+        if (!empty($data['is_current_location']) && $data['is_current_location'] == true) {
+            Address::where('user_id', $user->id)
+                ->where('id', '!=', $address->id)
+                ->where('is_current_location', true)
+                ->update(['is_current_location' => false]);
+
+            $address->is_current_location = true;
+            $address->save();
+        }
+
+        $subscriptionId = $data['package_subscription_id'] ?? null;
+        $usingPackage = !empty($subscriptionId);
+
+        // -----------------------------
+        // 1) Resolve service
+        // -----------------------------
+        $subscription = null;
+
+        if ($usingPackage) {
+            $subscription = PackageSubscription::query()
+                ->where('id', (int) $subscriptionId)
+                ->where('user_id', $user->id)
+                ->with([
+                    'package.services' => function ($q) {
+                        $q->where('services.is_active', true)->orderBy('services.id');
+                    }
+                ])
+                ->first();
+
+            if (!$subscription)
+                return api_error('Package subscription not found', 404);
+            if ($subscription->status !== 'active')
+                return api_error('Package subscription is not active', 422);
+            if (!$subscription->ends_at || $subscription->ends_at->endOfDay()->lt(now()))
+                return api_error('Package subscription has expired', 422);
+
+            $package = $subscription->package;
+            if (!$package)
+                return api_error('Package not found', 404);
+
+            if ($package->type === 'limited') {
+                if ((int) $subscription->remaining_washes <= 0)
+                    return api_error('No remaining washes in this subscription', 422);
+            }
+
+            if ($package->type === 'unlimited' && $package->cooldown_days) {
+                $lastBooking = Booking::where('package_subscription_id', $subscription->id)
+                    ->whereNotIn('status', ['cancelled'])
+                    ->orderByDesc('booking_date')
+                    ->first();
+
+                if ($lastBooking) {
+                    $minNextDate = Carbon::parse($lastBooking->booking_date)
+                        ->addDays($package->cooldown_days);
+                    $requestedDate = Carbon::createFromFormat('d-m-Y', $data['date']);
+
+                    if ($requestedDate->lt($minNextDate)) {
+                        return api_error(__('packages.cooldown_not_passed', [
+                            'days' => $package->cooldown_days,
+                            'date' => $minNextDate->format('Y-m-d'),
+                        ]), 422);
+                    }
+                }
+            }
+
+            $service = $package->services?->first();
+            if (!$service)
+                return api_error('No active service found in this package', 422);
+
+        } else {
+            $service = Service::query()
+                ->where('id', (int) $data['service_id'])
+                ->where('is_active', true)
+                ->first();
+            if (!$service)
+                return api_error('Service not found', 404);
+        }
+
+        // -----------------------------
+        // 2) Date/time + duration
+        // -----------------------------
+        $day = Carbon::createFromFormat('d-m-Y', $data['date']);
+        $dbDate = $day->toDateString();
+
+        $startTime = $data['time'];
+        $duration = (int) $service->duration_minutes;
+
+        $endTime = Carbon::createFromFormat('Y-m-d H:i', $dbDate . ' ' . $startTime)
+            ->addMinutes($duration)
+            ->format('H:i');
+
+        // -----------------------------
+        // 3) Slots validation + pick employee
+        // -----------------------------
+        $slots = $slotService->getSlots($data['date'], (int) $service->id, (float) $address->lat, (float) $address->lng);
+
+        if (empty($slots['items'])) {
+            $code = $slots['meta']['error_code'] ?? null;
+
+            if ($code === 'OUT_OF_COVERAGE')
+                return api_error('Address is outside service coverage area', 422);
+            if ($code === 'NO_WORKING_HOURS')
+                return api_error('No working hours available for the selected date', 422);
+
+            return api_error('No slots available for the selected date', 422);
+        }
+
+        $slot = collect($slots['items'])->first(fn($s) => ($s['start_time'] ?? null) === $startTime);
+        if (!$slot)
+            return api_error('Selected time is not available', 422);
+
+        $employees = $slot['employees'] ?? [];
+        if (empty($employees))
+            return api_error('No employee available for this slot', 422);
+
+        $pickedEmployeeId = $data['employee_id'] ?? null;
+        if ($pickedEmployeeId) {
+            $found = collect($employees)->first(fn($e) => (int) $e['employee_id'] === (int) $pickedEmployeeId);
+            if (!$found)
+                return api_error('Selected employee is not available in this slot', 422);
+        } else {
+            $pickedEmployeeId = (int) $employees[0]['employee_id'];
+        }
+
+        // -----------------------------
+        // 4) Pricing
+        // -----------------------------
+        $pricing = app(\App\Services\BookingPricingService::class)
+            ->resolve($service, $user, $address, $startTime);
+
+        $finalUnitPrice = (float) $pricing['final_unit_price'];
+        $chargeAmount = $usingPackage ? 0.0 : $finalUnitPrice;
+
+        // -----------------------------
+        // 5) Create booking (transaction)
+        // -----------------------------
+        try {
+            $booking = DB::transaction(function () use ($user, $car, $address, $service, $dbDate, $startTime, $endTime, $duration, $pickedEmployeeId, $data, $subscriptionId, $usingPackage, $pricing, $finalUnitPrice, $chargeAmount, $invoiceService) {
+
+                // ✅ حماية Race Condition — تأكد إن الموظف لسا متاح
+                $conflict = Booking::query()
+                    ->where('employee_id', $pickedEmployeeId)
+                    ->where('booking_date', $dbDate)
+                    ->where('start_time', $startTime)
+                    ->whereNotIn('status', ['cancelled'])
+                    ->lockForUpdate()
+                    ->exists();
+
+                if ($conflict) {
+                    throw new \Exception('SLOT_TAKEN');
+                }
+
+                $meta = (array) ($data['meta'] ?? []);
+
+                if ($usingPackage) {
+                    $sub = PackageSubscription::query()
+                        ->where('id', (int) $subscriptionId)
+                        ->where('user_id', $user->id)
+                        ->lockForUpdate()
+                        ->first();
+
+                    if (!$sub)
+                        throw new \Exception('Package subscription not found');
+                    if ($sub->status !== 'active')
+                        throw new \Exception('Package subscription is not active');
+                    if (!$sub->ends_at || $sub->ends_at->endOfDay()->lt(now()))
+                        throw new \Exception('Package subscription has expired');
+
+                    $meta['package_covers_service'] = true;
+                    $meta['package_subscription_id'] = (int) $sub->id;
+                    $meta['package_id'] = (int) $sub->package_id;
+
+                    if ($sub->package->type === 'limited') {
+                        if ((int) $sub->remaining_washes <= 0)
+                            throw new \Exception('No remaining washes in this subscription');
+
+                        $before = (int) $sub->remaining_washes;
+                        $after = $before - 1;
+
+                        $sub->update([
+                            'remaining_washes' => $after,
+                            'updated_at' => now(),
+                            'updated_by' => $user->id,
+                        ]);
+
+                        $meta['remaining_washes_before'] = $before;
+                        $meta['remaining_washes_after'] = $after;
+                        $meta['package_deducted'] = true;
+                        $meta['package_deducted_at'] = now()->toDateTimeString();
+                        $meta['package_deducted_by'] = $user->id;
+                    }
+
+                    if ($sub->package->type === 'unlimited') {
+                        $meta['package_type'] = 'unlimited';
+                        $meta['cooldown_days'] = $sub->package->cooldown_days;
+                    }
+                }
+
+                $booking = Booking::create([
+                    'user_id' => $user->id,
+                    'car_id' => $car->id,
+                    'address_id' => $address->id,
+                    'service_id' => $service->id,
+
+                    'zone_id' => $pricing['zone_id'],
+                    'time_period' => $pricing['time_period'],
+
+                    'service_unit_price_snapshot' => $pricing['unit_price'],
+                    'service_discounted_price_snapshot' => $pricing['discounted_price'],
+                    'service_final_price_snapshot' => $finalUnitPrice,
+                    'service_points_snapshot' => (int) ($service->points ?? 0),
+
+                    'service_charge_amount_snapshot' => $chargeAmount,
+                    'service_pricing_source' => $usingPackage ? 'package' : $pricing['pricing_source'],
+                    'service_pricing_meta' => [
+                        'applied_id' => $pricing['applied_id'],
+                        'lat' => (float) $address->lat,
+                        'lng' => (float) $address->lng,
+                    ],
+
+                    'employee_id' => $pickedEmployeeId,
+                    'package_subscription_id' => $subscriptionId,
+
+                    'status' => 'pending',
+
+                    'booking_date' => $dbDate,
+                    'start_time' => $startTime,
+                    'end_time' => $endTime,
+                    'duration_minutes' => $duration,
+
+                    'service_price_snapshot' => (float) $service->price,
+                    'currency' => 'SAR',
+                    'meta' => $meta,
+
+                    'created_by' => $user->id,
+                    'updated_by' => $user->id,
+                ]);
+
+                // Products
+                $productsSubtotal = 0;
+                $productsInput = $data['products'] ?? [];
+
+                foreach ($productsInput as $p) {
+                    $prod = Product::query()->where('id', (int) $p['product_id'])->where('is_active', true)->first();
+                    if (!$prod)
+                        continue;
+
+                    $qty = (int) $p['qty'];
+                    $unit = (float) $prod->price;
+                    $line = $qty * $unit;
+
+                    BookingProduct::create([
+                        'booking_id' => $booking->id,
+                        'product_id' => $prod->id,
+                        'qty' => $qty,
+                        'unit_price_snapshot' => $unit,
+                        'title' => $prod->name,
+                        'line_total' => $line,
+                    ]);
+
+                    $productsSubtotal += $line;
+                }
+
+                $subtotal = (float) $chargeAmount + (float) $productsSubtotal;
+                $total = $subtotal;
+
+                $booking->update([
+                    'products_subtotal_snapshot' => $productsSubtotal,
+                    'subtotal_snapshot' => $subtotal,
+                    'total_snapshot' => $total,
+                ]);
+
+                if ($total <= 0.0) {
+                    $booking->update([
+                        'status' => 'confirmed',
+                        'confirmed_at' => now(),
+                    ]);
+                } else {
+                    $invoiceService->createBookingInvoice($booking->fresh(['service', 'products']), $user->id);
+
+                    AutoCancelPendingBookingJob::dispatch($booking->id)
+                        ->delay(now()->addMinutes((int) config('booking.pending_auto_cancel_minutes', 10)));
+                }
+
+                return $booking->fresh(['service', 'products.product', 'invoices', 'car']);
+            });
+
+        } catch (\Exception $e) {
+            // ✅ الموظف انحجز من شخص ثاني بنفس اللحظة
+            if ($e->getMessage() === 'SLOT_TAKEN') {
+                return api_error('Selected time is no longer available, please choose another slot', 422);
+            }
+            throw $e;
+        }
 
         return api_success(new BookingResource($booking), 'Booking created', 201);
     }
