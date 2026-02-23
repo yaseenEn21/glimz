@@ -181,6 +181,8 @@ Route::prefix('v1')->middleware(['set.api.locale'])->group(function () {
         Route::get('bookings/{external_id}', [PartnerBookingController::class, 'getBooking']);
         Route::put('bookings/{external_id}/update', [PartnerBookingController::class, 'rescheduleBooking']);
         Route::post('bookings/{external_id}/cancel', [PartnerBookingController::class, 'cancelBooking']);
+        Route::post('bookings/{external_id}/status', [PartnerBookingController::class, 'updateStatus']);
+
     });
 
 });

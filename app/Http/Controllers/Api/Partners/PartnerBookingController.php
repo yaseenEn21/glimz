@@ -135,6 +135,7 @@ class PartnerBookingController extends Controller
             'ip' => $request->ip(),
             'payload' => $request->except(['partner']), // كل البيانات ما عدا الـ partner object
             'timestamp' => now()->toDateTimeString(),
+            'correlation_id' => $request->header('X-Correlation-Id'),
         ]);
 
 
@@ -504,5 +505,52 @@ class PartnerBookingController extends Controller
             'created_at' => $booking->created_at->toDateTimeString(),
             'updated_at' => $booking->updated_at->toDateTimeString(),
         ];
+    }
+
+    public function updateStatus(Request $request, string $externalId)
+    {
+        $partner = $request->input('partner');
+
+        \Log::info('[PartnerBooking] Status update received', [
+            'partner_id' => $partner->id,
+            'external_id' => $externalId,
+            'status' => $request->input('status'),
+            'correlation_id' => $request->header('X-Correlation-Id'), // ← أضف هاد
+        ]);
+
+        $validator = Validator::make($request->all(), [
+            'status' => 'required|in:InProgress,Completed,Cancelled',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'errors' => $validator->errors()], 422);
+        }
+
+        $booking = Booking::where('partner_id', $partner->id)
+            ->where('external_id', $externalId)
+            ->first();
+
+        if (!$booking) {
+            return response()->json(['success' => false, 'error' => 'Booking not found'], 404);
+        }
+
+        $statusMap = [
+            'InProgress' => 'moving',
+            'Completed' => 'completed',
+            'Cancelled' => 'cancelled',
+        ];
+
+        $booking->update(['status' => $statusMap[$request->status]]);
+
+        \Log::info('[PartnerBooking] Status updated successfully', [
+            'correlation_id' => $request->header('X-Correlation-Id'), // ← وهون
+            'booking_id' => $booking->id,
+            'new_status' => $statusMap[$request->status],
+        ]);
+
+        // أطلق الـ webhook لو عندك events
+        // event(new BookingStatusUpdated($booking));
+
+        return response()->json(['success' => true], 200);
     }
 }

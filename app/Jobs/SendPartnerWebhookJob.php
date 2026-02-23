@@ -25,7 +25,8 @@ class SendPartnerWebhookJob implements ShouldQueue
      */
     public function __construct(
         public Booking $booking
-    ) {}
+    ) {
+    }
 
     /**
      * Execute the job.
@@ -53,6 +54,7 @@ class SendPartnerWebhookJob implements ShouldQueue
         $success = match ($partner->webhook_type ?? 'generic') {
             'mismar' => $this->sendMismarWebhook($partner),
             'generic' => $this->sendGenericWebhook($partner),
+            'helloapp' => $this->sendHelloAppWebhook($partner),
             default => $this->sendGenericWebhook($partner),
         };
 
@@ -119,5 +121,35 @@ class SendPartnerWebhookJob implements ShouldQueue
 
             return false;
         }
+    }
+
+    protected function sendHelloAppWebhook(Partner $partner): bool
+    {
+        if (!$partner->webhook_url || !$partner->external_token) {
+            return false;
+        }
+
+        $url = rtrim($partner->webhook_url, '/') 
+         . "/api/v1/{$partner->username}/bookings/{$this->booking->external_id}/status";
+
+        $payload = [
+            'event' => 'booking.status_changed',
+            'booking' => [
+                'external_id' => $this->booking->external_id,
+                'status' => $this->booking->status,
+                'booking_date' => $this->booking->booking_date->format('Y-m-d'),
+                'start_time' => substr($this->booking->start_time, 0, 5),
+            ],
+            'timestamp' => now()->toIso8601String(),
+        ];
+
+        $response = Http::timeout(10)
+            ->withHeaders([
+                'Authorization' => 'Bearer ' . $partner->external_token,
+                'X-Correlation-Id' => (string) \Str::uuid(),
+            ])
+            ->post($url, $payload);
+
+        return $response->successful();
     }
 }
