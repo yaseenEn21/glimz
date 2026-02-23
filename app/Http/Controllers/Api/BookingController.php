@@ -314,6 +314,18 @@ class BookingController extends Controller
                 }
             }
 
+            $conflict = Booking::query()
+                ->where('employee_id', $pickedEmployeeId)
+                ->where('booking_date', $dbDate)
+                ->where('start_time', $startTime)
+                ->whereNotIn('status', ['cancelled'])
+                ->lockForUpdate()
+                ->exists();
+
+            if ($conflict) {
+                throw new \Exception('SLOT_TAKEN');
+            }
+            
             $booking = Booking::create([
                 'user_id' => $user->id,
                 'car_id' => $car->id,
