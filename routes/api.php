@@ -116,7 +116,6 @@ Route::prefix('v1')->middleware(['set.api.locale'])->group(function () {
         // Payments
         Route::get('payments', [PaymentController::class, 'index']);
         Route::get('payments/{payment}', [PaymentController::class, 'show']);
-        // إنشاء دفعة لفاتورة (Wallet أو Pending لبوابة الدفع)
         Route::post('invoices/{invoice}/payments', [InvoicePaymentController::class, 'store']);
 
         // Coupons

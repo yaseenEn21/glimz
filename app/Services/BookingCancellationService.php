@@ -35,7 +35,6 @@ class BookingCancellationService
                     'updated_by' => $actorId,
                 ]);
 
-            // 2) لو فيه مدفوعات مدفوعة → استرجاع للمحفظة افتراضيًا
             // 2) لو فيه مدفوعات مدفوعة → استرجاع للمحفظة
             $paidInvoiceIds = Invoice::query()
                 ->where('invoiceable_type', Booking::class)
