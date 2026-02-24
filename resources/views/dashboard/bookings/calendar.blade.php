@@ -834,14 +834,6 @@
                 });
             }
 
-            // تحميل الموظفين للمودال
-            $.get("{{ route('dashboard.bookings.calendar.resources') }}", function(res) {
-                allResources = res;
-                const $sel = $('#tb_employees');
-                res.forEach(r => $sel.append(new Option(r.title, r.id, false, false)));
-                if ($.fn.select2) $sel.trigger('change');
-            });
-
             function openTimeBlockModal(info) {
                 selectedInfo = {
                     date: info.start.toISOString().slice(0, 10),
@@ -917,12 +909,6 @@
                         $btn.prop('disabled', false);
                     }
                 });
-            });
-
-            // ✅ Load employees into filter select (اختياري + لطيف)
-            $.get("{{ route('dashboard.bookings.calendar.resources') }}", function(res) {
-                const $sel = $('#filter_employee');
-                res.forEach(r => $sel.append(`<option value="${r.id}">${r.title}</option>`));
             });
 
             // toolbar actions
