@@ -1,3 +1,4 @@
+{{-- resources/views/dashboard/employees/show.blade.php --}}
 @extends('base.layout.app')
 
 @section('title', __('employees.show_title', ['name' => $employee->user->name ?? '']))

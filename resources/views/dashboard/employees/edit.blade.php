@@ -1,3 +1,4 @@
+{{-- resources/views/dashboard/employees/edit.blade.php --}}
 @extends('base.layout.app')
 
 @section('title', __('employees.edit'))
@@ -194,8 +195,16 @@
                     </span>
                 </h3>
 
-                <div class="card-toolbar">
-                    <button type="button" class="btn btn-sm btn-light-primary" id="btn_copy_first_day">
+                <div class="card-toolbar d-flex gap-2">
+                    {{-- زر استيراد جدول موظف --}}
+                    <button type="button" class="btn btn-sm btn-success" id="btn_import_schedule">
+                        <i class="ki-duotone ki-entrance-right fs-3 me-2">
+                            <span class="path1"></span><span class="path2"></span>
+                        </i>
+                        {{ app()->getLocale() === 'ar' ? 'استيراد جدول موظف' : 'Import Employee Schedule' }}
+                    </button>
+
+                    <button type="button" class="btn btn-sm btn-primary" id="btn_copy_first_day">
                         <i class="ki-duotone ki-copy fs-3 me-2"></i>
                         {{ app()->getLocale() === 'ar' ? 'نسخ أول يوم لباقي الأيام' : 'Copy first day to all' }}
                     </button>
@@ -346,8 +355,9 @@
         <div class="card-body pt-0">
 
             <div class="mb-3">
-                <input class="form-control" name="area_name" id="area_name" value="{{ old('area_name', $employee->area_name) }}"
-                    type="text" placeholder="{{ __('employees.area_name') }}">
+                <input class="form-control" name="area_name" id="area_name"
+                    value="{{ old('area_name', $employee->area_name) }}" type="text"
+                    placeholder="{{ __('employees.area_name') }}">
             </div>
 
             <input type="hidden" name="work_area_polygon" id="work_area_polygon"
@@ -376,6 +386,71 @@
     </div>
 </form>
 @endsection
+
+{{-- ===== Modal: استيراد جدول موظف ===== --}}
+<div class="modal fade" id="modal_import_schedule" tabindex="-1" aria-hidden="true">
+<div class="modal-dialog modal-dialog-centered modal-md">
+    <div class="modal-content">
+
+        <div class="modal-header border-0 pb-0">
+            <h5 class="modal-title fw-bold fs-4">
+                {{ app()->getLocale() === 'ar' ? 'استيراد جدول موظف' : 'Import Employee Schedule' }}
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+
+        <div class="modal-body pt-4">
+
+            <p class="text-muted fs-7 mb-4">
+                {{ app()->getLocale() === 'ar'
+                    ? 'اختر الموظف الذي تريد استيراد جدول دوامه، وسيتم تعبئة الحقول تلقائياً.'
+                    : 'Select an employee to import their schedule. Fields will be filled automatically.' }}
+            </p>
+
+            <div id="import_schedule_alert" class="alert d-none mb-4"></div>
+
+            <div class="fv-row">
+                <label class="fw-semibold fs-6 mb-2 required">
+                    {{ app()->getLocale() === 'ar' ? 'الموظف' : 'Employee' }}
+                </label>
+                <select id="import_schedule_employee" class="form-select" data-control="select2"
+                    data-placeholder="{{ app()->getLocale() === 'ar' ? 'اختر موظفاً...' : 'Select employee...' }}">
+                    <option></option>
+                    @foreach (\App\Models\Employee::with('user')->where('id', '!=', $employee->id)->whereHas('user', fn($q) => $q->where('is_active', true)->where('user_type', 'biker'))->get() as $emp)
+                        <option value="{{ $emp->id }}"
+                            data-url="{{ route('dashboard.employees.get-schedule', $emp->id) }}">
+                            {{ $emp->user?->name ?? '—' }}
+                            @if ($emp->user?->mobile)
+                                ({{ $emp->user->mobile }})
+                            @endif
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+
+        </div>
+
+        <div class="modal-footer border-0 pt-0">
+            <button type="button" class="btn btn-light" data-bs-dismiss="modal">
+                {{ app()->getLocale() === 'ar' ? 'إلغاء' : 'Cancel' }}
+            </button>
+            <button type="button" class="btn btn-success" id="btn_import_schedule_apply">
+                <span class="indicator-label">
+                    <i class="ki-duotone ki-entrance-right fs-4 me-2">
+                        <span class="path1"></span><span class="path2"></span>
+                    </i>
+                    {{ app()->getLocale() === 'ar' ? 'استيراد' : 'Import' }}
+                </span>
+                <span class="indicator-progress d-none">
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                    {{ app()->getLocale() === 'ar' ? 'جاري التحميل...' : 'Loading...' }}
+                </span>
+            </button>
+        </div>
+
+    </div>
+</div>
+</div>
 
 @push('custom-script')
 <script>
@@ -628,6 +703,114 @@
                 }
             });
         }
+    })();
+
+    // ===== Import Employee Schedule =====
+    (function() {
+
+        const $btn = $('#btn_import_schedule');
+        const $modal = $('#modal_import_schedule');
+        const $applyBtn = $('#btn_import_schedule_apply');
+        const $select = $('#import_schedule_employee');
+        const $alert = $('#import_schedule_alert');
+
+        $btn.on('click', function() {
+            $alert.addClass('d-none').text('');
+            $select.val(null).trigger('change');
+            $modal.modal('show');
+        });
+
+        $applyBtn.on('click', function() {
+
+            const selectedOption = $select.find('option:selected');
+            const url = selectedOption.data('url');
+
+            if (!url) {
+                showImportAlert('warning',
+                    '{{ app()->getLocale() === 'ar' ? 'يرجى اختيار موظف أولاً.' : 'Please select an employee first.' }}'
+                );
+                return;
+            }
+
+            $applyBtn.prop('disabled', true);
+
+            $.ajax({
+                url: url,
+                type: 'GET',
+                success: function(res) {
+                    applyScheduleToForm(res.schedule);
+                    $modal.modal('hide');
+
+                    if (window.Swal) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: '{{ app()->getLocale() === 'ar' ? 'تم الاستيراد' : 'Imported' }}',
+                            text: '{{ app()->getLocale() === 'ar' ? 'تم استيراد الجدول بنجاح.' : 'Schedule imported successfully.' }}',
+                            timer: 1800,
+                            showConfirmButton: false,
+                        });
+                    }
+                },
+                error: function() {
+                    showImportAlert('danger',
+                        '{{ app()->getLocale() === 'ar' ? 'حدث خطأ أثناء جلب بيانات الموظف.' : 'Failed to fetch employee data.' }}'
+                    );
+                },
+                complete: function() {
+                    $applyBtn.prop('disabled', false);
+                },
+            });
+        });
+
+        function applyScheduleToForm(schedule) {
+
+            const days = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+
+            days.forEach(function(day) {
+                const dayData = schedule[day] || {
+                    work: null,
+                    break: null
+                };
+
+                // ─── Work ────────────────────────────────────────────
+                const wStart = document.querySelector(`input[name="work[${day}][start_time]"]`);
+                const wEnd = document.querySelector(`input[name="work[${day}][end_time]"]`);
+                const wActive = document.querySelector(`input[name="work[${day}][is_active]"]`);
+
+                if (dayData.work) {
+                    if (wStart) wStart.value = dayData.work.start_time || '';
+                    if (wEnd) wEnd.value = dayData.work.end_time || '';
+                    if (wActive) wActive.checked = !!dayData.work.is_active;
+                } else {
+                    if (wStart) wStart.value = '';
+                    if (wEnd) wEnd.value = '';
+                    if (wActive) wActive.checked = false;
+                }
+
+                // ─── Break ───────────────────────────────────────────
+                const bStart = document.querySelector(`input[name="break[${day}][start_time]"]`);
+                const bEnd = document.querySelector(`input[name="break[${day}][end_time]"]`);
+                const bActive = document.querySelector(`input[name="break[${day}][is_active]"]`);
+
+                if (dayData.break) {
+                    if (bStart) bStart.value = dayData.break.start_time || '';
+                    if (bEnd) bEnd.value = dayData.break.end_time || '';
+                    if (bActive) bActive.checked = !!dayData.break.is_active;
+                } else {
+                    if (bStart) bStart.value = '';
+                    if (bEnd) bEnd.value = '';
+                    if (bActive) bActive.checked = false;
+                }
+            });
+        }
+
+        function showImportAlert(type, message) {
+            $alert
+                .removeClass('d-none alert-danger alert-warning alert-success')
+                .addClass('alert-' + type)
+                .text(message);
+        }
+
     })();
 </script>
 

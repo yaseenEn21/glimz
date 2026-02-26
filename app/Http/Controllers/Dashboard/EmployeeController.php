@@ -517,6 +517,34 @@ class EmployeeController extends Controller
         ));
     }
 
+    public function getSchedule(Employee $employee)
+    {
+        $intervals = EmployeeWeeklyInterval::where('employee_id', $employee->id)->get();
+
+        $days = ['saturday', 'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
+
+        $schedule = [];
+        foreach ($days as $day) {
+            $schedule[$day] = ['work' => null, 'break' => null];
+        }
+
+        foreach ($intervals as $interval) {
+            if (!array_key_exists($interval->day, $schedule))
+                continue;
+
+            $schedule[$interval->day][$interval->type] = [
+                'start_time' => substr($interval->start_time, 0, 5),
+                'end_time' => substr($interval->end_time, 0, 5),
+                'is_active' => (bool) $interval->is_active,
+            ];
+        }
+
+        return response()->json([
+            'schedule' => $schedule,
+            'employee_name' => $employee->user?->name ?? '—',
+        ]);
+    }
+
     public function bookingsDatatable(Employee $employee, DataTables $datatable, Request $request)
     {
         [$fromDate, $toDate] = $this->resolveBookingDateRange($request);

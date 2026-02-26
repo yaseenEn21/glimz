@@ -150,6 +150,7 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('packages', PackageController::class);
         Route::resource('package-subscriptions', PackageSubscriptionController::class);
 
+        Route::get('employees/{employee}/schedule', [EmployeeController::class, 'getSchedule'])->name('employees.get-schedule');
         Route::get('employees/{employee}/bookings/datatable', [EmployeeController::class, 'bookingsDatatable'])->name('employees.bookings.datatable');
         Route::get('employees/{employee}/bookings/stats', [EmployeeController::class, 'bookingsStats'])->name('employees.bookings.stats');
         Route::resource('employees', EmployeeController::class);
