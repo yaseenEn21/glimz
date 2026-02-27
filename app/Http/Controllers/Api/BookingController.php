@@ -335,6 +335,7 @@ class BookingController extends Controller
                     'applied_id' => $pricing['applied_id'],
                     'lat' => (float) $address->lat,
                     'lng' => (float) $address->lng,
+                    'first_booking_discount' => $pricing['first_booking_discount'] ?? null,
                 ],
 
                 'employee_id' => $pickedEmployeeId,
@@ -681,6 +682,7 @@ class BookingController extends Controller
                         'applied_id' => $pricing['applied_id'],
                         'lat' => (float) $address->lat,
                         'lng' => (float) $address->lng,
+                        'first_booking_discount' => $pricing['first_booking_discount'] ?? null,
                     ],
 
                     'employee_id' => $pickedEmployeeId,
@@ -1136,6 +1138,7 @@ class BookingController extends Controller
                     'applied_id' => $pricing['applied_id'] ?? null,
                     'lat' => (float) $address->lat,
                     'lng' => (float) $address->lng,
+                    'first_booking_discount' => $pricing['first_booking_discount'] ?? null,
                     'package_subscription_id' => $newUsingPackage ? (int) $newSubscriptionId : null,
                 ],
 

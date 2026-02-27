@@ -22,12 +22,14 @@ class Partner extends Model
         'is_active',
         'created_by',
         'updated_by',
-        'webhook_type'
+        'webhook_type',
+        'allow_customer_points'
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'daily_booking_limit' => 'integer',
+        'allow_customer_points' => 'boolean'
     ];
 
     /**
@@ -64,7 +66,7 @@ class Partner extends Model
     {
         $this->api_token = self::generateUniqueToken();
         $this->save();
-        
+
         return $this->api_token;
     }
 

@@ -166,6 +166,15 @@ Route::middleware(['auth'])->group(function () {
         Route::get('products/{product}/sales-stats', [ProductController::class, 'salesStats'])->name('products.salesStats');
         Route::resource('products', ProductController::class);
 
+        Route::prefix('settings/first-booking-discount')
+            ->name('settings.first-booking-discount.')
+            ->group(function () {
+                Route::get('/', [App\Http\Controllers\Dashboard\FirstBookingDiscountController::class, 'edit'])
+                    ->name('edit');
+                Route::put('/', [App\Http\Controllers\Dashboard\FirstBookingDiscountController::class, 'update'])
+                    ->name('update');
+            });
+
         Route::prefix('wallets')->name('wallets.')->group(function () {
 
             Route::get('/', [WalletController::class, 'index'])->name('index');

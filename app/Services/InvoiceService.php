@@ -20,16 +20,16 @@ class InvoiceService
     private function nextVersionFor(string $type, int $id): int
     {
         return (int) (Invoice::query()
-                ->where('invoiceable_type', $type)
-                ->where('invoiceable_id', $id)
-                ->max('version') ?? 0) + 1;
+            ->where('invoiceable_type', $type)
+            ->where('invoiceable_id', $id)
+            ->max('version') ?? 0) + 1;
     }
 
     public function createBookingInvoice(Booking $booking, int $actorId): Invoice
     {
         return DB::transaction(function () use ($booking, $actorId) {
 
-            $booking->loadMissing(['service','products.product']);
+            $booking->loadMissing(['service', 'products.product']);
 
             $version = $this->nextVersionFor(Booking::class, $booking->id);
 
@@ -63,43 +63,53 @@ class InvoiceService
             $subtotal = 0;
 
             // 1) Service line (إذا الخدمة عليها مبلغ)
-            if ((float)$booking->service_final_price_snapshot > 0) {
-                $svc = $booking->service;
+            // ─── Service Line ────────────────────────────────────────────────────────────
+            $fbdMeta = data_get($booking->service_pricing_meta, 'first_booking_discount');
+            $hasFbd = !empty($fbdMeta['applied']) && (float) ($fbdMeta['amount'] ?? 0) > 0;
+            $invoiceDiscount = 0.0;
 
-                $unit = (float)$booking->service_charge_amount_snapshot;
-                $lineTotal = $unit;
+            // ✅ السعر في بند الفاتورة
+            $serviceUnitForInvoice = $hasFbd
+                ? (float) $fbdMeta['price_before']       // السعر الأصلي (قبل خصم أول حجز)
+                : (float) $booking->service_charge_amount_snapshot;
+
+            if ($serviceUnitForInvoice > 0) {
+                $svc = $booking->service;
+                $lineTotal = $serviceUnitForInvoice;
 
                 InvoiceItem::create([
                     'invoice_id' => $invoice->id,
                     'item_type' => 'service',
-
                     'itemable_type' => Service::class,
                     'itemable_id' => $svc?->id,
-
                     'title' => $svc?->name,
                     'description' => $svc?->description,
-
                     'qty' => 1,
-                    'unit_price' => $unit,
+                    'unit_price' => $serviceUnitForInvoice,
                     'line_tax' => 0,
                     'line_total' => $lineTotal,
-
                     'meta' => [
                         'booking_date' => $booking->booking_date->format('Y-m-d'),
-                        'start_time' => substr((string)$booking->start_time,0,5),
+                        'start_time' => substr((string) $booking->start_time, 0, 5),
                     ],
                     'sort_order' => 1,
                 ]);
 
                 $subtotal += $lineTotal;
+
+                // ✅ لو في خصم أول حجز — نخزنه في invoice.discount
+                if ($hasFbd) {
+                    $invoiceDiscount = (float) $fbdMeta['amount'];
+                }
             }
+            // ─────────────────────────────────────────────────────────────────────────────
 
             // 2) Products lines
             $sort = 10;
             foreach ($booking->products as $bp) {
-                $unit = (float)$bp->unit_price_snapshot;
-                $qty = (int)$bp->qty;
-                $lineTotal = (float)$bp->line_total;
+                $unit = (float) $bp->unit_price_snapshot;
+                $qty = (int) $bp->qty;
+                $lineTotal = (float) $bp->line_total;
 
                 InvoiceItem::create([
                     'invoice_id' => $invoice->id,
@@ -123,12 +133,16 @@ class InvoiceService
                 $subtotal += $lineTotal;
             }
 
-            $total = max(0, $subtotal - (float)$invoice->discount + (float)$invoice->tax);
+            $total = max(0, $subtotal - $invoiceDiscount + (float) $invoice->tax);
 
             $invoice->update([
                 'subtotal' => $subtotal,
+                'discount' => $invoiceDiscount,   // ← خصم أول حجز
                 'total' => $total,
                 'updated_by' => $actorId,
+                'meta' => array_merge((array) ($invoice->meta ?? []), [
+                    'first_booking_discount' => $hasFbd ? $fbdMeta : null,
+                ]),
             ]);
 
             return $invoice->fresh(['items']);
@@ -157,15 +171,15 @@ class InvoiceService
             // امسح البنود وأعد بناءها
             InvoiceItem::query()->where('invoice_id', $invoice->id)->delete();
 
-            $booking->loadMissing(['service','products.product']);
+            $booking->loadMissing(['service', 'products.product']);
 
             $subtotal = 0;
 
             // if ((float)$booking->service_final_price_snapshot > 0) {
-            if ((float)$booking->service_charge_amount_snapshot > 0) {
+            if ((float) $booking->service_charge_amount_snapshot > 0) {
                 $svc = $booking->service;
                 // $unit = (float)$booking->service_final_price_snapshot;
-                $unit = (float)$booking->service_charge_amount_snapshot ;
+                $unit = (float) $booking->service_charge_amount_snapshot;
 
                 InvoiceItem::create([
                     'invoice_id' => $invoice->id,
@@ -193,17 +207,17 @@ class InvoiceService
                     'itemable_id' => $bp->product_id,
                     'title' => $bp->title,
                     'description' => null,
-                    'qty' => (int)$bp->qty,
-                    'unit_price' => (float)$bp->unit_price_snapshot,
+                    'qty' => (int) $bp->qty,
+                    'unit_price' => (float) $bp->unit_price_snapshot,
                     'line_tax' => 0,
-                    'line_total' => (float)$bp->line_total,
+                    'line_total' => (float) $bp->line_total,
                     'sort_order' => $sort++,
                 ]);
 
-                $subtotal += (float)$bp->line_total;
+                $subtotal += (float) $bp->line_total;
             }
 
-            $total = max(0, $subtotal - (float)$invoice->discount + (float)$invoice->tax);
+            $total = max(0, $subtotal - (float) $invoice->discount + (float) $invoice->tax);
 
             $invoice->update([
                 'subtotal' => $subtotal,
@@ -250,15 +264,15 @@ class InvoiceService
 
             foreach ($deltaItems as $it) {
                 // it: [product_id, qty_delta, unit_price, title_json]
-                $lineTotal = (float)$it['qty'] * (float)$it['unit_price'];
+                $lineTotal = (float) $it['qty'] * (float) $it['unit_price'];
                 InvoiceItem::create([
                     'invoice_id' => $invoice->id,
                     'item_type' => 'product',
                     'itemable_type' => Product::class,
-                    'itemable_id' => (int)$it['product_id'],
+                    'itemable_id' => (int) $it['product_id'],
                     'title' => $it['title'],
-                    'qty' => (float)$it['qty'],
-                    'unit_price' => (float)$it['unit_price'],
+                    'qty' => (float) $it['qty'],
+                    'unit_price' => (float) $it['unit_price'],
                     'line_tax' => 0,
                     'line_total' => $lineTotal,
                     'sort_order' => $sort++,

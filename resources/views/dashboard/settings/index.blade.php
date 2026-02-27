@@ -2,6 +2,8 @@
 
 @section('content')
 
+<a href="{{ route('dashboard.settings.first-booking-discount.edit') }}"> إعداد خصم أول حجز </a>
+
 {{-- فلتر --}}
 <div class="card mb-5 shadow-sm">
     <div class="card-body p-6">

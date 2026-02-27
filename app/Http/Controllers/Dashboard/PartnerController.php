@@ -128,6 +128,7 @@ class PartnerController extends Controller
         $validated['created_by'] = auth()->id();
         $validated['updated_by'] = auth()->id();
         $validated['is_active'] = $request->has('is_active');
+        $validated['allow_customer_points'] = $request->has('allow_customer_points');
         $partner = Partner::create($validated);
 
         return redirect()
@@ -340,6 +341,7 @@ class PartnerController extends Controller
 
         $validated['updated_by'] = auth()->id();
         $validated['is_active'] = $request->has('is_active');
+        $validated['allow_customer_points'] = $request->has('allow_customer_points');
 
         $partner->update($validated);
 

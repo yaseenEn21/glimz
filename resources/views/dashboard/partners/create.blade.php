@@ -1,3 +1,4 @@
+{{-- resources/views/dashboard/partners/create.blade.php --}}
 @extends('base.layout.app')
 
 @section('title', __('partners.create'))
@@ -79,7 +80,7 @@
                         @enderror
                     </div>
 
-                    <div class="col-md-6">
+                    <div class="col-md-12">
                         <label class="form-label required">{{ __('partners.fields.webhook_type') }}</label>
                         <select name="webhook_type" class="form-select" required>
                             <option value="generic"
@@ -95,13 +96,31 @@
                     </div>
 
                     {{-- Is Active --}}
-                    <div class="col-12">
+                    <div class="col-6">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" name="is_active" id="is_active"
                                 {{ old('is_active', true) ? 'checked' : '' }}>
                             <label class="form-check-label" for="is_active">
                                 {{ __('partners.fields.is_active') }}
                             </label>
+                        </div>
+                    </div>
+
+                    {{-- Allow Customer Points --}}
+                    <div class="col-6">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="allow_customer_points"
+                                id="allow_customer_points" {{ old('allow_customer_points', false) ? 'checked' : '' }}>
+                            <label class="form-check-label" for="allow_customer_points">
+                                {{ app()->getLocale() === 'ar'
+                                    ? 'السماح بمنح النقاط لزبائن هذا الشريك'
+                                    : 'Allow points for this partner\'s customers' }}
+                            </label>
+                            <div class="form-text text-muted">
+                                {{ app()->getLocale() === 'ar'
+                                    ? 'إذا كان مفعلاً، سيحصل زبائن حجوزات هذا الشريك على نقاطهم عند اكتمال الحجز.'
+                                    : 'If enabled, customers of this partner\'s bookings will earn points on completion.' }}
+                            </div>
                         </div>
                     </div>
                 </div>
