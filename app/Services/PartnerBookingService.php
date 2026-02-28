@@ -108,13 +108,33 @@ class PartnerBookingService
                 }
 
                 // ✅ 8. مطابقة الوقت — exact match أو أقرب موعد خلال 60 دقيقة
-                $slot = $this->findSlotWithFallback(collect($slotsData['slots']), $requestedStartTime);
+                $slot = $this->findSlotWithFallback(
+                    collect($slotsData['slots']),
+                    $requestedStartTime,
+                    (bool) $partner->allow_slot_fallback,
+                    (int) $partner->slot_fallback_minutes,
+                    $partner->slot_fallback_direction ?? 'both'
+                );
 
                 if (!$slot) {
+                    $directionLabel = match ($partner->slot_fallback_direction ?? 'both') {
+                        'after' => 'after',
+                        'before' => 'before',
+                        'both' => 'within ±',
+                    };
+
+                    $maxMinutes = $partner->allow_slot_fallback
+                        ? (int) $partner->slot_fallback_minutes
+                        : 0;
+
                     return [
                         'success' => false,
-                        'error' => "No available slot within 60 minutes after ({$requestedStartTime})",
-                        'error_code' => 'NO_SLOT_WITHIN_RANGE',
+                        'error' => $partner->allow_slot_fallback
+                            ? "No available slot {$directionLabel} {$maxMinutes} minutes of ({$requestedStartTime})"
+                            : "Exact slot ({$requestedStartTime}) is not available",
+                        'error_code' => $partner->allow_slot_fallback
+                            ? 'NO_SLOT_WITHIN_RANGE'
+                            : 'EXACT_SLOT_NOT_AVAILABLE',
                     ];
                 }
 
@@ -319,13 +339,33 @@ class PartnerBookingService
             }
 
             // ✅ 6. مطابقة الوقت — exact match أو أقرب موعد خلال 60 دقيقة
-            $slot = $this->findSlotWithFallback(collect($slotsData['slots']), $requestedStartTime);
+            $slot = $this->findSlotWithFallback(
+                collect($slotsData['slots']),
+                $requestedStartTime,
+                (bool) $partner->allow_slot_fallback,
+                (int) $partner->slot_fallback_minutes,
+                $partner->slot_fallback_direction ?? 'both'
+            );
 
             if (!$slot) {
+                $directionLabel = match ($partner->slot_fallback_direction ?? 'both') {
+                    'after' => 'after',
+                    'before' => 'before',
+                    'both' => 'within ±',
+                };
+
+                $maxMinutes = $partner->allow_slot_fallback
+                    ? (int) $partner->slot_fallback_minutes
+                    : 0;
+
                 return [
                     'success' => false,
-                    'error' => "No available slot within 60 minutes after ({$requestedStartTime})",
-                    'error_code' => 'NO_SLOT_WITHIN_RANGE',
+                    'error' => $partner->allow_slot_fallback
+                        ? "No available slot {$directionLabel} {$maxMinutes} minutes of ({$requestedStartTime})"
+                        : "Exact slot ({$requestedStartTime}) is not available",
+                    'error_code' => $partner->allow_slot_fallback
+                        ? 'NO_SLOT_WITHIN_RANGE'
+                        : 'EXACT_SLOT_NOT_AVAILABLE',
                 ];
             }
 
@@ -451,39 +491,60 @@ class PartnerBookingService
     // ═══════════════════════════════════════════════════════════════
 
     /**
-     * ✅ البحث عن slot — exact match أولاً، ثم أقرب موعد خلال 60 دقيقة
+     * البحث عن slot — exact match أولاً، ثم fallback حسب إعدادات الشريك
+     *
+     * @param \Illuminate\Support\Collection $allSlots
+     * @param string $requestedTime        "HH:MM"
+     * @param bool   $allowFallback        هل نبحث عن أقرب موعد؟
+     * @param int    $fallbackMinutes      الحد الأقصى بالدقائق
+     * @param string $fallbackDirection    'before' | 'after' | 'both'
      */
-    /**
-     * ✅ البحث عن slot — exact match أولاً، ثم أقرب موعد ±60 دقيقة (قبل أو بعد)
-     */
-    protected function findSlotWithFallback(\Illuminate\Support\Collection $allSlots, string $requestedTime): ?array
-    {
-        // 1. Exact match
+    protected function findSlotWithFallback(
+        \Illuminate\Support\Collection $allSlots,
+        string $requestedTime,
+        bool $allowFallback = true,
+        int $fallbackMinutes = 60,
+        string $fallbackDirection = 'both'
+    ): ?array {
+        // 1. Exact match — دائماً نجرب أولاً
         $slot = $allSlots->first(fn($s) => $s['start_time'] === $requestedTime);
         if ($slot) {
             return $slot;
         }
 
-        // 2. Fallback: أقرب موعد قبل أو بعد المطلوب خلال 60 دقيقة
+        // 2. إذا الشريك ما يسمح بـ fallback — نرجع null
+        if (!$allowFallback) {
+            return null;
+        }
+
+        // 3. Fallback حسب الاتجاه والمدة
         $reqMin = $this->timeToMinutes($requestedTime);
 
-        $candidates = $allSlots->filter(function ($s) use ($reqMin) {
+        $candidates = $allSlots->filter(function ($s) use ($reqMin, $fallbackMinutes, $fallbackDirection) {
             $slotMin = $this->timeToMinutes($s['start_time']);
 
-            // لو السلوت بعد منتصف الليل والمطلوب مساءً — نضيف 1440 للسلوت
+            // معالجة منتصف الليل
             if ($slotMin < 360 && $reqMin > 720) {
                 $slotMin += 1440;
             }
 
-            $diff = abs($slotMin - $reqMin);
-            return $diff > 0 && $diff <= 60;
+            $diff = $slotMin - $reqMin; // موجب = بعد، سالب = قبل
+
+            // فلترة حسب الاتجاه
+            $inDirection = match ($fallbackDirection) {
+                'after' => $diff > 0,
+                'before' => $diff < 0,
+                'both' => $diff !== 0,
+            };
+
+            return $inDirection && abs($diff) <= $fallbackMinutes;
         });
 
         if ($candidates->isEmpty()) {
             return null;
         }
 
-        // نختار الأقرب زمنياً للوقت المطلوب
+        // نختار الأقرب زمنياً
         return $candidates->sortBy(function ($s) use ($reqMin) {
             $slotMin = $this->timeToMinutes($s['start_time']);
             if ($slotMin < 360 && $reqMin > 720) {

@@ -98,6 +98,68 @@
 
                     <div class="separator my-4"></div>
 
+                    {{-- Slot Matching Settings --}}
+                    <div class="row mb-4">
+                        <div class="col-12 mb-3">
+                            <div class="fw-semibold text-muted mb-1">
+                                <i class="ki-duotone ki-time fs-4 me-1">
+                                    <span class="path1"></span>
+                                    <span class="path2"></span>
+                                </i>
+                                {{ app()->getLocale() === 'ar' ? 'مطابقة المواعيد' : 'Slot Matching' }}
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <div class="fw-semibold text-muted mb-1 fs-7">
+                                {{ app()->getLocale() === 'ar' ? 'مواعيد غير مطابقة' : 'Non-exact matching' }}
+                            </div>
+                            <div class="fw-bold">
+                                @if ($partner->allow_slot_fallback)
+                                    <span class="badge badge-light-success">
+                                        {{ app()->getLocale() === 'ar' ? 'مسموح' : 'Allowed' }}
+                                    </span>
+                                @else
+                                    <span class="badge badge-light-danger">
+                                        {{ app()->getLocale() === 'ar' ? 'مطابقة دقيقة فقط' : 'Exact only' }}
+                                    </span>
+                                @endif
+                            </div>
+                        </div>
+
+                        @if ($partner->allow_slot_fallback)
+                            <div class="col-md-4">
+                                <div class="fw-semibold text-muted mb-1 fs-7">
+                                    {{ app()->getLocale() === 'ar' ? 'الفرق المسموح' : 'Allowed difference' }}
+                                </div>
+                                <div class="fw-bold">
+                                    <span class="badge badge-light-primary">
+                                        {{ $partner->slot_fallback_minutes }}
+                                        {{ app()->getLocale() === 'ar' ? 'دقيقة' : 'min' }}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <div class="fw-semibold text-muted mb-1 fs-7">
+                                    {{ app()->getLocale() === 'ar' ? 'اتجاه البحث' : 'Direction' }}
+                                </div>
+                                <div class="fw-bold">
+                                    @php
+                                        $dirLabels = [
+                                            'both' => app()->getLocale() === 'ar' ? 'قبل وبعد' : 'Before & After',
+                                            'after' => app()->getLocale() === 'ar' ? 'بعد فقط' : 'After only',
+                                            'before' => app()->getLocale() === 'ar' ? 'قبل فقط' : 'Before only',
+                                        ];
+                                    @endphp
+                                    <span class="badge badge-light-info">
+                                        {{ $dirLabels[$partner->slot_fallback_direction] ?? $partner->slot_fallback_direction }}
+                                    </span>
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+
                     <div class="fw-semibold text-muted mb-1">{{ __('partners.fields.created_at') }}</div>
                     <div class="fw-bold">{{ $partner->created_at->format('Y-m-d H:i') }}</div>
                 </div>

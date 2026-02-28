@@ -95,6 +95,66 @@
                         <div class="form-text">{{ __('partners.webhook_type_help') }}</div>
                     </div>
 
+                    {{-- Slot Fallback Settings --}}
+                    <div class="col-12">
+                        <div class="separator my-5"></div>
+                        <h4 class="mb-4">
+                            {{ app()->getLocale() === 'ar' ? 'إعدادات مطابقة المواعيد' : 'Slot Matching Settings' }}
+                        </h4>
+                    </div>
+
+                    {{-- Allow Fallback --}}
+                    <div class="col-md-4">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="allow_slot_fallback"
+                                id="allow_slot_fallback"
+                                {{ old('allow_slot_fallback', $partner->allow_slot_fallback ?? true) ? 'checked' : '' }}>
+                            <label class="form-check-label" for="allow_slot_fallback">
+                                {{ app()->getLocale() === 'ar' ? 'السماح بمواعيد غير مطابقة بالضبط' : 'Allow non-exact slot matching' }}
+                            </label>
+                            <div class="form-text text-muted">
+                                {{ app()->getLocale() === 'ar'
+                                    ? 'إذا كان مفعلاً، النظام يبحث عن أقرب موعد متاح إذا الموعد المطلوب غير متاح'
+                                    : 'If enabled, the system finds the nearest available slot when the exact time is unavailable' }}
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Fallback Minutes --}}
+                    <div class="col-md-4" id="fallback-settings">
+                        <label class="form-label">
+                            {{ app()->getLocale() === 'ar' ? 'الفرق المسموح (بالدقائق)' : 'Allowed difference (minutes)' }}
+                        </label>
+                        <input type="number" name="slot_fallback_minutes"
+                            class="form-control @error('slot_fallback_minutes') is-invalid @enderror"
+                            value="{{ old('slot_fallback_minutes', $partner->slot_fallback_minutes ?? 60) }}"
+                            min="5" max="180" step="5">
+                        @error('slot_fallback_minutes')
+                            <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    {{-- Fallback Direction --}}
+                    <div class="col-md-4" id="fallback-direction-settings">
+                        <label class="form-label">
+                            {{ app()->getLocale() === 'ar' ? 'اتجاه البحث' : 'Search direction' }}
+                        </label>
+                        <select name="slot_fallback_direction" class="form-select">
+                            <option value="both"
+                                {{ old('slot_fallback_direction', $partner->slot_fallback_direction ?? 'both') === 'both' ? 'selected' : '' }}>
+                                {{ app()->getLocale() === 'ar' ? 'قبل وبعد' : 'Before & After' }}
+                            </option>
+                            <option value="after"
+                                {{ old('slot_fallback_direction', $partner->slot_fallback_direction ?? '') === 'after' ? 'selected' : '' }}>
+                                {{ app()->getLocale() === 'ar' ? 'بعد فقط (أقرب موعد لاحق)' : 'After only (next available)' }}
+                            </option>
+                            <option value="before"
+                                {{ old('slot_fallback_direction', $partner->slot_fallback_direction ?? '') === 'before' ? 'selected' : '' }}>
+                                {{ app()->getLocale() === 'ar' ? 'قبل فقط (أقرب موعد سابق)' : 'Before only (previous available)' }}
+                            </option>
+                        </select>
+                    </div>
+
                     {{-- Is Active --}}
                     <div class="col-6">
                         <div class="form-check form-switch">
@@ -135,3 +195,20 @@
     </form>
 
 @endsection
+@push('custom-script')
+    <script>
+        // إخفاء/إظهار إعدادات الـ fallback
+        const toggle = document.getElementById('allow_slot_fallback');
+        const settings = document.getElementById('fallback-settings');
+        const direction = document.getElementById('fallback-direction-settings');
+
+        function updateVisibility() {
+            const show = toggle.checked;
+            settings.style.display = show ? '' : 'none';
+            direction.style.display = show ? '' : 'none';
+        }
+
+        toggle.addEventListener('change', updateVisibility);
+        updateVisibility();
+    </script>
+@endpush

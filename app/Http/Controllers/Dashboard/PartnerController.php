@@ -119,12 +119,15 @@ class PartnerController extends Controller
             'webhook_url' => 'nullable|url|max:500',
             'daily_booking_limit' => 'required|integer|min:1|max:10000',
             'webhook_type' => 'nullable|in:generic,mismar',
+            'slot_fallback_minutes' => 'nullable|integer|min:5|max:180',
+            'slot_fallback_direction' => 'nullable|in:before,after,both',
             // 'is_active' => 'boolean',
         ], [
             'username.alpha_dash' => __('partners.username_english_only'),
             'username.unique' => __('partners.username_taken'),
         ]);
 
+        $validated['allow_slot_fallback'] = $request->has('allow_slot_fallback');
         $validated['created_by'] = auth()->id();
         $validated['updated_by'] = auth()->id();
         $validated['is_active'] = $request->has('is_active');
@@ -171,7 +174,7 @@ class PartnerController extends Controller
             'title' => __(key: 'partners.title'),
             'page_title' => __('partners.title'),
         ]);
-        
+
         return view('dashboard.partners.show', compact('partner', 'servicesWithEmployees', 'bookingsStats'));
     }
 
@@ -334,11 +337,14 @@ class PartnerController extends Controller
             'mobile' => 'nullable|string|max:20',
             'webhook_url' => 'nullable|url|max:500',
             'daily_booking_limit' => 'required|integer|min:1|max:10000',
+            'slot_fallback_minutes' => 'nullable|integer|min:5|max:180',
+            'slot_fallback_direction' => 'nullable|in:before,after,both',
             // 'is_active' => 'boolean',
         ], [
             'username.alpha_dash' => __('partners.username_english_only'),
         ]);
 
+        $validated['allow_slot_fallback'] = $request->has('allow_slot_fallback');
         $validated['updated_by'] = auth()->id();
         $validated['is_active'] = $request->has('is_active');
         $validated['allow_customer_points'] = $request->has('allow_customer_points');

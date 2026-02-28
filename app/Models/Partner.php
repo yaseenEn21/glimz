@@ -23,13 +23,18 @@ class Partner extends Model
         'created_by',
         'updated_by',
         'webhook_type',
-        'allow_customer_points'
+        'allow_customer_points',
+        'allow_slot_fallback',
+        'slot_fallback_minutes',
+        'slot_fallback_direction',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'daily_booking_limit' => 'integer',
-        'allow_customer_points' => 'boolean'
+        'allow_customer_points' => 'boolean',
+        'allow_slot_fallback' => 'boolean',
+        'slot_fallback_minutes' => 'integer',
     ];
 
     /**
