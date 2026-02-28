@@ -120,6 +120,11 @@ class MyAddressController extends Controller
             return api_error(__('api.not_found'), 404);
         }
 
+        // ❌ ممنوع حذف العنوان إذا كان default أو current location
+        if ($address->is_default || $address->is_current_location) {
+            return api_error(__('addresses.cannot_delete_primary_or_current'), 422);
+        }
+
         DB::transaction(function () use ($address) {
             $wasDefault = $address->is_default;
             $userId = $address->user_id;
